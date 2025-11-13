@@ -52,7 +52,7 @@ function presentJob(row) {
 }
 
 // 发布职位（招聘者/管理员/导师）
-router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR']), validate(postJobSchema), async (req, res) => {
+router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR', 'CREATOR']), validate(postJobSchema), async (req, res) => {
     const { title, description, skills = [], startTime, endTime, duration, benefits, photos = [], files = [], contact } = req.body
     const skillsCsv = Array.isArray(skills) ? skills.join(',') : (skills || '')
     const photosCsv = Array.isArray(photos) ? photos.join(',') : (photos || '')

@@ -3,21 +3,24 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BookOpenCheck, ExternalLink } from "lucide-react";
+import { BookOpenCheck, ExternalLink, Download } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface ResourceItem {
     id: string;
     title: string;
     kind: string;
-    url: string;
+    url?: string | null;
     summary?: string | null;
+    attachmentUrl?: string | null;
 }
 
 export default function ResourcesPage() {
     const [resources, setResources] = useState<ResourceItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useCurrentUser();
 
     useEffect(() => {
         let active = true;
@@ -56,12 +59,30 @@ export default function ResourcesPage() {
                                 Everything you see is sourced directly from the backend resources API.
                             </p>
                         </div>
-                        <Link
-                            href="/admin"
-                            className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
-                        >
-                            Admin panel
-                        </Link>
+                        {user ? (
+                            user.role === "ADMIN" ? (
+                                <Link
+                                    href="/admin"
+                                    className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                >
+                                    Admin panel
+                                </Link>
+                            ) : (
+                                <Link
+                                    href="/tutors/dashboard"
+                                    className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                >
+                                    Share a resource
+                                </Link>
+                            )
+                        ) : (
+                            <Link
+                                href="/login?from=/admin"
+                                className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                            >
+                                Sign in for tools
+                            </Link>
+                        )}
                     </div>
 
                     <div className="mt-8 grid gap-5">
@@ -98,15 +119,31 @@ export default function ResourcesPage() {
                                         >
                                             About this resource
                                         </Link>
-                                        <a
-                                            href={resource.url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 font-semibold text-white"
-                                        >
-                                            Open resource
-                                            <ExternalLink className="h-4 w-4" />
-                                        </a>
+                                        {resource.url || resource.attachmentUrl ? (
+                                            <a
+                                                href={resource.url || resource.attachmentUrl || "#"}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 font-semibold text-white"
+                                            >
+                                                Open resource
+                                                <ExternalLink className="h-4 w-4" />
+                                            </a>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-2 rounded-full border border-dashed border-[#CFE3E0] px-4 py-2 font-semibold text-[#7A8584]">
+                                                Upload pending
+                                            </span>
+                                        )}
+                                        {resource.attachmentUrl && resource.attachmentUrl !== resource.url && (
+                                            <a
+                                                href={resource.attachmentUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 font-semibold text-[#2B2B2B]"
+                                            >
+                                                <Download className="h-4 w-4" /> Download
+                                            </a>
+                                        )}
                                     </div>
                                 </article>
                             ))

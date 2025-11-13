@@ -78,6 +78,7 @@ const RESOURCE_DEFAULT = {
     details: "",
     imageUrl: "",
     attachmentUrl: "",
+    primaryFileName: "",
 };
 
 const JOB_DEFAULT = {
@@ -225,9 +226,14 @@ export default function AdminPage() {
         setSaving((s) => ({ ...s, resource: true }));
         setStatusMsg(null);
         try {
+            if (!resourceForm.url && !resourceForm.attachmentUrl) {
+                throw new Error("Upload the resource file or paste a URL before publishing.");
+            }
+            const { primaryFileName, ...payload } = resourceForm;
+            void primaryFileName;
             const res = await api("/resources", {
                 method: "POST",
-                body: JSON.stringify(resourceForm),
+                body: JSON.stringify(payload),
             });
             const json = await safeJson(res);
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to create resource");
@@ -500,12 +506,32 @@ export default function AdminPage() {
                                 />
                                 <input
                                     type="url"
-                                    placeholder="URL"
+                                    placeholder="External URL (optional if you upload a file)"
                                     value={resourceForm.url}
                                     onChange={(e) => setResourceForm({ ...resourceForm, url: e.target.value })}
                                     className="w-full rounded-2xl border border-slate-200 px-4 py-2"
-                                    required
                                 />
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Upload main resource
+                                    <input
+                                        type="file"
+                                        className="mt-1 w-full text-xs"
+                                        onChange={async (e) => {
+                                            const [url] = await uploadFiles(e.target.files);
+                                            const fileName = e.target.files && e.target.files[0] ? e.target.files[0].name : "";
+                                            if (url) {
+                                                setResourceForm((prev) => ({ ...prev, url, primaryFileName: fileName || prev.primaryFileName }));
+                                            }
+                                            e.target.value = "";
+                                        }}
+                                    />
+                                    <span className="mt-1 block text-[11px] text-slate-500">
+                                        We use this upload as the primary resource link when no URL is provided.
+                                    </span>
+                                    {resourceForm.primaryFileName && (
+                                        <span className="mt-1 block text-[11px] text-slate-600">{resourceForm.primaryFileName}</span>
+                                    )}
+                                </label>
                                 <textarea
                                     placeholder="Summary"
                                     value={resourceForm.summary}

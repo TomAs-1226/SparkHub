@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Briefcase, ExternalLink } from "lucide-react";
+import { Briefcase, Download, ExternalLink } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface JobItem {
     id: string;
@@ -22,6 +23,7 @@ interface JobItem {
 export default function OpportunitiesPage() {
     const [jobs, setJobs] = useState<JobItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useCurrentUser();
 
     useEffect(() => {
         let active = true;
@@ -60,12 +62,30 @@ export default function OpportunitiesPage() {
                                 Every card below is rendered directly from the backend jobs API.
                             </p>
                         </div>
-                        <Link
-                            href="/admin"
-                            className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
-                        >
-                            Admin tools
-                        </Link>
+                        {user ? (
+                            user.role === "ADMIN" ? (
+                                <Link
+                                    href="/admin"
+                                    className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                >
+                                    Admin tools
+                                </Link>
+                            ) : (
+                                <Link
+                                    href="/tutors/dashboard"
+                                    className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                >
+                                    Post an opportunity
+                                </Link>
+                            )
+                        ) : (
+                            <Link
+                                href="/login?from=/admin"
+                                className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                            >
+                                Sign in for tools
+                            </Link>
+                        )}
                     </div>
 
                     <div className="mt-8 grid gap-6">
@@ -127,6 +147,16 @@ export default function OpportunitiesPage() {
                                             Contact host
                                             <ExternalLink className="h-4 w-4" />
                                         </a>
+                                        {job.files && job.files.length > 0 && (
+                                            <a
+                                                href={job.files[0]}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 font-semibold text-[#2B2B2B]"
+                                            >
+                                                <Download className="h-4 w-4" /> Brief
+                                            </a>
+                                        )}
                                     </div>
                                 </article>
                             ))

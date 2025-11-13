@@ -21,6 +21,7 @@ export default function Navbar() {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const { user, setUser } = useCurrentUser();
+    const showTutorWorkspace = !!user && ["TUTOR", "ADMIN", "CREATOR"].includes(user.role);
     const desktopLinks = useMemo(() => NAV_LINKS, []);
 
     return (
@@ -47,6 +48,7 @@ export default function Navbar() {
                                 setUser(null);
                                 router.push("/");
                             }}
+                            showTutorWorkspace={showTutorWorkspace}
                         />
                     ) : (
                         <>
@@ -80,7 +82,7 @@ export default function Navbar() {
                                 <>
                                     <Link href="/dashboard">Dashboard</Link>
                                     {user.role === "ADMIN" && <Link href="/admin">Admin panel</Link>}
-                                    {user.role === "TUTOR" && <Link href="/tutors/dashboard">Tutor workspace</Link>}
+                                    {showTutorWorkspace && <Link href="/tutors/dashboard">Publishing workspace</Link>}
                                     <Link href="/settings">Profile settings</Link>
                                 </>
                             ) : (
@@ -100,7 +102,15 @@ export default function Navbar() {
     );
 }
 
-function ProfileMenu({ user, onSignOut }: { user: { name?: string | null; avatarUrl?: string | null; role: string }; onSignOut: () => void }) {
+function ProfileMenu({
+    user,
+    onSignOut,
+    showTutorWorkspace,
+}: {
+    user: { name?: string | null; avatarUrl?: string | null; role: string };
+    onSignOut: () => void;
+    showTutorWorkspace: boolean;
+}) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const flyoutRef = useRef<HTMLDivElement | null>(null);
@@ -128,7 +138,7 @@ function ProfileMenu({ user, onSignOut }: { user: { name?: string | null; avatar
         { label: "Dashboard", href: "/dashboard" },
         { label: "Profile settings", href: "/settings" },
         user.role === "ADMIN" ? { label: "Admin control", href: "/admin" } : null,
-        user.role === "TUTOR" ? { label: "Tutor workspace", href: "/tutors/dashboard" } : null,
+        showTutorWorkspace ? { label: "Publishing workspace", href: "/tutors/dashboard" } : null,
     ].filter(Boolean) as { label: string; href: string }[];
 
     return (

@@ -30,7 +30,7 @@ export default function TutorWorkspacePage() {
     const [jobs, setJobs] = useState<OwnedRow[]>([]);
 
     const [eventForm, setEventForm] = useState({ title: "", location: "", startsAt: "", endsAt: "", description: "", coverUrl: "", attachments: [] as string[] });
-    const [resourceForm, setResourceForm] = useState({ title: "", kind: "", url: "", summary: "", details: "", imageUrl: "", attachmentUrl: "" });
+    const [resourceForm, setResourceForm] = useState({ title: "", kind: "", url: "", summary: "", details: "", imageUrl: "", attachmentUrl: "", primaryFileName: "" });
     const [jobForm, setJobForm] = useState({ title: "", description: "", contact: "", photos: [] as string[], files: [] as string[] });
 
     const [saving, setSaving] = useState({ event: false, resource: false, job: false });
@@ -41,7 +41,7 @@ export default function TutorWorkspacePage() {
             router.push("/login?from=/tutors/dashboard");
             return;
         }
-        if (user.role !== "TUTOR" && user.role !== "ADMIN") {
+        if (!["TUTOR", "ADMIN", "CREATOR"].includes(user.role)) {
             setDenied(true);
             return;
         }
@@ -95,13 +95,18 @@ export default function TutorWorkspacePage() {
         setSaving((s) => ({ ...s, resource: true }));
         setStatus(null);
         try {
+            if (!resourceForm.url && !resourceForm.attachmentUrl) {
+                throw new Error("Upload a file or paste the resource URL before publishing.");
+            }
+            const { primaryFileName, ...payload } = resourceForm;
+            void primaryFileName;
             const res = await api("/resources", {
                 method: "POST",
-                body: JSON.stringify(resourceForm),
+                body: JSON.stringify(payload),
             });
             const json = await safeJson(res);
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to create resource");
-            setResourceForm({ title: "", kind: "", url: "", summary: "", details: "", imageUrl: "", attachmentUrl: "" });
+            setResourceForm({ title: "", kind: "", url: "", summary: "", details: "", imageUrl: "", attachmentUrl: "", primaryFileName: "" });
             const refresh = await api("/resources/mine", { method: "GET" });
             const data = await safeJson(refresh);
             setResources(Array.isArray(data?.list) ? (data.list as OwnedRow[]) : []);
@@ -148,7 +153,7 @@ export default function TutorWorkspacePage() {
                 <SiteNav />
                 <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-10">
                     <div className="rounded-[32px] border border-white/60 bg-white/95 p-8 text-center shadow-2xl">
-                        <p className="text-sm text-slate-600">Only tutors can access this workspace.</p>
+                        <p className="text-sm text-slate-600">Only tutors, creators, or admins can access this workspace.</p>
                         <Link href="/mentors" className="mt-4 inline-flex items-center justify-center rounded-full bg-[#63C0B9] px-5 py-2 text-sm font-semibold text-white">
                             Become a tutor
                         </Link>
@@ -287,12 +292,29 @@ export default function TutorWorkspacePage() {
                                 />
                                 <input
                                     type="url"
-                                    placeholder="URL"
+                                    placeholder="External URL (optional if uploading)"
                                     value={resourceForm.url}
                                     onChange={(e) => setResourceForm({ ...resourceForm, url: e.target.value })}
                                     className="w-full rounded-2xl border border-slate-200 px-4 py-2"
-                                    required
                                 />
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Upload main resource
+                                    <input
+                                        type="file"
+                                        className="mt-1 w-full text-xs"
+                                        onChange={async (e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                const url = await uploadAsset(e.target.files[0]);
+                                                setResourceForm((prev) => ({ ...prev, url, primaryFileName: e.target.files?.[0]?.name || prev.primaryFileName }));
+                                                e.target.value = "";
+                                            }
+                                        }}
+                                    />
+                                    <span className="mt-1 block text-[11px] text-slate-500">This becomes the primary link when no external URL is provided.</span>
+                                    {resourceForm.primaryFileName && (
+                                        <span className="mt-1 block text-[11px] text-slate-600">{resourceForm.primaryFileName}</span>
+                                    )}
+                                </label>
                                 <textarea
                                     placeholder="Summary"
                                     value={resourceForm.summary}

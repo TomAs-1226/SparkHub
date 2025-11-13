@@ -13,7 +13,7 @@ interface ResourceDetail {
     kind: string;
     summary?: string | null;
     details?: string | null;
-    url: string;
+    url?: string | null;
     imageUrl?: string | null;
     attachmentUrl?: string | null;
 }
@@ -82,15 +82,21 @@ export default function ResourceDetailPage({ params }: { params: { id: string } 
                                 <p>{resource.details || "This resource does not have additional context yet."}</p>
                             </div>
                             <div className="flex flex-wrap gap-3 text-sm font-semibold">
-                                <a
-                                    href={resource.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 text-white"
-                                >
-                                    Open resource
-                                </a>
-                                {resource.attachmentUrl && (
+                                {resource.url || resource.attachmentUrl ? (
+                                    <a
+                                        href={resource.url || resource.attachmentUrl || "#"}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 text-white"
+                                    >
+                                        Open resource
+                                    </a>
+                                ) : (
+                                    <span className="inline-flex items-center gap-2 rounded-full border border-dashed border-[#CFE3E0] px-4 py-2 text-[#7A8584]">
+                                        Upload pending
+                                    </span>
+                                )}
+                                {resource.attachmentUrl && resource.attachmentUrl !== resource.url && (
                                     <a
                                         href={resource.attachmentUrl}
                                         target="_blank"

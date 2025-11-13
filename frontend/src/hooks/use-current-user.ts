@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
-import { getToken, clearToken } from "@/lib/auth";
+import { getToken, clearToken, persistUser as persistAuthUser, readPersistedUser } from "@/lib/auth";
 
 export type CurrentUser = {
     id: string;
@@ -14,8 +14,9 @@ export type CurrentUser = {
 
 type CurrentUserState = { user: CurrentUser | null; loading: boolean };
 
+const cachedUser = readPersistedUser<CurrentUser | null>();
 const store: { state: CurrentUserState; listeners: Set<() => void> } = {
-    state: { user: null, loading: true },
+    state: { user: cachedUser, loading: !!getToken() && !cachedUser },
     listeners: new Set(),
 };
 
@@ -41,8 +42,13 @@ async function safeJson(res: Response) {
     }
 }
 
+function persistUser(next: CurrentUser | null) {
+    persistAuthUser(next);
+}
+
 async function fetchCurrentUser(): Promise<CurrentUser | null> {
     if (!getToken()) {
+        persistUser(null);
         setState({ user: null, loading: false });
         return null;
     }
@@ -51,18 +57,22 @@ async function fetchCurrentUser(): Promise<CurrentUser | null> {
         const res = await api("/auth/me", { method: "GET" });
         if (!res.ok) {
             if (res.status === 401) clearToken();
+            persistUser(null);
             setState({ user: null });
             return null;
         }
         const json = await safeJson(res);
         if (json?.ok) {
             const nextUser = (json.user || null) as CurrentUser | null;
+            persistUser(nextUser);
             setState({ user: nextUser });
             return nextUser;
         }
+        persistUser(null);
         setState({ user: null });
         return null;
     } catch {
+        persistUser(null);
         setState({ user: null });
         return null;
     } finally {
@@ -80,6 +90,7 @@ export function useCurrentUser() {
     const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
     const refresh = useCallback(async () => refreshCurrentUserStore(), []);
     const setUser = useCallback((next: CurrentUser | null) => {
+        persistUser(next);
         setState({ user: next, loading: false });
     }, []);
 

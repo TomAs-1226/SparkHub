@@ -26,22 +26,46 @@ function presentResource(resource) {
     return resource
 }
 
+function cleanString(input) {
+    if (typeof input !== 'string') return null
+    const trimmed = input.trim()
+    return trimmed.length > 0 ? trimmed : null
+}
+
 // 新增资源（管理员/导师/创作者）
 router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR', 'CREATOR']), async (req, res) => {
-    const { title, kind, url, summary, details, imageUrl, attachmentUrl } = req.body
-    const resource = await runResourceQuery('create', {
-        data: {
-            title,
-            kind,
-            url,
-            summary,
-            details,
-            imageUrl,
-            attachmentUrl,
-            authorId: req.user.id,
+    try {
+        const title = cleanString(req.body.title) || ''
+        const kind = cleanString(req.body.kind) || ''
+        const link = cleanString(req.body.url)
+        const attachment = cleanString(req.body.attachmentUrl)
+
+        if (!title || !kind) {
+            return res.status(400).json({ ok: false, msg: 'Title and kind are required.' })
         }
-    })
-    res.json({ ok: true, resource: presentResource(resource) })
+
+        const primaryUrl = link || attachment
+        if (!primaryUrl) {
+            return res.status(400).json({ ok: false, msg: '请提供外部链接或上传文件' })
+        }
+
+        const resource = await runResourceQuery('create', {
+            data: {
+                title,
+                kind,
+                url: primaryUrl,
+                summary: cleanString(req.body.summary),
+                details: cleanString(req.body.details),
+                imageUrl: cleanString(req.body.imageUrl),
+                attachmentUrl: attachment,
+                authorId: req.user.id,
+            }
+        })
+        res.json({ ok: true, resource: presentResource(resource) })
+    } catch (err) {
+        console.error('CREATE RESOURCE ERROR', err)
+        res.status(500).json({ ok: false, msg: '资源创建失败' })
+    }
 })
 
 // 资源列表（公开）
@@ -83,10 +107,26 @@ router.patch('/:id', requireAuth, async (req, res) => {
         return res.status(403).json({ ok: false, msg: '无权限' })
     }
     const data = {}
-    const fields = ['title', 'kind', 'url', 'summary', 'details', 'imageUrl', 'attachmentUrl']
+    const fields = ['title', 'kind', 'summary', 'details']
     fields.forEach((field) => {
-        if (typeof req.body[field] === 'string') data[field] = req.body[field]
+        if (typeof req.body[field] === 'string') data[field] = req.body[field].trim()
     })
+    if (typeof req.body.imageUrl === 'string') {
+        data.imageUrl = cleanString(req.body.imageUrl)
+    }
+    if (typeof req.body.url === 'string') {
+        data.url = cleanString(req.body.url)
+    }
+    if (typeof req.body.attachmentUrl === 'string') {
+        data.attachmentUrl = cleanString(req.body.attachmentUrl)
+    }
+
+    const nextUrl = data.url === undefined ? resource.url : data.url
+    const nextAttachment = data.attachmentUrl === undefined ? resource.attachmentUrl : data.attachmentUrl
+    if (!nextUrl && !nextAttachment) {
+        return res.status(400).json({ ok: false, msg: '资源必须包含链接或附件' })
+    }
+
     const updated = await runResourceQuery('update', {
         where: { id: resource.id },
         data,

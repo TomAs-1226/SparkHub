@@ -13,7 +13,19 @@ const storage = multer.diskStorage({
     }
 })
 const fileFilter = (_req, file, cb) => {
-    const allowed = ['image/png', 'image/jpeg', 'application/pdf']
+    const allowed = [
+        'image/png',
+        'image/jpeg',
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain',
+        'application/zip',
+    ]
     if (!allowed.includes(file.mimetype)) return cb(new Error('Unsupported file type'), false)
     cb(null, true)
 }
