@@ -2,8 +2,24 @@ const express = require('express')
 const router = express.Router()
 const { prisma } = require('../prisma')
 const { requireAuth, requireRole } = require('../middleware/auth')
+const { isUnknownFieldError, cloneArgs } = require('../utils/prisma-compat')
 
 const authorSelect = { select: { id: true, name: true, avatarUrl: true } }
+
+async function runResourceQuery(method, args, allowAuthor = true) {
+    const baseArgs = cloneArgs(args)
+    const finalArgs = allowAuthor
+        ? { ...baseArgs, include: { ...(baseArgs.include || {}), author: authorSelect } }
+        : baseArgs
+    try {
+        return await prisma.resource[method](finalArgs)
+    } catch (error) {
+        if (allowAuthor && isUnknownFieldError(error)) {
+            return runResourceQuery(method, args, false)
+        }
+        throw error
+    }
+}
 
 function presentResource(resource) {
     if (!resource) return null
@@ -13,7 +29,7 @@ function presentResource(resource) {
 // 新增资源（管理员/导师）
 router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR']), async (req, res) => {
     const { title, kind, url, summary, details, imageUrl, attachmentUrl } = req.body
-    const resource = await prisma.resource.create({
+    const resource = await runResourceQuery('create', {
         data: {
             title,
             kind,
@@ -23,31 +39,28 @@ router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR']), async (req, res) 
             imageUrl,
             attachmentUrl,
             authorId: req.user.id,
-        },
-        include: { author: authorSelect },
+        }
     })
     res.json({ ok: true, resource: presentResource(resource) })
 })
 
 // 资源列表（公开）
 router.get('/', async (_req, res) => {
-    const list = await prisma.resource.findMany({ orderBy: { createdAt: 'desc' }, include: { author: authorSelect } })
+    const list = await runResourceQuery('findMany', { orderBy: { createdAt: 'desc' } })
     res.json({ ok: true, list: list.map(presentResource) })
 })
 
 router.get('/mine', requireAuth, async (req, res) => {
-    const list = await prisma.resource.findMany({
+    const list = await runResourceQuery('findMany', {
         where: { authorId: req.user.id },
         orderBy: { createdAt: 'desc' },
-        include: { author: authorSelect },
     })
     res.json({ ok: true, list: list.map(presentResource) })
 })
 
 router.get('/:id', async (req, res) => {
-    const resource = await prisma.resource.findUnique({
+    const resource = await runResourceQuery('findUnique', {
         where: { id: req.params.id },
-        include: { author: authorSelect },
     })
     if (!resource) return res.status(404).json({ ok: false, msg: '资源不存在' })
     res.json({ ok: true, resource: presentResource(resource) })
@@ -74,10 +87,9 @@ router.patch('/:id', requireAuth, async (req, res) => {
     fields.forEach((field) => {
         if (typeof req.body[field] === 'string') data[field] = req.body[field]
     })
-    const updated = await prisma.resource.update({
+    const updated = await runResourceQuery('update', {
         where: { id: resource.id },
         data,
-        include: { author: authorSelect },
     })
     res.json({ ok: true, resource: presentResource(updated) })
 })

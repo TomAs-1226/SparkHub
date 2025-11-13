@@ -4,8 +4,25 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
 const { requireAuth } = require("../middleware/auth");
+const { isUnknownFieldError, cloneArgs } = require("../utils/prisma-compat");
 
 const prisma = new PrismaClient();
+const baseUserSelect = { id: true, email: true, name: true, role: true, avatarUrl: true };
+const legacyUserSelect = (({ avatarUrl, ...rest }) => rest)(baseUserSelect);
+
+async function runUserQuery(method, args, allowAvatar = true) {
+    const baseArgs = cloneArgs(args);
+    const select = allowAvatar ? baseUserSelect : legacyUserSelect;
+    const finalArgs = { ...baseArgs, select };
+    try {
+        return await prisma.user[method](finalArgs);
+    } catch (error) {
+        if (allowAvatar && isUnknownFieldError(error)) {
+            return runUserQuery(method, args, false);
+        }
+        throw error;
+    }
+}
 const router = express.Router();
 
 // Helpers
@@ -60,10 +77,7 @@ router.post("/register", async (req, res) => {
 
         const hash = await bcrypt.hash(password, 10);
 
-        const user = await prisma.user.create({
-            data: { email, password: hash, name, role },
-            select: { id: true, email: true, name: true, role: true, avatarUrl: true },
-        });
+        const user = await runUserQuery("create", { data: { email, password: hash, name, role } });
 
         const token = signToken(user);
         return res.json({ ok: true, token, user });
@@ -128,10 +142,7 @@ router.get("/me", async (req, res) => {
         if (!token) return res.status(401).json({ ok: false, msg: "No token." });
 
         const payload = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await prisma.user.findUnique({
-            where: { id: payload.id || payload.uid },
-            select: { id: true, email: true, name: true, role: true, avatarUrl: true },
-        });
+        const user = await runUserQuery("findUnique", { where: { id: payload.id || payload.uid } });
         if (!user) return res.status(404).json({ ok: false, msg: "User not found." });
 
         return res.json({ ok: true, user });
@@ -153,11 +164,7 @@ router.patch("/me", requireAuth, async (req, res) => {
         if (Object.keys(next).length === 0) {
             return res.status(400).json({ ok: false, msg: "No updates provided." });
         }
-        const user = await prisma.user.update({
-            where: { id: req.user.id },
-            data: next,
-            select: { id: true, email: true, name: true, role: true, avatarUrl: true },
-        });
+        const user = await runUserQuery("update", { where: { id: req.user.id }, data: next });
         return res.json({ ok: true, user });
     } catch (err) {
         console.error("UPDATE PROFILE ERROR:", err);

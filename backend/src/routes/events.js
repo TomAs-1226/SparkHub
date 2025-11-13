@@ -2,8 +2,24 @@ const express = require('express')
 const router = express.Router()
 const { prisma } = require('../prisma')
 const { requireAuth, requireRole } = require('../middleware/auth')
+const { isUnknownFieldError, cloneArgs } = require('../utils/prisma-compat')
 
 const creatorSelect = { select: { id: true, name: true, avatarUrl: true } }
+
+async function runEventQuery(method, args, allowCreator = true) {
+    const baseArgs = cloneArgs(args)
+    const finalArgs = allowCreator
+        ? { ...baseArgs, include: { ...(baseArgs.include || {}), creator: creatorSelect } }
+        : baseArgs
+    try {
+        return await prisma.event[method](finalArgs)
+    } catch (error) {
+        if (allowCreator && isUnknownFieldError(error)) {
+            return runEventQuery(method, args, false)
+        }
+        throw error
+    }
+}
 
 function parseAttachments(raw) {
     if (!raw) return []
@@ -30,7 +46,7 @@ function presentEvent(event) {
 router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR']), async (req, res) => {
     const { title, location, startsAt, endsAt, capacity, description, coverUrl, attachments = [] } = req.body
     try {
-        const event = await prisma.event.create({
+        const event = await runEventQuery('create', {
             data: {
                 title,
                 location,
@@ -41,8 +57,7 @@ router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR']), async (req, res) 
                 coverUrl: coverUrl || null,
                 attachmentsJson: toJson(attachments),
                 creatorId: req.user.id,
-            },
-            include: { creator: creatorSelect },
+            }
         })
         res.json({ ok: true, event: presentEvent(event) })
     } catch (err) {
@@ -62,25 +77,23 @@ router.get('/', async (req, res) => {
     if (take && Number.isFinite(take) && take > 0) {
         query.take = take
     }
-    const rows = await prisma.event.findMany(query)
+    const rows = await runEventQuery('findMany', query)
     res.json({ ok: true, list: rows.map(presentEvent) })
 })
 
 // 我发布的活动
 router.get('/mine', requireAuth, async (req, res) => {
-    const rows = await prisma.event.findMany({
+    const rows = await runEventQuery('findMany', {
         where: { creatorId: req.user.id },
         orderBy: { createdAt: 'desc' },
-        include: { creator: creatorSelect },
     })
     res.json({ ok: true, list: rows.map(presentEvent) })
 })
 
 // 活动详情
 router.get('/:id', async (req, res) => {
-    const event = await prisma.event.findUnique({
+    const event = await runEventQuery('findUnique', {
         where: { id: req.params.id },
-        include: { creator: creatorSelect },
     })
     if (!event) return res.status(404).json({ ok: false, msg: '活动不存在' })
     res.json({ ok: true, event: presentEvent(event) })
@@ -106,10 +119,9 @@ router.patch('/:id', requireAuth, async (req, res) => {
     if (Array.isArray(req.body.attachments)) {
         data.attachmentsJson = toJson(req.body.attachments)
     }
-    const event = await prisma.event.update({
+    const event = await runEventQuery('update', {
         where: { id: existing.id },
         data,
-        include: { creator: creatorSelect },
     })
     res.json({ ok: true, event: presentEvent(event) })
 })

@@ -33,16 +33,10 @@ export default function RegisterPage() {
         setErr(null);
         setLoading(true);
         try {
-            let res = await api("/auth/register", {
+            const res = await api("/auth/register", {
                 method: "POST",
                 body: JSON.stringify({ email, name, password, role: accountType }),
             });
-            if (res.status === 400 || res.status === 422) {
-                res = await api("/auth/register", {
-                    method: "POST",
-                    body: JSON.stringify({ email, name, password }),
-                });
-            }
             const data = await safeJson(res);
             if (!res.ok || data?.ok === false) throw new Error(data?.msg || `Register failed (${res.status})`);
 

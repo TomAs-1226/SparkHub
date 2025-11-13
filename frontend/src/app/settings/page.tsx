@@ -21,7 +21,7 @@ async function safeJson(res: Response) {
 
 export default function SettingsPage() {
     const router = useRouter();
-    const { user, loading } = useCurrentUser();
+    const { user, loading, setUser } = useCurrentUser();
     const [name, setName] = useState("");
     const [avatarUrl, setAvatarUrl] = useState("");
     const [saving, setSaving] = useState(false);
@@ -49,6 +49,7 @@ export default function SettingsPage() {
             });
             const json = await safeJson(res);
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to update profile");
+            if (json?.user) setUser(json.user);
             setStatus("Profile updated successfully.");
         } catch (err) {
             setStatus(err instanceof Error ? err.message : "Unable to update profile.");

@@ -18,6 +18,7 @@ import {
 
 import { api } from "@/lib/api";
 import DashboardCard from "@/components/DashboardCard";
+import SiteNav from "@/components/site-nav";
 
 // ---------- types that match your backend responses ----------
 type User = {
@@ -187,8 +188,10 @@ export default function DashboardPage() {
 
     // ---------- RENDER ----------
     return (
-        <main className="min-h-dvh flex justify-center px-4 sm:px-6 lg:px-8 py-8 text-slate-800 bg-white">
-            <div className="w-full max-w-[1280px]">
+        <div className="min-h-dvh bg-white text-slate-800">
+            <SiteNav />
+            <main className="mx-auto flex w-full max-w-[1280px] justify-center px-4 sm:px-6 lg:px-8 py-8">
+                <div className="w-full">
                 {/* HERO / WELCOME PANEL */}
                 <motion.section
                     initial={{ opacity: 0, y: 16 }}
@@ -567,6 +570,7 @@ export default function DashboardPage() {
                 </div>
             </div>
         </main>
+        </div>
     );
 }
 
