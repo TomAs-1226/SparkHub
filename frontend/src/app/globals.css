@@ -1,0 +1,9 @@
+/* src/app/globals.css */
+/* Tailwind v4 entry */
+@import "tailwindcss";
+
+@layer utilities {
+    *:focus-visible { @apply outline-hidden ring-2 ring-offset-2 ring-indigo-500; }
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

@@ -1,0 +1,497 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+    motion,
+    AnimatePresence,
+    LayoutGroup,
+    type PanInfo,
+    type Transition as FMTransition,
+} from "framer-motion";
+
+export type ContentItem = {
+    id: string | number;
+    title: string;
+    summary?: string | null;
+    image?: string | null;
+    tag?: string | null;
+};
+
+type RowProps = {
+    title: string;
+    slug: "resources" | "opportunities" | "courses";
+    items: ContentItem[];
+};
+
+/* ---------- Tunables ---------- */
+const EXPAND_W_FACTOR = 2.0;   // 2x as wide
+const EXPAND_H_FACTOR = 1.5;   // 1.5x as tall
+const MIN_EXPANDED_W  = 420;
+const MIN_EXPANDED_H  = 300;
+const EDGE_PAD = 20;
+const DRAG_PX = 60;
+const DRAG_VEL = 400;
+const EDGE_HOVER_ZONE = 72;    // px from left/right inside the container that triggers auto-pan
+const EDGE_HOVER_RATE = 260;   // ms between steps while hovering edge
+const PUSH_MAG_BASE = 10;
+/* ------------------------------ */
+
+const gradients = [
+    "from-[#a8edea] via-[#81d4d1] to-[#5cc4bb]",
+    "from-[#cfd7ff] via-[#a9b7ff] to-[#8597ff]",
+    "from-[#ffe1b5] via-[#ffc786] to-[#ffaf59]",
+    "from-[#f9c2df] via-[#f39ac6] to-[#ea74ae]",
+    "from-[#d3f2ff] via-[#aee4ff] to-[#86d5ff]",
+    "from-[#def8d2] via-[#b8eca8] to-[#93e07f]",
+    "from-[#ece1ff] via-[#d2c0ff] to-[#b8a0ff]",
+];
+
+const spring: FMTransition = { type: "spring", mass: 0.6, stiffness: 280, damping: 24 };
+
+function dimsFor(viewW: number) {
+    if (viewW < 640)   return { baseW: 118, baseH: 186, gap: 8,  maxExpandedCap: Math.floor(viewW * 0.92) };
+    if (viewW < 1024)  return { baseW: 138, baseH: 206, gap: 10, maxExpandedCap: 760 };
+    return               { baseW: 152, baseH: 224, gap: 12, maxExpandedCap: 980 };
+}
+
+export default function CoverflowRow({ title, slug, items }: RowProps) {
+    const all = (items || []).slice(0, 10);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+
+    const [containerW, setContainerW] = useState(1180);
+    const [dims, setDims] = useState(() => dimsFor(typeof window !== "undefined" ? window.innerWidth : 1280));
+
+    // the only source of truth for centering
+    const [currentIdx, setCurrentIdx] = useState(0);
+
+    // expanded item id
+    const [expandedId, setExpandedId] = useState<string | number | null>(null);
+
+    // hover only affects scale
+    const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+    // lock hover when inside CTAs
+    const [hoverLock, setHoverLock] = useState(false);
+    const stopAll = (e: any) => e.stopPropagation();
+
+    // measure container via ResizeObserver (robust after refresh)
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver((entries) => {
+            const w = entries[0]?.contentRect?.width ?? el.clientWidth ?? 1180;
+            setContainerW(w);
+            const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
+            setDims(dimsFor(vw));
+        });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
+
+    // keep currentIdx valid if data changes
+    useEffect(() => {
+        if (currentIdx >= all.length) setCurrentIdx(Math.max(0, all.length - 1));
+    }, [all.length, currentIdx]);
+
+    // if expanded changes, follow with currentIdx
+    useEffect(() => {
+        if (expandedId == null) return;
+        const idx = all.findIndex((x) => x.id === expandedId);
+        if (idx >= 0) setCurrentIdx(idx);
+    }, [expandedId, all]);
+
+    const { baseW, baseH, gap, maxExpandedCap } = dims;
+
+    // size math
+    const expandedWRaw = baseW * EXPAND_W_FACTOR;
+    const expandedW = Math.min(
+        Math.max(expandedWRaw, MIN_EXPANDED_W),
+        Math.max(300, Math.min(maxExpandedCap, containerW - EDGE_PAD * 2))
+    );
+    const expandedH = Math.max(Math.round(baseH * EXPAND_H_FACTOR), MIN_EXPANDED_H);
+
+    const isAnyExpanded = expandedId != null;
+    const widths = all.map((_, i) => (isAnyExpanded && i === currentIdx ? expandedW : baseW));
+    const contentW = widths.reduce((a, b) => a + b, 0) + gap * (all.length - 1);
+
+    // precompute centers along the rail
+    const centersX: number[] = [];
+    let run = 0;
+    for (let i = 0; i < all.length; i++) {
+        const w = widths[i];
+        centersX.push(run + w / 2);
+        run += w + gap;
+    }
+
+    // safe clamp helper (handles inverted min/max)
+    const clamp = (v: number, a: number, b: number) => {
+        const [min, max] = a <= b ? [a, b] : [b, a];
+        return Math.max(min, Math.min(max, v));
+    };
+
+    // when content narrower than container, center the whole strip
+    const centerIfNarrow = () => (containerW - contentW) / 2;
+
+    // target: center currentIdx; clamp to keep inside viewport
+    const desiredRailX = containerW / 2 - centersX[currentIdx];
+    const minRailX = containerW - contentW - EDGE_PAD;
+    const maxRailX = EDGE_PAD;
+
+    const railX =
+        contentW + EDGE_PAD * 2 <= containerW
+            ? centerIfNarrow()
+            : clamp(desiredRailX, minRailX, maxRailX);
+
+    // “compression” near edges reduces push to avoid overflow
+    const leftSpace  = centersX[currentIdx] + railX - EDGE_PAD;
+    const rightSpace = containerW - EDGE_PAD - (centersX[currentIdx] + railX);
+    const tightnessFactor = Math.max(0.6, Math.min(1, Math.min(leftSpace, rightSpace) / 140));
+    const pushMag = PUSH_MAG_BASE * tightnessFactor;
+
+    // nav helpers
+    const canPrev = currentIdx > 0;
+    const canNext = currentIdx < all.length - 1;
+
+    const move = useCallback((dir: -1 | 1) => {
+        if ((dir === -1 && !canPrev) || (dir === 1 && !canNext)) return;
+        const nextIdx = currentIdx + dir;
+        setCurrentIdx(nextIdx);
+        if (isAnyExpanded) setExpandedId(all[nextIdx].id); // keep expanded & centered
+    }, [currentIdx, canPrev, canNext, isAnyExpanded, all]);
+
+    // drag snaps one item
+    const onDragEnd = (_: any, info: PanInfo) => {
+        const { offset, velocity } = info;
+        if (offset.x < -DRAG_PX || velocity.x < -DRAG_VEL) move(1);
+        else if (offset.x > DRAG_PX || velocity.x > DRAG_VEL) move(-1);
+    };
+
+    // wheel / shift+wheel steps by one
+    const onWheel = (e: React.WheelEvent) => {
+        const isHorizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+        const delta = isHorizontal ? e.deltaX : e.shiftKey ? e.deltaY : 0;
+        if (delta > 12) move(1);
+        else if (delta < -12) move(-1);
+    };
+
+    const onKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "ArrowLeft")  { e.preventDefault(); move(-1); }
+        if (e.key === "ArrowRight") { e.preventDefault(); move(1); }
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const id = all[currentIdx]?.id;
+            if (!id) return;
+            setExpandedId(prev => (prev === id ? null : id));
+        }
+        if (e.key === "Escape") { e.preventDefault(); setExpandedId(null); }
+    };
+
+    // -------- Container-level edge hover auto-pan (no tiny strips) ----------
+    const autoTimer = useRef<NodeJS.Timeout | null>(null);
+    const stopAuto = () => { if (autoTimer.current) { clearInterval(autoTimer.current); autoTimer.current = null; } };
+    const startAuto = (dir: -1 | 1) => {
+        if (autoTimer.current) return;
+        autoTimer.current = setInterval(() => move(dir), EDGE_HOVER_RATE);
+    };
+
+    const onMouseMoveContainer = (e: React.MouseEvent<HTMLDivElement>) => {
+        const el = containerRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        if (x <= EDGE_HOVER_ZONE) {
+            startAuto(-1);
+        } else if (x >= rect.width - EDGE_HOVER_ZONE) {
+            startAuto(1);
+        } else {
+            stopAuto();
+        }
+    };
+
+    const primaryCtaLabel = useMemo(() => {
+        if (slug === "courses") return "Open course";
+        if (slug === "opportunities") return "View opportunity";
+        return "Explore";
+    }, [slug]);
+
+    return (
+        <section className="relative mb-14 isolate">
+            {/* Header */}
+            <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M4 8h16M4 16h16" stroke="#64748B" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </span>
+                    <h3 className="text-[18px] font-semibold text-slate-800">{title}</h3>
+                </div>
+
+                <Link
+                    href={`/${slug}`}
+                    className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-semibold text-slate-600 hover:text-slate-800"
+                >
+                    SEE ALL
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M7 12h10M13 8l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </Link>
+            </div>
+
+            {/* Row with arrows */}
+            <div className="relative">
+                {/* manual arrows (high z-index, pointer-events enabled) */}
+                <button
+                    onClick={() => move(-1)}
+                    disabled={!canPrev}
+                    aria-label="Previous"
+                    className="absolute left-2 top-1/2 z-[1100] -translate-y-1/2 rounded-full bg-white/95 p-3 shadow-lg ring-1 ring-black/10 hover:scale-105 transition disabled:opacity-40 disabled:hover:scale-100"
+                >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                        <path d="M15 19l-7-7 7-7" stroke="#334155" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </button>
+                <button
+                    onClick={() => move(1)}
+                    disabled={!canNext}
+                    aria-label="Next"
+                    className="absolute right-2 top-1/2 z-[1100] -translate-y-1/2 rounded-full bg-white/95 p-3 shadow-lg ring-1 ring-black/10 hover:scale-105 transition disabled:opacity-40 disabled:hover:scale-100"
+                >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 5l7 7-7 7" stroke="#334155" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                </button>
+
+                {/* Fades (don’t intercept clicks) */}
+                <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-[#ECF4F9] to-transparent" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-gradient-to-l from-[#ECF4F9] to-transparent" />
+
+                {/* Rail (clamped) */}
+                <div
+                    ref={containerRef}
+                    className="relative mx-auto w-full max-w-[1180px] overflow-hidden px-6 py-8"
+                    tabIndex={0}
+                    onKeyDown={onKeyDown}
+                    onWheel={onWheel}
+                    onMouseMove={onMouseMoveContainer}
+                    onMouseLeave={stopAuto}
+                >
+                    <LayoutGroup id={`lg-${slug}`}>
+                        <motion.div
+                            layout
+                            drag="x"
+                            dragConstraints={{ left: 0, right: 0 }}
+                            dragElastic={0.08}
+                            dragMomentum={false}
+                            onDragEnd={onDragEnd}
+                            onDragStart={stopAuto}
+                            animate={{ x: railX }}
+                            transition={{ layout: { duration: 0.36, ease: [0.2, 0.8, 0.2, 1] }, default: spring }}
+                            className="flex select-none items-end cursor-grab active:cursor-grabbing [touch-action:pan-y] will-change-transform"
+                            style={{ gap }}
+                        >
+                            {all.map((it, i) => {
+                                const isExpanded = expandedId === it.id;
+                                const isSelected = i === currentIdx;
+
+                                const w = isExpanded ? expandedW : baseW;
+                                const h = isExpanded ? Math.max(baseH, Math.max(expandedH, MIN_EXPANDED_H)) : baseH;
+
+                                const dist = i - currentIdx;
+                                const pushX = isExpanded ? 0 : Math.max(-PUSH_MAG_BASE, Math.min(PUSH_MAG_BASE, dist * (PUSH_MAG_BASE * tightnessFactor)));
+
+                                const z = isExpanded ? 1000 : 100 - Math.abs(dist);
+                                const gradient = gradients[i % gradients.length];
+
+                                return (
+                                    <motion.div
+                                        key={String(it.id)}
+                                        layout
+                                        transition={{ layout: { duration: 0.36, ease: [0.2, 0.8, 0.2, 1] } }}
+                                        className="relative shrink-0"
+                                        style={{ width: w, zIndex: z }}
+                                        onMouseEnter={() => { if (!hoverLock) setHoverIdx(i); }}
+                                        onMouseLeave={() => { if (!hoverLock) setHoverIdx(null); }}
+                                    >
+                                        <motion.div
+                                            layoutId={`card-${slug}-${it.id}`}
+                                            onClick={() => {
+                                                setCurrentIdx(i);                       // always center on select
+                                                setExpandedId(prev => (prev === it.id ? null : it.id));
+                                            }}
+                                            style={{ height: h, transformOrigin: "bottom center", willChange: "transform, box-shadow, opacity" }}
+                                            className="group relative cursor-pointer overflow-visible rounded-[14px] ring-1 ring-black/10 bg-white shadow-[0_10px_28px_rgba(0,0,0,0.14)]"
+                                            animate={{
+                                                x: pushX,
+                                                scale: isExpanded ? 1.0 : (i === hoverIdx ? 1.16 : isSelected ? 1.12 : 0.92),
+                                                opacity: isExpanded ? 1 : isSelected ? 1 : 0.92,
+                                                borderRadius: isExpanded ? 18 : 14,
+                                                boxShadow: isExpanded
+                                                    ? "0 32px 100px rgba(0,0,0,0.32)"
+                                                    : (i === hoverIdx || isSelected)
+                                                        ? "0 22px 74px rgba(0,0,0,0.22)"
+                                                        : "0 10px 28px rgba(0,0,0,0.14)",
+                                                filter: (i === hoverIdx || isSelected || isExpanded) ? "brightness(1)" : "brightness(0.98)",
+                                            }}
+                                            transition={spring}
+                                        >
+                                            {/* Small cover */}
+                                            {!isExpanded && (
+                                                <>
+                                                    {it.image ? (
+                                                        <img src={it.image} alt={it.title} className="h-full w-full rounded-[14px] object-cover" />
+                                                    ) : (
+                                                        <div className={`h-full w-full rounded-[14px] bg-gradient-to-br ${gradient}`} />
+                                                    )}
+                                                    {/* spine + gloss */}
+                                                    <div className="pointer-events-none absolute inset-y-0 left-0 w-3 rounded-l-[14px] bg-gradient-to-r from-black/30 via-black/10 to-transparent mix-blend-multiply" />
+                                                    <div className="pointer-events-none absolute inset-y-0 left-[3px] w-[2px] rounded-full bg-white/35 opacity-50" />
+                                                    <div className="pointer-events-none absolute inset-y-2 right-1 w-2 rounded-sm opacity-50 bg-[repeating-linear-gradient(180deg,rgba(255,255,255,0.95)_0,rgba(255,255,255,0.95)_2px,rgba(226,232,240,0.95)_2px,rgba(226,232,240,0.95)_4px)]" />
+                                                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3 rounded-b-[14px] bg-gradient-to-t from-black/25 to-transparent" />
+                                                    {/* title label (never covered) */}
+                                                    <div className="absolute inset-x-3 bottom-3 z-30 rounded-md bg-black/40 px-2 py-1.5 text-center backdrop-blur-[2px] ring-1 ring-white/15">
+                                                        <div className="line-clamp-2 text-[11px] font-semibold leading-snug text-white">{it.title}</div>
+                                                    </div>
+                                                    {it.tag && (
+                                                        <div className="absolute left-3 top-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-black/5">
+                                                            {it.tag}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+
+                                            {/* OPEN BOOK */}
+                                            <AnimatePresence>
+                                                {isExpanded && (
+                                                    <motion.div
+                                                        key="openbook"
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        exit={{ opacity: 0 }}
+                                                        className="absolute inset-0 z-[1050] rounded-[18px] overflow-hidden"
+                                                        style={{ perspective: 1200, transformStyle: "preserve-3d" as any }}
+                                                    >
+                                                        <div className="absolute inset-0 rounded-[18px] bg-neutral-50" />
+                                                        <div className="pointer-events-none absolute inset-y-2 left-1/2 w-[2px] -translate-x-1/2 rounded-full bg-gradient-to-b from-black/30 via-black/10 to-black/30 opacity-30" />
+                                                        <div className="pointer-events-none absolute inset-0 rounded-[18px] shadow-[inset_0_0_48px_rgba(0,0,0,0.12)]" />
+
+                                                        <div className="absolute inset-0 grid grid-cols-2">
+                                                            {/* LEFT PAGE */}
+                                                            <motion.div
+                                                                initial={{ rotateY: -12, opacity: 0.9 }}
+                                                                animate={{ rotateY: -3, opacity: 1 }}
+                                                                exit={{ rotateY: -12, opacity: 0.9 }}
+                                                                transition={spring}
+                                                                style={{ transformOrigin: "right center" }}
+                                                                className="relative h-full rounded-l-[18px] bg-white"
+                                                            >
+                                                                <div className="absolute inset-0 bg-[repeating-linear-gradient(180deg,rgba(0,0,0,0.03)_0px,rgba(0,0,0,0.03)_1px,transparent_1px,transparent_6px)] opacity-40" />
+                                                                <div className="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-black/20 to-transparent opacity-25 rounded-r-[6px]" />
+                                                                <div className="relative h-full w-full p-4 sm:p-5 md:p-6">
+                                                                    <div className="relative h-[58%] w-full overflow-hidden rounded-xl ring-1 ring-black/10">
+                                                                        {it.image ? (
+                                                                            <img src={it.image} alt={it.title} className="h-full w-full object-cover" />
+                                                                        ) : (
+                                                                            <div className={`h-full w-full bg-gradient-to-br ${gradients[i % gradients.length]}`} />
+                                                                        )}
+                                                                        <div className="pointer-events-none absolute inset-0 bg-black/8" />
+                                                                    </div>
+                                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                                        {it.tag && (
+                                                                            <span className="rounded-full bg-slate-900/5 px-2.5 py-1 text-[11px] font-medium text-slate-700 ring-1 ring-black/5">{it.tag}</span>
+                                                                        )}
+                                                                        <span className="rounded-full bg-slate-900/5 px-2.5 py-1 text-[11px] font-medium text-slate-700 ring-1 ring-black/5">Beginner</span>
+                                                                        <span className="rounded-full bg-slate-900/5 px-2.5 py-1 text-[11px] font-medium text-slate-700 ring-1 ring-black/5">~4–6 hrs</span>
+                                                                        <span className="rounded-full bg-slate-900/5 px-2.5 py-1 text-[11px] font-medium text-slate-700 ring-1 ring-black/5">Certificate</span>
+                                                                    </div>
+                                                                </div>
+                                                            </motion.div>
+
+                                                            {/* RIGHT PAGE */}
+                                                            <motion.div
+                                                                initial={{ rotateY: 12, opacity: 0.9 }}
+                                                                animate={{ rotateY: 3, opacity: 1 }}
+                                                                exit={{ rotateY: 12, opacity: 0.9 }}
+                                                                transition={spring}
+                                                                style={{ transformOrigin: "left center" }}
+                                                                className="relative h-full rounded-r-[18px] bg-white"
+                                                            >
+                                                                <div className="absolute inset-0 bg-[repeating-linear-gradient(180deg,rgba(0,0,0,0.03)_0px,rgba(0,0,0,0.03)_1px,transparent_1px,transparent_6px)] opacity-40" />
+                                                                <div className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-black/20 to-transparent opacity-25 rounded-l-[6px]" />
+
+                                                                <div className="relative flex h-full w-full flex-col p-4 sm:p-5 md:p-6 overflow-hidden">
+                                                                    <div className="flex items-start justify-between gap-3">
+                                                                        <h4 className="text-[15px] sm:text-[16px] md:text-[18px] font-semibold text-slate-900 leading-snug">
+                                                                            {it.title}
+                                                                        </h4>
+                                                                        <button
+                                                                            onClick={() => setExpandedId(null)}
+                                                                            className="shrink-0 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 transition [touch-action:manipulation]"
+                                                                            onPointerDownCapture={stopAll}
+                                                                            onPointerUpCapture={stopAll}
+                                                                            onMouseDownCapture={stopAll}
+                                                                            onTouchStartCapture={stopAll}
+                                                                            onMouseEnter={() => setHoverLock(true)}
+                                                                            onMouseLeave={() => setHoverLock(false)}
+                                                                        >
+                                                                            Close
+                                                                        </button>
+                                                                    </div>
+
+                                                                    {it.summary && (
+                                                                        <p className="mt-2 text-[12px] sm:text-[13px] leading-relaxed text-slate-700">
+                                                                            {it.summary}
+                                                                        </p>
+                                                                    )}
+
+                                                                    <ul className="mt-3 space-y-1.5 text-[12px] text-slate-700">
+                                                                        <li className="flex items-start gap-2"><span className="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-[#2FB3A4]" /> Hands-on projects</li>
+                                                                        <li className="flex items-start gap-2"><span className="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-[#2FB3A4]" /> Mentor feedback</li>
+                                                                        <li className="flex items-start gap-2"><span className="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-[#2FB3A4]" /> Community support</li>
+                                                                    </ul>
+
+                                                                    <div className="mt-2 flex-1 overflow-auto pr-1" />
+
+                                                                    {/* Actions (dead zone) */}
+                                                                    <div
+                                                                        className="mt-3 flex flex-wrap items-center justify-end gap-2 [touch-action:manipulation]"
+                                                                        onMouseEnter={() => setHoverLock(true)}
+                                                                        onMouseLeave={() => setHoverLock(false)}
+                                                                        onPointerDownCapture={stopAll}
+                                                                        onPointerUpCapture={stopAll}
+                                                                        onMouseDownCapture={stopAll}
+                                                                        onTouchStartCapture={stopAll}
+                                                                    >
+                                                                        <Link
+                                                                            href={`/${slug}/${it.id}`}
+                                                                            className="inline-flex items-center justify-center rounded-full bg-[#2FB3A4] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow hover:brightness-110 transition will-change-transform"
+                                                                            onPointerDownCapture={stopAll}
+                                                                        >
+                                                                            {primaryCtaLabel}
+                                                                        </Link>
+                                                                        <Link
+                                                                            href={`/${slug}`}
+                                                                            className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-xs sm:text-sm font-semibold text-slate-700 hover:bg-slate-50 transition will-change-transform"
+                                                                            onPointerDownCapture={stopAll}
+                                                                        >
+                                                                            See more
+                                                                        </Link>
+                                                                    </div>
+                                                                </div>
+                                                            </motion.div>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </motion.div>
+                                    </motion.div>
+                                );
+                            })}
+                        </motion.div>
+                    </LayoutGroup>
+                </div>
+            </div>
+        </section>
+    );
+}

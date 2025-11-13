@@ -1,0 +1,188 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { Eye, EyeOff } from "lucide-react";
+import { api } from "@/lib/api";
+import { setToken } from "@/lib/auth";
+
+export default function LoginPage() {
+    const router = useRouter();
+    const [identity, setIdentity] = useState("");
+    const [password, setPassword] = useState("");
+    const [showPw, setShowPw] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
+
+    async function onSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setErr(null);
+        setLoading(true);
+        try {
+            const res = await api("/auth/login", {
+                method: "POST",
+                body: JSON.stringify({ email: identity, username: identity, password }),
+            });
+            const data = await safeJson(res);
+            if (!res.ok || !data?.ok) throw new Error(data?.msg || `Login failed (${res.status})`);
+            setToken(data.token);
+            router.push("/dashboard");
+        } catch (e: any) {
+            setErr(e.message || "Unable to login.");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    return (
+        <main className="min-h-dvh flex items-start lg:items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
+            <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, ease: "easeOut" }}
+                className="w-full max-w-[1280px] rounded-[24px] bg-white shadow-[0_2px_24px_rgba(0,0,0,0.06)] px-6 sm:px-8 lg:px-10 py-8"
+            >
+                <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] items-start">
+                    {/* LEFT hero: desktop only */}
+                    <section className="relative hidden lg:block">
+                        <motion.div
+                            initial={{ scale: 1.035 }}
+                            animate={{ scale: 1 }}
+                            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                            className="relative h-[560px] overflow-hidden rounded-[28px]"
+                        >
+                            <Image src="/auth/login-hero.jpg" alt="SparkHub classroom" fill priority className="object-cover" />
+                        </motion.div>
+
+                        <motion.div
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.15, duration: 0.35 }}
+                            className="pointer-events-none absolute left-6 bottom-6 sm:left-8 sm:bottom-8"
+                        >
+                            <h2 className="text-white text-[28px] sm:text-[32px] font-extrabold drop-shadow-[0_2px_6px_rgba(0,0,0,0.45)]">
+                                Learn. Build. Share.
+                            </h2>
+                            <p className="text-white/90 text-[16px] drop-shadow-[0_2px_6px_rgba(0,0,0,0.35)]">
+                                Projects that level up together.
+                            </p>
+                        </motion.div>
+                    </section>
+
+                    {/* RIGHT: form */}
+                    <section className="w-full max-w-[560px] lg:max-w-[600px] lg:ml-auto mx-auto">
+                        <div className="text-center">
+                            <p className="text-[16px] font-semibold">Welcome to SparkHub!</p>
+
+                            {/* Use Link for reliable client routing */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1, duration: 0.3 }}
+                                className="mx-auto mt-5 w-[320px] rounded-full bg-[#CBE7E4] p-1 shadow-inner flex"
+                            >
+                <span className="flex-1">
+                  <span
+                      aria-current="page"
+                      className="block rounded-full bg-[#69BFBA] text-white text-[14px] font-semibold py-2 text-center"
+                  >
+                    Login
+                  </span>
+                </span>
+                                <Link
+                                    href="/register"
+                                    prefetch={false}
+                                    className="flex-1 rounded-full text-[14px] font-semibold py-2 text-center text-[#5D6B6B] hover:text-[#2B2B2B] transition-colors"
+                                >
+                                    Register
+                                </Link>
+                            </motion.div>
+
+                            <p className="mt-6 text-[14px] leading-6 text-[#6C6C6C] max-w-[520px] mx-auto">
+                                SparkHub connects learners and creators. Track progress, share work, and join
+                                projects with your school or club.
+                            </p>
+                        </div>
+
+                        <form onSubmit={onSubmit} className="mt-8 space-y-5 max-w-[360px] lg:max-w-none mx-auto">
+                            <div>
+                                <label className="mb-2 block text-[13px] font-semibold text-[#3A3A3A]">User name</label>
+                                <input
+                                    type="text"
+                                    placeholder="Enter your User name or Email"
+                                    value={identity}
+                                    onChange={(e) => setIdentity(e.target.value)}
+                                    className="h-[48px] w-full rounded-full border border-[#CFE3E0] bg-white px-5 text-[14px] text-[#2B2B2B]
+                             placeholder:text-[#A0A7A7] focus:border-[#69BFBA] focus:ring-0 transition-colors"
+                                    autoComplete="username"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="mb-2 block text-[13px] font-semibold text-[#3A3A3A]">Password</label>
+                                <div className="relative">
+                                    <input
+                                        type={showPw ? "text" : "password"}
+                                        placeholder="Enter your Password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="h-[48px] w-full rounded-full border border-[#CFE3E0] bg-white px-5 pr-12 text-[14px] text-[#2B2B2B]
+                               placeholder:text-[#A0A7A7] focus:border-[#69BFBA] focus:ring-0 transition-colors"
+                                        autoComplete="current-password"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPw((s) => !s)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#6C6C6C] hover:text-[#2B2B2B] transition-colors"
+                                        aria-label={showPw ? "Hide password" : "Show password"}
+                                    >
+                                        {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[12px] text-[#6C6C6C]">
+                                <label className="inline-flex items-center gap-2 select-none">
+                                    <input type="checkbox" className="h-[16px] w-[16px] rounded-[4px] border-[#CFE3E0]" />
+                                    <span>Remember me</span>
+                                </label>
+                                <Link href="/forgot-password" className="hover:text-[#2B2B2B] transition-colors">Forgot Password ?</Link>
+                            </div>
+
+                            {err && (
+                                <motion.p
+                                    initial={{ opacity: 0, y: 6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="rounded-[10px] bg-red-50 px-4 py-3 text-[12px] text-red-700"
+                                >
+                                    {err}
+                                </motion.p>
+                            )}
+
+                            <div className="pt-2">
+                                <motion.button
+                                    whileTap={{ scale: 0.98 }}
+                                    type="submit"
+                                    disabled={loading}
+                                    className="ml-auto block w-[260px] h-[48px] rounded-full bg-[#69BFBA] text-white text-[15px] font-semibold
+                             hover:bg-[#5bb2ad] disabled:opacity-60 transition-colors"
+                                >
+                                    {loading ? "Logging in…" : "Login"}
+                                </motion.button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            </motion.div>
+        </main>
+    );
+}
+
+async function safeJson(res: Response) {
+    try { return await res.json(); } catch { return null; }
+}

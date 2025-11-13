@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  password         String
+  name             String
+  role             String           @default("STUDENT")
+  createdAt        DateTime         @default(now())
+
+  coursesCreated   Course[]         @relation("CreatorCourses")
+  enrollments      Enrollment[]
+  tutorProfile     TutorProfile?
+  jobPosts         JobPosting[]
+  applications     JobApplication[]
+  feedbacks        Feedback[]
+  messages         CourseMessage[]  @relation("UserMessages")
+  eventSignups     EventSignup[]    @relation("UserEventSignups")
+  studentSessions  Session[]        @relation("StudentSessions")
+  quizAttempts     QuizAttempt[]
+  certificates     Certificate[]
+  tutorAvailabilities TutorAvailability[]
+  auditLogs        AuditLog[]
+}
+
+model Course {
+  id           String          @id @default(cuid())
+  title        String
+  summary      String
+  coverUrl     String?
+  isPublished  Boolean         @default(false)
+  creator      User            @relation("CreatorCourses", fields: [creatorId], references: [id])
+  creatorId    String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  lessons      Lesson[]
+  enrollments  Enrollment[]
+  messages     CourseMessage[]
+  quizzes      Quiz[]
+  certificates Certificate[]
+}
+
+model Lesson {
+  id        String     @id @default(cuid())
+  course    Course     @relation(fields: [courseId], references: [id])
+  courseId  String
+  title     String
+  type      String      // e.g. "VIDEO" | "TEXT"
+  videoUrl  String?
+  body      String?
+  order     Int         @default(1)
+  createdAt DateTime    @default(now())
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  course    Course   @relation(fields: [courseId], references: [id])
+  courseId  String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+}
+
+model CourseMessage {
+  id         String   @id @default(cuid())
+  course     Course   @relation(fields: [courseId], references: [id])
+  courseId   String
+  fromUser   User     @relation("UserMessages", fields: [fromUserId], references: [id])
+  fromUserId String
+  content    String
+  createdAt  DateTime @default(now())
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  title       String
+  location    String
+  startsAt    DateTime
+  endsAt      DateTime
+  capacity    Int?
+  description String?
+  createdAt   DateTime    @default(now())
+  signups     EventSignup[]
+}
+
+model EventSignup {
+  id        String  @id @default(cuid())
+  event     Event   @relation(fields: [eventId], references: [id])
+  eventId   String
+  user      User    @relation("UserEventSignups", fields: [userId], references: [id])
+  userId    String
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+}
+
+model TutorProfile {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String   @unique
+  bio         String
+  subjectsCsv String   @default("")
+  sessions    Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tutor     TutorProfile  @relation(fields: [tutorId], references: [id])
+  tutorId   String
+  student   User     @relation("StudentSessions", fields: [studentId], references: [id])
+  studentId String
+  startsAt  DateTime
+  endsAt    DateTime
+  status    String   @default("PENDING")
+  note      String?
+  meetingUrl String?
+  createdAt DateTime @default(now())
+}
+
+model JobPosting {
+  id            String   @id @default(cuid())
+  recruiter     User     @relation(fields: [recruiterId], references: [id])
+  recruiterId   String
+  title         String
+  description   String
+  skillsCsv     String   @default("")
+  startTime     DateTime?
+  endTime       DateTime?
+  duration      String?
+  benefits      String?
+  photosCsv     String   @default("")
+  contact       String
+  createdAt     DateTime @default(now())
+  applications  JobApplication[]
+}
+
+model JobApplication {
+  id        String     @id @default(cuid())
+  job       JobPosting @relation(fields: [jobId], references: [id])
+  jobId     String
+  user      User       @relation(fields: [userId], references: [id])
+  userId    String
+  message   String?
+  createdAt DateTime   @default(now())
+
+  @@unique([jobId, userId])
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  topic     String
+  content   String
+  status    String   @default("OPEN")
+  createdAt DateTime @default(now())
+}
+
+model Resource {
+  id        String   @id @default(cuid())
+  title     String
+  kind      String
+  url       String
+  summary   String?
+  createdAt DateTime @default(now())
+}
+model Quiz {
+  id          String         @id @default(cuid())
+  courseId    String
+  course      Course         @relation(fields: [courseId], references: [id])
+  title       String
+  passScore   Int            @default(60)
+  isPublished Boolean        @default(false)
+  questions   QuizQuestion[]
+  attempts    QuizAttempt[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model QuizQuestion {
+  id         String  @id @default(cuid())
+  quizId     String
+  quiz       Quiz    @relation(fields: [quizId], references: [id])
+  text       String
+  // store options as CSV: "A,B,C,D"
+  optionsCsv String
+  // index of correct option (0-based)
+  correctIdx Int
+  order      Int      @default(1)
+}
+
+model QuizAttempt {
+  id         String   @id @default(cuid())
+  quizId     String
+  quiz       Quiz     @relation(fields: [quizId], references: [id])
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  // CSV of selected indices, e.g. "0,2,1"
+  answersCsv String?
+  score      Int      @default(0)
+  passed     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model Certificate {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  issuedAt  DateTime @default(now())
+  expiresAt DateTime?
+}
+
+model TutorAvailability {
+  id        String   @id @default(cuid())
+  tutorId   String
+  tutor     User     @relation(fields: [tutorId], references: [id])
+  startsAt  DateTime
+  endsAt    DateTime
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  targetType String?
+  targetId   String?
+  ip         String?
+  userAgent  String?
+  // small JSON-like payload as string for SQLite safety
+  data       String?
+  createdAt  DateTime @default(now())
+}
