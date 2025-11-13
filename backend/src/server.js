@@ -2,6 +2,10 @@ require('dotenv').config()
 const express = require('express')
 const path = require('path')
 const wireSecurity = require('./security')
+const { ensurePrismaSync } = require('./utils/prisma-sync')
+
+ensurePrismaSync()
+
 const app = express()
 
 // Body limits (prevent big JSON bombs)
