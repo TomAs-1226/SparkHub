@@ -15,6 +15,22 @@ function signToken(userId) {
     return jwt.sign({ uid: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
 }
 
+const ROLE_MAP = {
+    learner: "STUDENT",
+    student: "STUDENT",
+    creator: "CREATOR",
+    tutor: "TUTOR",
+    mentor: "TUTOR",
+    recruiter: "RECRUITER",
+    admin: "ADMIN",
+};
+
+function normalizeRole(input) {
+    if (!input) return "STUDENT";
+    const key = String(input).trim().toLowerCase();
+    return ROLE_MAP[key] || "STUDENT";
+}
+
 /**
  * POST /auth/register
  * Accepts: { email, name | username, password, role? }
@@ -28,7 +44,7 @@ router.post("/register", async (req, res) => {
             (req.body.username && String(req.body.username).trim()) ||
             (email ? email.split("@")[0] : "");
         const password = String(req.body.password || "");
-        const role = req.body.role === "creator" ? "creator" : "learner";
+        const role = normalizeRole(req.body.role);
 
         if (!email || !password || !name) {
             return res.status(400).json({ ok: false, msg: "Missing email, password, or name." });

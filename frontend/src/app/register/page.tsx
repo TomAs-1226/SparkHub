@@ -10,7 +10,13 @@ import { api } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 import PasswordStrength from "@/components/password-strength";
 
-type AccountType = "learner" | "creator";
+type AccountType = "learner" | "creator" | "admin";
+
+const ACCOUNT_OPTIONS: { label: string; value: AccountType; helper: string }[] = [
+    { label: "Learner", value: "learner", helper: "Access mentoring, resources, and courses" },
+    { label: "Creator", value: "creator", helper: "Publish learning experiences and content" },
+    { label: "Admin", value: "admin", helper: "Manage events, resources, and opportunities" },
+];
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -118,24 +124,27 @@ export default function RegisterPage() {
                         </div>
 
                         {/* Account type toggle */}
-                        <div className="mx-auto mt-6 w-[320px] rounded-full bg-[#CBE7E4] p-1 shadow-inner flex">
-                            <button
-                                type="button"
-                                onClick={() => setAccountType("learner")}
-                                className={`flex-1 rounded-full text-[14px] font-semibold py-2 text-center transition
-                  ${accountType === "learner" ? "bg-[#69BFBA] text-white" : "text-[#5D6B6B] hover:text-[#2B2B2B]"}`}
-                            >
-                                Learner
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setAccountType("creator")}
-                                className={`flex-1 rounded-full text-[14px] font-semibold py-2 text-center transition
-                  ${accountType === "creator" ? "bg-[#69BFBA] text-white" : "text-[#5D6B6B] hover:text-[#2B2B2B]"}`}
-                            >
-                                Creator
-                            </button>
+                        <div className="mx-auto mt-6 flex w-full max-w-[520px] flex-wrap gap-2">
+                            {ACCOUNT_OPTIONS.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => setAccountType(option.value)}
+                                    className={`flex-1 min-w-[150px] rounded-full border px-4 py-2 text-center text-[14px] font-semibold transition
+                    ${
+                        accountType === option.value
+                            ? "border-[#69BFBA] bg-[#69BFBA] text-white"
+                            : "border-[#CFE3E0] bg-white text-[#5D6B6B] hover:text-[#2B2B2B]"
+                    }
+                `}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
                         </div>
+                        <p className="mt-2 text-center text-[12px] text-[#6C6C6C]">
+                            {ACCOUNT_OPTIONS.find((opt) => opt.value === accountType)?.helper}
+                        </p>
 
                         <form onSubmit={onSubmit} className="mt-6 space-y-5 max-w-[360px] lg:max-w-none mx-auto">
                             <div>

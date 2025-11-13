@@ -13,6 +13,7 @@ import {
     Clock,
     ExternalLink,
     Users,
+    ShieldCheck,
 } from "lucide-react";
 
 import { api } from "@/lib/api";
@@ -288,6 +289,26 @@ export default function DashboardPage() {
 
                 {/* MAIN GRID CONTENT */}
                 <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    {me?.role === "ADMIN" && (
+                        <DashboardCard
+                            title="Admin tools"
+                            icon={<ShieldCheck size={16} />}
+                            className="md:col-span-2 xl:col-span-3"
+                        >
+                            <p>
+                                Publish events, resources, and opportunities using the admin control panel. Any change is
+                                reflected instantly across the site.
+                            </p>
+                            <div className="mt-3">
+                                <Link
+                                    href="/admin"
+                                    className="inline-flex items-center rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white"
+                                >
+                                    Open admin panel
+                                </Link>
+                            </div>
+                        </DashboardCard>
+                    )}
                     {/* Sessions */}
                     <DashboardCard
                         title="Your tutoring sessions"

@@ -14,101 +14,57 @@ const ExploreContents = dynamic(() => import("@/components/explore-contents"), {
 });
 
 type EventItem = {
-    id: string | number;
+    id: string;
     title: string;
     summary?: string | null;
     image?: string | null;
     type?: string | null;
-    href?: string | null;
+    startsAt?: string | null;
+    endsAt?: string | null;
+    location?: string | null;
 };
 
-const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
-
-function pickSummary(obj: any): string | null {
-    return (
-        obj?.summary ??
-        obj?.description ??
-        obj?.details ??
-        obj?.content ??
-        obj?.overview ??
-        obj?.body ??
-        null
-    );
+function pickSummary(obj: Record<string, unknown> | null | undefined): string | null {
+    if (!obj) return null;
+    const fields = ["summary", "description", "details", "content", "overview", "body"];
+    for (const field of fields) {
+        const value = obj[field];
+        if (typeof value === "string" && value.trim()) {
+            return value;
+        }
+    }
+    return null;
 }
 
 async function fetchEvents(limit = 4): Promise<EventItem[]> {
-    const urls = [
-        `${API_BASE}/events?limit=${limit}`,
-        `${API_BASE}/api/events?limit=${limit}`,
-    ];
-    for (const url of urls) {
-        try {
-            const res = await fetch(url, { cache: "no-store" });
-            if (!res.ok) continue;
-            const json = await res.json();
-            const arr = (json?.items || json?.data || json || []) as any[];
-            if (Array.isArray(arr) && arr.length) {
-                return arr.slice(0, limit).map((e, i) => ({
-                    id: e.id ?? e._id ?? e.slug ?? `event-${i}`,
-                    title: e.title ?? e.name ?? "Untitled event",
-                    summary: pickSummary(e) ?? "Join this session to learn and connect.",
-                    image: e.image ?? e.cover ?? e.thumbnail ?? null,
-                    type: e.type ?? e.category ?? e.kind ?? null,
-                    href: e.href ?? e.url ?? `/events/${e.id ?? e.slug ?? i}`,
-                }));
-            }
-        } catch {
-            /* try next url */
-        }
+    try {
+        const query = limit ? `?limit=${limit}` : "";
+        const res = await fetch(`/api/events${query}`, { cache: "no-store" });
+        if (!res.ok) return [];
+        const json = await res.json();
+        const arr = Array.isArray(json?.list) ? json.list : Array.isArray(json) ? json : [];
+        return arr.slice(0, limit).map((e) => ({
+            id: String(e.id ?? ""),
+            title: e.title ?? e.name ?? "Untitled event",
+            summary: pickSummary(e),
+            image: e.image ?? e.cover ?? e.thumbnail ?? null,
+            type: e.type ?? e.category ?? e.kind ?? null,
+            startsAt: e.startsAt ?? e.startTime ?? null,
+            endsAt: e.endsAt ?? e.endTime ?? null,
+            location: e.location ?? null,
+        }));
+    } catch {
+        return [];
     }
-    // Fallback demo content
-    return [
-        {
-            id: "e1",
-            title:
-                "Keystone Rising Global Leaders Conference For Youth Leaders",
-            summary:
-                "Keynote speakers and leadership workshops for young innovators. Network with peers and global mentors.",
-            image: "/landing/events-conf.jpg",
-            type: "Conference",
-            href: "/events/e1",
-        },
-        {
-            id: "e2",
-            title: "Hands-on Automatic Sensor Application Experiments",
-            summary: "Guided workshop to build simple sensor rigs and explore data.",
-            image: "/landing/events-workshop.jpg",
-            type: "Workshop",
-            href: "/events/e2",
-        },
-        {
-            id: "e3",
-            title: "Application of Genetic Algorithms in Scheduling Problems",
-            summary: "A practical seminar on metaheuristics for timetabling.",
-            image: "/landing/events-seminar.jpg",
-            type: "Seminar",
-            href: "/events/e3",
-        },
-        {
-            id: "e4",
-            title:
-                "On Working with Left Behind Children – Insights on Connection and Mental Health",
-            summary: "Keynotes and research findings from education leaders.",
-            image: "/landing/events-keynote.jpg",
-            type: "Keynotes",
-            href: "/events/e4",
-        },
-    ];
 }
 
 export default function HomePage() {
-    const [events, setEvents] = useState<EventItem[] | null>(null);
+    const [events, setEvents] = useState<EventItem[]>([]);
     useEffect(() => {
         fetchEvents(4).then(setEvents);
     }, []);
-    const feature = useMemo(() => events?.[0], [events]);
-    const side = useMemo(() => (events ? events.slice(1, 4) : []), [events]);
+    const feature = useMemo(() => events[0], [events]);
+    const side = useMemo(() => events.slice(1, 4), [events]);
 
     return (
         <main className="min-h-dvh">
@@ -357,86 +313,112 @@ export default function HomePage() {
                         </p>
                     </div>
 
-                    <div className="mt-10 grid gap-8 md:grid-cols-[1.2fr_1fr]">
-                        {feature && (
-                            <motion.article
-                                initial={{ opacity: 0, y: 16 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true, margin: "-80px" }}
-                                transition={{ duration: 0.35 }}
-                                className="rounded-2xl ring-1 ring-black/10 shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden"
-                            >
-                                <div className="relative h-[230px] w-full">
-                                    <Image
-                                        src={feature.image || "/landing/events-fallback.jpg"}
-                                        alt={feature.title}
-                                        fill
-                                        className="object-cover"
-                                    />
-                                </div>
-                                <div className="p-5">
-                                    {feature.type && (
-                                        <span className="inline-flex items-center rounded-full bg-[#CFEDEE] px-3 py-1 text-xs font-semibold text-[#2FB3A4]">
-                      {feature.type}
-                    </span>
-                                    )}
-                                    <h4 className="mt-3 text-[17px] font-semibold text-[#2B2B2B] leading-snug">
-                                        {feature.title}
-                                    </h4>
-                                    {feature.summary && (
-                                        <p className="mt-2 text-sm text-[#6B7280] line-clamp-3">
-                                            {feature.summary}
-                                        </p>
-                                    )}
-                                    <div className="mt-4">
-                                        <Link
-                                            href={feature.href || "#"}
-                                            className="text-sm font-semibold text-[#2B2E83] underline underline-offset-4 hover:opacity-90"
-                                        >
-                                            See details
-                                        </Link>
-                                    </div>
-                                </div>
-                            </motion.article>
-                        )}
-
-                        <div className="grid gap-5">
-                            {side.map((e) => (
+                    {events.length === 0 ? (
+                        <div className="mt-10 rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 p-8 text-center text-sm text-slate-600">
+                            There are currently no upcoming events. Once an admin publishes an event, it will appear here.
+                        </div>
+                    ) : (
+                        <div className="mt-10 grid gap-8 md:grid-cols-[1.2fr_1fr]">
+                            {feature && (
                                 <motion.article
-                                    key={e.id}
                                     initial={{ opacity: 0, y: 16 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true, margin: "-80px" }}
                                     transition={{ duration: 0.35 }}
-                                    className="grid grid-cols-[150px_1fr] gap-4 rounded-2xl ring-1 ring-black/10 shadow-[0_10px_24px_rgba(0,0,0,0.05)] overflow-hidden"
+                                    className="rounded-2xl ring-1 ring-black/10 shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden"
                                 >
-                                    <div className="relative h-[100px] w-full">
+                                    <div className="relative h-[230px] w-full">
                                         <Image
-                                            src={e.image || "/landing/events-fallback.jpg"}
-                                            alt={e.title}
+                                            src={feature.image || "/landing/events-fallback.jpg"}
+                                            alt={feature.title}
                                             fill
                                             className="object-cover"
                                         />
                                     </div>
-                                    <div className="py-3 pr-3">
-                                        {e.type && (
-                                            <span className="inline-flex items-center rounded-full bg-[#E6F4FF] px-2.5 py-1 text-[10px] font-bold text-[#2B7FFF]">
-                        {e.type}
-                      </span>
+                                    <div className="p-5">
+                                        {feature.type && (
+                                            <span className="inline-flex items-center rounded-full bg-[#CFEDEE] px-3 py-1 text-xs font-semibold text-[#2FB3A4]">
+                                                {feature.type}
+                                            </span>
                                         )}
-                                        <h5 className="mt-1.5 text-sm font-semibold text-[#2B2B2B] leading-snug">
-                                            {e.title}
-                                        </h5>
-                                        {e.summary && (
-                                            <p className="mt-1 text-xs text-[#6B7280] line-clamp-2">
-                                                {e.summary}
+                                        <h4 className="mt-3 text-[17px] font-semibold text-[#2B2B2B] leading-snug">
+                                            {feature.title}
+                                        </h4>
+                                        {feature.summary ? (
+                                            <p className="mt-2 text-sm text-[#6B7280] line-clamp-3">
+                                                {feature.summary}
+                                            </p>
+                                        ) : (
+                                            <p className="mt-2 text-sm text-[#6B7280]">
+                                                Details will appear as soon as the organizer adds them.
                                             </p>
                                         )}
+                                        <p className="mt-3 text-xs text-[#4B5563]">
+                                            {formatEventDate(feature.startsAt)} · {feature.location || "Location coming soon"}
+                                        </p>
+                                        <div className="mt-4">
+                                            <Link
+                                                href={`/events/${feature.id}`}
+                                                className="text-sm font-semibold text-[#2B2E83] underline underline-offset-4 hover:opacity-90"
+                                            >
+                                                See details
+                                            </Link>
+                                        </div>
                                     </div>
                                 </motion.article>
-                            ))}
+                            )}
+
+                            <div className="grid gap-5">
+                                {side.map((e) => (
+                                    <motion.article
+                                        key={e.id}
+                                        initial={{ opacity: 0, y: 16 }}
+                                        whileInView={{ opacity: 1, y: 0 }}
+                                        viewport={{ once: true, margin: "-80px" }}
+                                        transition={{ duration: 0.35 }}
+                                        className="grid grid-cols-[150px_1fr] gap-4 rounded-2xl ring-1 ring-black/10 shadow-[0_10px_24px_rgba(0,0,0,0.05)] overflow-hidden"
+                                    >
+                                        <div className="relative h-[100px] w-full">
+                                            <Image
+                                                src={e.image || "/landing/events-fallback.jpg"}
+                                                alt={e.title}
+                                                fill
+                                                className="object-cover"
+                                            />
+                                        </div>
+                                        <div className="py-3 pr-3">
+                                            {e.type && (
+                                                <span className="inline-flex items-center rounded-full bg-[#E6F4FF] px-2.5 py-1 text-[10px] font-bold text-[#2B7FFF]">
+                                                    {e.type}
+                                                </span>
+                                            )}
+                                            <h5 className="mt-1.5 text-sm font-semibold text-[#2B2B2B] leading-snug">
+                                                {e.title}
+                                            </h5>
+                                            {e.summary ? (
+                                                <p className="mt-1 text-xs text-[#6B7280] line-clamp-2">
+                                                    {e.summary}
+                                                </p>
+                                            ) : (
+                                                <p className="mt-1 text-xs text-[#9CA3AF]">
+                                                    Description will be added soon.
+                                                </p>
+                                            )}
+                                            <p className="mt-2 text-[11px] text-[#4B5563]">
+                                                {formatEventDate(e.startsAt)} · {e.location || "Location TBD"}
+                                            </p>
+                                            <Link
+                                                href={`/events/${e.id}`}
+                                                className="mt-2 inline-flex items-center text-[11px] font-semibold text-[#2B2E83] underline underline-offset-4"
+                                            >
+                                                View event
+                                            </Link>
+                                        </div>
+                                    </motion.article>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </section>
 
@@ -493,6 +475,18 @@ export default function HomePage() {
             </footer>
         </main>
     );
+}
+
+function formatEventDate(iso?: string | null) {
+    if (!iso) return "Date to be announced";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "Date to be announced";
+    return date.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
 }
 
 /* ---------- small helpers ---------- */

@@ -1,82 +1,80 @@
 "use client";
 
-import Image from "next/image";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { CalendarDays, CheckCircle2, Clock4, Globe, MapPin, Users } from "lucide-react";
+import { CalendarDays, CheckCircle2, Clock4, Globe, MapPin } from "lucide-react";
+
 import SiteNav from "@/components/site-nav";
 
-type EventContent = {
+interface EventRow {
+    id: string;
     title: string;
-    duration: string;
-    track: string;
-    about: string;
-    when: string;
-    why: string;
-    how: string;
-    host: {
-        name: string;
-        title: string;
-        email: string;
-    };
-};
-
-const EVENT_LIBRARY: Record<string, EventContent> = {
-    "learn-adobe": {
-        title: "Learn about Adobe XD & Prototyping",
-        duration: "Duration · 1 hour",
-        track: "Introduction about XD",
-        about: "Learn about UI/UX best practices, rapid prototyping tips, and tools to streamline collaboration between designers and developers.",
-        when: "Wednesday, September 25 · 4:00 PM PST",
-        why: "Discover how to go from idea to high-fidelity prototype faster. We'll walk through instructor-led demos, share repeatable workflows, and guide you through hands-on activities.",
-        how: "You'll work alongside other students, share feedback in real time, and leave with a clickable prototype you can showcase in your portfolio.",
-        host: {
-            name: "Event Host",
-            title: "Creative Coach",
-            email: "learn@sparkhubmentors.com",
-        },
-    },
-    "student-led": {
-        title: "Student-Led Design Sprint",
-        duration: "Duration · 90 minutes",
-        track: "Immersive teamwork lab",
-        about: "A collaborative design sprint focused on solving real campus challenges using prototyping tools.",
-        when: "Thursday, October 3 · 2:30 PM PST",
-        why: "Small teams rapidly explore a prompt, test sketches, and iterate through user flows together.",
-        how: "Mentors circulate with critique, while participants build low-to-hi fidelity screens in each round.",
-        host: {
-            name: "SparkHub Mentors",
-            title: "Program Hosts",
-            email: "designsprint@sparkhub.com",
-        },
-    },
-};
-
-const SIGNED_UP = [
-    { title: "AWS Certified Solutions Architect", type: "Live", time: "30 mins ago" },
-    { title: "Language & Literature", type: "Live", time: "32 mins ago" },
-    { title: "Media", type: "Soon", time: "Next hour" },
-    { title: "Art & Design", type: "Live", time: "Today" },
-];
-
-const FILTER_SETS = [
-    { label: "Fields", items: ["Design", "Product", "STEM", "Leadership"] },
-    { label: "Duration", items: ["30 mins", "45 mins", "1 hour"] },
-    { label: "Location", items: ["Virtual", "Hybrid", "In-person"] },
-    { label: "Language", items: ["English", "Spanish", "Mandarin"] },
-];
+    location?: string | null;
+    startsAt?: string | null;
+    endsAt?: string | null;
+    capacity?: number | null;
+    description?: string | null;
+}
 
 export default function EventDetailPage({ params }: { params: { slug: string } }) {
-    const slug = params.slug;
-    const event = useMemo(() => EVENT_LIBRARY[slug] ?? EVENT_LIBRARY["learn-adobe"], [slug]);
+    const eventId = params.slug;
+    const [status, setStatus] = useState<"loading" | "ready" | "missing">("loading");
+    const [event, setEvent] = useState<EventRow | null>(null);
+    const [others, setOthers] = useState<EventRow[]>([]);
+
+    useEffect(() => {
+        let active = true;
+        (async () => {
+            setStatus("loading");
+            try {
+                const [detailRes, listRes] = await Promise.all([
+                    fetch(`/api/events/${eventId}`, { cache: "no-store" }),
+                    fetch("/api/events", { cache: "no-store" }),
+                ]);
+
+                const detailJson = detailRes.ok ? await detailRes.json() : null;
+                const listJson = listRes.ok ? await listRes.json() : null;
+
+                if (!active) return;
+
+                if (detailRes.ok && detailJson?.event) {
+                    setEvent(detailJson.event);
+                    setStatus("ready");
+                } else {
+                    setEvent(null);
+                    setStatus("missing");
+                }
+
+                const list = Array.isArray(listJson?.list) ? listJson.list : [];
+                setOthers(list.filter((ev: EventRow) => ev.id !== eventId));
+            } catch {
+                if (!active) return;
+                setEvent(null);
+                setOthers([]);
+                setStatus("missing");
+            }
+        })();
+
+        return () => {
+            active = false;
+        };
+    }, [eventId]);
+
+    const timeRange = useMemo(() => {
+        if (!event) return null;
+        const start = formatEventDate(event.startsAt);
+        const end = formatEventDate(event.endsAt);
+        return `${start}${end ? ` → ${end}` : ""}`;
+    }, [event]);
 
     return (
         <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
             <SiteNav />
-            <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 pb-8 pt-10 text-sm font-semibold text-[#2D8F80]">
-                <CheckCircle2 className="h-5 w-5" /> Event: Detail Page
+            <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 pb-4 pt-10 text-sm font-semibold text-[#2D8F80]">
+                <CheckCircle2 className="h-5 w-5" /> Event detail
             </div>
-            <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 pb-16 lg:flex-row">
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pb-16 lg:flex-row">
                 <motion.aside
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -84,128 +82,124 @@ export default function EventDetailPage({ params }: { params: { slug: string } }
                     className="w-full lg:w-[320px]"
                 >
                     <div className="rounded-3xl border border-white/60 bg-white/90 p-6 shadow-xl shadow-slate-200/50">
-                        <h3 className="text-lg font-semibold text-slate-900">Signed-up Events</h3>
-                        <div className="mt-4 space-y-4">
-                            {SIGNED_UP.map((item) => (
-                                <div
-                                    key={item.title}
-                                    className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-sm"
-                                >
-                                    <div className="flex items-center justify-between text-xs uppercase tracking-wide text-[#5FA09A]">
-                                        <span>{item.type}</span>
-                                        <span>{item.time}</span>
-                                    </div>
-                                    <p className="mt-2 text-base font-semibold text-slate-800">{item.title}</p>
-                                </div>
-                            ))}
+                        <h3 className="text-lg font-semibold text-slate-900">Other upcoming events</h3>
+                        <div className="mt-4 space-y-3">
+                            {others.length === 0 ? (
+                                <p className="text-sm text-slate-500">No other events are available right now.</p>
+                            ) : (
+                                others.slice(0, 5).map((item) => (
+                                    <Link
+                                        key={item.id}
+                                        href={`/events/${item.id}`}
+                                        className="block rounded-2xl border border-slate-100 bg-slate-50/60 p-3 text-sm hover:border-[#63C0B9]"
+                                    >
+                                        <div className="font-semibold text-slate-800">{item.title}</div>
+                                        <div className="text-xs text-slate-500">
+                                            {formatEventDate(item.startsAt)} · {item.location || "Location TBD"}
+                                        </div>
+                                    </Link>
+                                ))
+                            )}
                         </div>
-                    </div>
-
-                    <div className="mt-6 rounded-3xl border border-white/60 bg-white/90 p-6 shadow-xl shadow-slate-200/50">
-                        <h3 className="text-lg font-semibold text-slate-900">Explore Events</h3>
-                        <div className="mt-5 space-y-5">
-                            {FILTER_SETS.map((set) => (
-                                <div key={set.label}>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                        {set.label}
-                                    </p>
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        {set.items.map((item) => (
-                                            <button
-                                                key={item}
-                                                className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-[#63C0B9] hover:text-[#2D8F80]"
-                                                type="button"
-                                            >
-                                                {item}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="mt-6 rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-600">
+                            Events are listed exactly as they exist in the backend database. If the section above is empty, no
+                            data has been published yet.
                         </div>
                     </div>
                 </motion.aside>
 
                 <motion.section
-                    initial={{ opacity: 0, y: 12 }}
+                    initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.45 }}
-                    className="flex-1"
+                    className="flex-1 rounded-3xl border border-white/60 bg-white/95 p-6 shadow-xl shadow-slate-200/50"
                 >
-                    <div className="rounded-[36px] border border-white/70 bg-white/95 p-6 shadow-2xl shadow-slate-200/70 md:p-10">
-                        <div className="flex flex-col gap-6 md:flex-row md:items-center">
-                            <div className="flex-1">
-                                <p className="text-sm font-semibold text-[#4C9F9A]">{event.track}</p>
-                                <h1 className="mt-2 text-3xl font-bold text-slate-900 md:text-4xl">{event.title}</h1>
-                                <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-600">
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#EAF5F3] px-3 py-1 font-semibold text-[#2E8C7C]">
-                                        <Clock4 className="h-4 w-4" />
-                                        {event.duration}
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-[#FFF4E7] px-3 py-1 font-semibold text-[#C77B33]">
-                                        <Users className="h-4 w-4" />
-                                        Up to 40 seats
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="relative h-48 w-full overflow-hidden rounded-[28px] bg-[#E6EEF6] md:w-[360px]">
-                                <Image src="/landing/creator.jpg" alt="Workshop preview" fill className="object-cover" priority />
-                            </div>
+                    {status === "loading" ? (
+                        <div className="h-[360px] animate-pulse rounded-3xl bg-slate-100" />
+                    ) : status === "missing" ? (
+                        <div className="space-y-4 text-center text-sm text-slate-600">
+                            <p>This event could not be found in the database.</p>
+                            <Link
+                                href="/events"
+                                className="inline-flex items-center justify-center rounded-full bg-[#63C0B9] px-5 py-2 text-sm font-semibold text-white"
+                            >
+                                Browse events
+                            </Link>
                         </div>
+                    ) : event ? (
+                        <div className="space-y-6">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-[#2D8F80]">SparkHub event</p>
+                                <h1 className="mt-2 text-3xl font-semibold text-slate-900">{event.title}</h1>
+                                <p className="mt-2 text-sm text-slate-600">
+                                    {event.description || "The organizer has not provided a description yet."}
+                                </p>
+                            </div>
 
-                        <div className="mt-8 grid gap-6 rounded-[28px] bg-[#F7FAFF] p-6 text-sm text-slate-700 md:grid-cols-3">
-                            <div className="flex items-center gap-3">
-                                <CalendarDays className="h-10 w-10 rounded-2xl bg-white p-2 text-[#2D8F80]" />
-                                <div>
-                                    <p className="text-xs uppercase text-slate-500">When</p>
-                                    <p className="font-semibold text-slate-900">{event.when}</p>
-                                </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <InfoCard icon={<CalendarDays className="h-5 w-5" />} label="Schedule">
+                                    {timeRange || "Dates to be announced"}
+                                </InfoCard>
+                                <InfoCard icon={<MapPin className="h-5 w-5" />} label="Location">
+                                    {event.location || "Location coming soon"}
+                                </InfoCard>
+                                <InfoCard icon={<Clock4 className="h-5 w-5" />} label="Capacity">
+                                    {event.capacity ? `${event.capacity} seats` : "Capacity not set"}
+                                </InfoCard>
+                                <InfoCard icon={<Globe className="h-5 w-5" />} label="Participation">
+                                    Join directly through the SparkHub backend signup endpoint once registration opens.
+                                </InfoCard>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <MapPin className="h-10 w-10 rounded-2xl bg-white p-2 text-[#2D8F80]" />
-                                <div>
-                                    <p className="text-xs uppercase text-slate-500">Where</p>
-                                    <p className="font-semibold text-slate-900">Virtual classroom</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Globe className="h-10 w-10 rounded-2xl bg-white p-2 text-[#2D8F80]" />
-                                <div>
-                                    <p className="text-xs uppercase text-slate-500">Language</p>
-                                    <p className="font-semibold text-slate-900">English & captions</p>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div className="mt-10 space-y-8 text-lg leading-relaxed text-slate-700">
-                            <section>
-                                <h2 className="text-xl font-semibold text-slate-900">When and why is this happening?</h2>
-                                <p className="mt-3 text-base text-slate-600">{event.about}</p>
-                                <p className="mt-3 text-base text-slate-600">{event.why}</p>
-                            </section>
-                            <section>
-                                <h2 className="text-xl font-semibold text-slate-900">How can you participate?</h2>
-                                <p className="mt-3 text-base text-slate-600">{event.how}</p>
-                            </section>
-                        </div>
-
-                        <div className="mt-10 flex flex-col gap-4 rounded-3xl border border-slate-100 bg-slate-50/80 p-5 sm:flex-row sm:items-center">
-                            <div className="flex flex-1 items-center gap-4">
-                                <div className="h-16 w-16 rounded-2xl bg-[#E6F3F0]" />
-                                <div>
-                                    <p className="text-xs uppercase text-slate-500">Host</p>
-                                    <p className="text-lg font-semibold text-slate-900">{event.host.name}</p>
-                                    <p className="text-sm text-slate-600">{event.host.title}</p>
-                                </div>
-                            </div>
-                            <div className="text-sm text-slate-600">
-                                <p>Contact</p>
-                                <p className="font-semibold text-[#2D8F80]">{event.host.email}</p>
+                            <div className="rounded-2xl border border-dashed border-slate-200 bg-[#F9FBFF] p-4 text-sm text-slate-600">
+                                <p className="font-semibold text-slate-900">Need to update this event?</p>
+                                <p>
+                                    Admins can edit or create events from the control panel. Changes are immediately reflected on
+                                    this page.
+                                </p>
+                                <Link
+                                    href="/admin"
+                                    className="mt-3 inline-flex items-center justify-center rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white"
+                                >
+                                    Go to admin panel
+                                </Link>
                             </div>
                         </div>
-                    </div>
+                    ) : null}
                 </motion.section>
             </div>
+        </div>
+    );
+}
+
+function formatEventDate(iso?: string | null) {
+    if (!iso) return "Date to be announced";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "Date to be announced";
+    return date.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+}
+
+function InfoCard({
+    icon,
+    label,
+    children,
+}: {
+    icon: ReactNode;
+    label: string;
+    children: ReactNode;
+}) {
+    return (
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-600 shadow-sm">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {icon}
+                <span>{label}</span>
+            </div>
+            <p className="mt-2 text-sm text-slate-800">{children}</p>
         </div>
     );
 }

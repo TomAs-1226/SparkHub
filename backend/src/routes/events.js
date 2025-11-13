@@ -14,8 +14,23 @@ router.post('/', requireAuth, requireRole(['ADMIN']), async (req, res) => {
 
 // 活动列表
 router.get('/', async (req, res) => {
-    const list = await prisma.event.findMany({ orderBy: { startsAt: 'asc' } })
+    const limitRaw = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit
+    const take = limitRaw ? parseInt(limitRaw, 10) : null
+    const query = {
+        orderBy: { startsAt: 'asc' }
+    }
+    if (take && Number.isFinite(take) && take > 0) {
+        query.take = take
+    }
+    const list = await prisma.event.findMany(query)
     res.json({ ok: true, list })
+})
+
+// 活动详情
+router.get('/:id', async (req, res) => {
+    const event = await prisma.event.findUnique({ where: { id: req.params.id } })
+    if (!event) return res.status(404).json({ ok: false, msg: '活动不存在' })
+    res.json({ ok: true, event })
 })
 
 // 报名活动
