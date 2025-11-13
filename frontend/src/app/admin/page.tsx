@@ -9,6 +9,7 @@ import { BookMarked, Briefcase, CalendarDays, MessageSquare, Trash2, UsersRound 
 import SiteNav from "@/components/site-nav";
 import { api } from "@/lib/api";
 import { uploadAsset } from "@/lib/upload";
+import { parseSkillsInput } from "@/lib/skills";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface EventRow {
@@ -257,9 +258,7 @@ export default function AdminPage() {
                 body: JSON.stringify({
                     title: jobForm.title,
                     description: jobForm.description,
-                    skills: jobForm.skills
-                        ? jobForm.skills.split(",").map((s) => s.trim()).filter(Boolean)
-                        : [],
+                    skills: parseSkillsInput(jobForm.skills),
                     contact: jobForm.contact,
                     startTime: jobForm.startTime || undefined,
                     endTime: jobForm.endTime || undefined,
@@ -311,10 +310,23 @@ export default function AdminPage() {
         await refreshAll();
     }
 
+    const removeUpload = (field: "photos" | "files", index: number) => {
+        setJobForm((prev) => {
+            const next = [...prev[field]];
+            next.splice(index, 1);
+            return { ...prev, [field]: next };
+        });
+    };
+
     async function uploadFiles(fileList: FileList | null) {
         if (!fileList || fileList.length === 0) return [] as string[];
-        const uploads = await Promise.all(Array.from(fileList).map((file) => uploadAsset(file)));
-        return uploads;
+        try {
+            const uploads = await Promise.all(Array.from(fileList).map((file) => uploadAsset(file)));
+            return uploads;
+        } catch (err) {
+            setStatusMsg(getErrorMessage(err) || "Upload failed. Please try again.");
+            return [] as string[];
+        }
     }
 
     if (bootstrap) {
@@ -607,13 +619,19 @@ export default function AdminPage() {
                                     rows={3}
                                     required
                                 />
-                                <input
-                                    type="text"
-                                    placeholder="Skills (comma separated)"
-                                    value={jobForm.skills}
-                                    onChange={(e) => setJobForm({ ...jobForm, skills: e.target.value })}
-                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
-                                />
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Skills (comma separated)
+                                    <input
+                                        type="text"
+                                        placeholder="Design, Leadership, Product"
+                                        value={jobForm.skills}
+                                        onChange={(e) => setJobForm({ ...jobForm, skills: e.target.value })}
+                                        className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    />
+                                    <span className="mt-1 block text-[11px] font-normal text-slate-400">
+                                        These keywords help students discover the right opportunities.
+                                    </span>
+                                </label>
                                 <input
                                     type="text"
                                     placeholder="Contact"
@@ -677,7 +695,24 @@ export default function AdminPage() {
                                             }}
                                         />
                                         {jobForm.photos.length > 0 && (
-                                            <span className="mt-1 block text-[11px] text-slate-500">{jobForm.photos.length} photo(s)</span>
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                {jobForm.photos.map((photo, idx) => (
+                                                    <span
+                                                        key={`${photo}-${idx}`}
+                                                        className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-3 py-1 text-xs font-semibold text-[#2B2B2B]"
+                                                    >
+                                                        {displayFileName(photo, `Photo ${idx + 1}`)}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeUpload("photos", idx)}
+                                                            className="text-slate-400 hover:text-[#2D8F80]"
+                                                            aria-label="Remove photo"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                            </div>
                                         )}
                                     </label>
                                     <label className="text-xs font-semibold text-slate-500">
@@ -693,7 +728,24 @@ export default function AdminPage() {
                                             }}
                                         />
                                         {jobForm.files.length > 0 && (
-                                            <span className="mt-1 block text-[11px] text-slate-500">{jobForm.files.length} file(s)</span>
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                {jobForm.files.map((file, idx) => (
+                                                    <span
+                                                        key={`${file}-${idx}`}
+                                                        className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-3 py-1 text-xs font-semibold text-[#2B2B2B]"
+                                                    >
+                                                        {displayFileName(file, `File ${idx + 1}`)}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeUpload("files", idx)}
+                                                            className="text-slate-400 hover:text-[#2D8F80]"
+                                                            aria-label="Remove file"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                            </div>
                                         )}
                                     </label>
                                 </div>
@@ -972,6 +1024,18 @@ async function safeJson(res: Response) {
         return await res.json();
     } catch {
         return null;
+    }
+}
+
+function displayFileName(path?: string | null, fallback = "Attachment") {
+    if (!path) return fallback;
+    try {
+        const url = new URL(path, typeof window === "undefined" ? "http://localhost" : window.location.origin);
+        const segments = url.pathname.split("/").filter(Boolean);
+        return segments.pop() || fallback;
+    } catch {
+        const pieces = path.split("/").filter(Boolean);
+        return pieces.pop() || fallback;
     }
 }
 

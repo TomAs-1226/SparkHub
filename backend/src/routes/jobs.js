@@ -6,11 +6,16 @@ const { prisma } = require('../prisma')
 const { requireAuth, requireRole } = require('../middleware/auth')
 
 // Validate POST /jobs payload
+const flexibleStringArray = z.union([
+  z.array(z.string().min(1).max(120)),
+  z.string().max(500).optional(),
+])
+
 const postJobSchema = z.object({
   body: z.object({
     title: z.string().min(2).max(120),
     description: z.string().min(10).max(5000),
-    skills: z.array(z.string().min(1)).optional().default([]),
+    skills: flexibleStringArray.optional(),
     startTime: z.string().datetime().optional(),
     endTime: z.string().datetime().optional(),
     duration: z.string().max(120).optional(),
@@ -54,7 +59,8 @@ function presentJob(row) {
 // 发布职位（招聘者/管理员/导师）
 router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR', 'CREATOR']), validate(postJobSchema), async (req, res) => {
     const { title, description, skills = [], startTime, endTime, duration, benefits, photos = [], files = [], contact } = req.body
-    const skillsCsv = Array.isArray(skills) ? skills.join(',') : (skills || '')
+    const normalizedSkills = Array.isArray(skills) ? skills : csvToArray(skills)
+    const skillsCsv = normalizedSkills.join(',')
     const photosCsv = Array.isArray(photos) ? photos.join(',') : (photos || '')
     const job = await prisma.jobPosting.create({
         data: {

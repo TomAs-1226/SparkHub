@@ -10,6 +10,16 @@ import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { api } from "@/lib/api";
 import { uploadAsset } from "@/lib/upload";
+import { parseSkillsInput } from "@/lib/skills";
+
+const createJobFormState = () => ({
+    title: "",
+    description: "",
+    skills: "",
+    contact: "",
+    photos: [] as string[],
+    files: [] as string[],
+});
 
 async function safeJson(res: Response) {
     try {
@@ -31,7 +41,7 @@ export default function TutorWorkspacePage() {
 
     const [eventForm, setEventForm] = useState({ title: "", location: "", startsAt: "", endsAt: "", description: "", coverUrl: "", attachments: [] as string[] });
     const [resourceForm, setResourceForm] = useState({ title: "", kind: "", url: "", summary: "", details: "", imageUrl: "", attachmentUrl: "", primaryFileName: "" });
-    const [jobForm, setJobForm] = useState({ title: "", description: "", contact: "", photos: [] as string[], files: [] as string[] });
+    const [jobForm, setJobForm] = useState(createJobFormState);
 
     const [saving, setSaving] = useState({ event: false, resource: false, job: false });
 
@@ -90,6 +100,14 @@ export default function TutorWorkspacePage() {
         }
     }
 
+    const removeUpload = (field: "photos" | "files", idx: number) => {
+        setJobForm((prev) => {
+            const next = [...prev[field]];
+            next.splice(idx, 1);
+            return { ...prev, [field]: next };
+        });
+    };
+
     async function handleUpload(file: File, onSuccess: (url: string) => void) {
         try {
             const url = await uploadAsset(file);
@@ -137,6 +155,7 @@ export default function TutorWorkspacePage() {
                 body: JSON.stringify({
                     title: jobForm.title,
                     description: jobForm.description,
+                    skills: parseSkillsInput(jobForm.skills),
                     contact: jobForm.contact,
                     photos: jobForm.photos,
                     files: jobForm.files,
@@ -144,7 +163,7 @@ export default function TutorWorkspacePage() {
             });
             const json = await safeJson(res);
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to post opportunity");
-            setJobForm({ title: "", description: "", contact: "", photos: [], files: [] });
+            setJobForm(createJobFormState());
             const refresh = await api("/jobs/mine", { method: "GET" });
             const data = await safeJson(refresh);
             setJobs(Array.isArray(data?.list) ? (data.list as OwnedRow[]) : []);
@@ -399,6 +418,19 @@ export default function TutorWorkspacePage() {
                                     rows={2}
                                     required
                                 />
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Skills
+                                    <input
+                                        type="text"
+                                        placeholder="Python, Robotics, Mentorship"
+                                        value={jobForm.skills}
+                                        onChange={(e) => setJobForm({ ...jobForm, skills: e.target.value })}
+                                        className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    />
+                                    <span className="mt-1 block text-[11px] font-normal text-slate-400">
+                                        Separate each skill with a comma.
+                                    </span>
+                                </label>
                                 <input
                                     type="text"
                                     placeholder="Contact"
@@ -427,6 +459,25 @@ export default function TutorWorkspacePage() {
                                             }
                                         }}
                                     />
+                                    {jobForm.photos.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {jobForm.photos.map((photo, idx) => (
+                                                <span
+                                                    key={`${photo}-${idx}`}
+                                                    className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-3 py-1 text-xs font-semibold text-[#2B2B2B]"
+                                                >
+                                                    {attachmentLabel(photo)}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeUpload("photos", idx)}
+                                                        className="text-slate-400 hover:text-[#2D8F80]"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </label>
                                 <label className="text-xs font-semibold text-slate-500">
                                     Files
@@ -447,6 +498,25 @@ export default function TutorWorkspacePage() {
                                             }
                                         }}
                                     />
+                                    {jobForm.files.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {jobForm.files.map((file, idx) => (
+                                                <span
+                                                    key={`${file}-${idx}`}
+                                                    className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-3 py-1 text-xs font-semibold text-[#2B2B2B]"
+                                                >
+                                                    {attachmentLabel(file)}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeUpload("files", idx)}
+                                                        className="text-slate-400 hover:text-[#2D8F80]"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </label>
                                 <button
                                     type="submit"
@@ -474,6 +544,18 @@ type OwnedRow = {
     id: string;
     title?: string;
 };
+
+function attachmentLabel(path?: string | null, fallback = "Attachment") {
+    if (!path) return fallback;
+    try {
+        const url = new URL(path, typeof window === "undefined" ? "http://localhost" : window.location.origin);
+        const parts = url.pathname.split("/").filter(Boolean);
+        return parts.pop() || fallback;
+    } catch {
+        const pieces = path.split("/").filter(Boolean);
+        return pieces.pop() || fallback;
+    }
+}
 
 function TutorCard({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
     return (

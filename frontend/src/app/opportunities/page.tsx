@@ -24,6 +24,7 @@ export default function OpportunitiesPage() {
     const [jobs, setJobs] = useState<JobItem[]>([]);
     const [loading, setLoading] = useState(true);
     const { user } = useCurrentUser();
+    const role = user?.role;
 
     useEffect(() => {
         let active = true;
@@ -88,6 +89,35 @@ export default function OpportunitiesPage() {
                         )}
                     </div>
 
+                    {(() => {
+                        if (!role) {
+                            return (
+                                <div className="mt-4 rounded-2xl border border-dashed border-[#CFE3E0] bg-[#F9FEFD] px-4 py-3 text-xs text-slate-600">
+                                    Create a free account to bookmark opportunities and receive reminders.
+                                </div>
+                            );
+                        }
+                        if (role === "ADMIN") {
+                            return (
+                                <div className="mt-4 rounded-2xl border border-dashed border-[#CFE3E0] bg-[#F9FEFD] px-4 py-3 text-xs text-slate-600">
+                                    Need to edit or remove a role? <Link href="/admin" className="font-semibold text-[#2D8F80]">Open the admin panel</Link> for full controls.
+                                </div>
+                            );
+                        }
+                        if (["TUTOR", "CREATOR", "RECRUITER"].includes(role)) {
+                            return (
+                                <div className="mt-4 rounded-2xl border border-dashed border-[#CFE3E0] bg-[#F9FEFD] px-4 py-3 text-xs text-slate-600">
+                                    Share your own opportunities from the <Link href="/tutors/dashboard" className="font-semibold text-[#2D8F80]">publishing workspace</Link> — uploads appear instantly.
+                                </div>
+                            );
+                        }
+                        return (
+                            <div className="mt-4 rounded-2xl border border-dashed border-[#CFE3E0] bg-[#F9FEFD] px-4 py-3 text-xs text-slate-600">
+                                Tip: open a role to add it to your calendar and stay on top of deadlines.
+                            </div>
+                        );
+                    })()}
+
                     <div className="mt-8 grid gap-6">
                         {loading ? (
                             Array.from({ length: 3 }).map((_, idx) => (
@@ -141,21 +171,28 @@ export default function OpportunitiesPage() {
                                             About this role
                                         </Link>
                                         <a
-                                            href={`mailto:${job.contact}`}
+                                            href={contactHref(job.contact)}
                                             className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 font-semibold text-white"
+                                            target={job.contact.includes("http") ? "_blank" : undefined}
+                                            rel={job.contact.includes("http") ? "noreferrer" : undefined}
                                         >
-                                            Contact host
+                                            {role === "STUDENT" ? "Email recruiter" : "Contact host"}
                                             <ExternalLink className="h-4 w-4" />
                                         </a>
                                         {job.files && job.files.length > 0 && (
-                                            <a
-                                                href={job.files[0]}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 font-semibold text-[#2B2B2B]"
-                                            >
-                                                <Download className="h-4 w-4" /> Brief
-                                            </a>
+                                            <div className="flex flex-wrap gap-2">
+                                                {job.files.map((file) => (
+                                                    <a
+                                                        key={file}
+                                                        href={file}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 font-semibold text-[#2B2B2B]"
+                                                    >
+                                                        <Download className="h-4 w-4" /> {fileLabel(file)}
+                                                    </a>
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
                                 </article>
@@ -173,4 +210,24 @@ function formatDate(iso?: string | null) {
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return "Not set";
     return date.toLocaleDateString();
+}
+
+function fileLabel(path?: string | null, fallback = "Brief") {
+    if (!path) return fallback;
+    try {
+        const url = new URL(path, typeof window === "undefined" ? "http://localhost" : window.location.origin);
+        const segments = url.pathname.split("/").filter(Boolean);
+        return segments.pop() || fallback;
+    } catch {
+        const parts = path.split("/").filter(Boolean);
+        return parts.pop() || fallback;
+    }
+}
+
+function contactHref(contact: string) {
+    if (!contact) return "#";
+    if (contact.startsWith("http")) return contact;
+    if (contact.includes("@")) return `mailto:${contact}`;
+    if (/^\+?\d/.test(contact)) return `tel:${contact}`;
+    return contact;
 }
