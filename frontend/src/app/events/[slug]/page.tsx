@@ -15,6 +15,8 @@ interface EventRow {
     endsAt?: string | null;
     capacity?: number | null;
     description?: string | null;
+    coverUrl?: string | null;
+    attachments?: string[];
 }
 
 export default function EventDetailPage({ params }: { params: { slug: string } }) {
@@ -135,6 +137,11 @@ export default function EventDetailPage({ params }: { params: { slug: string } }
                                     {event.description || "The organizer has not provided a description yet."}
                                 </p>
                             </div>
+                            {event.coverUrl && (
+                                <div className="h-64 w-full overflow-hidden rounded-3xl">
+                                    <div className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${event.coverUrl})` }} />
+                                </div>
+                            )}
 
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <InfoCard icon={<CalendarDays className="h-5 w-5" />} label="Schedule">
@@ -164,6 +171,18 @@ export default function EventDetailPage({ params }: { params: { slug: string } }
                                     Go to admin panel
                                 </Link>
                             </div>
+                            {event.attachments && event.attachments.length > 0 && (
+                                <div className="rounded-2xl border border-slate-100 bg-white/80 p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Attachments</p>
+                                    <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                                        {event.attachments.map((file) => (
+                                            <a key={file} href={file} target="_blank" rel="noreferrer" className="rounded-full border border-[#CFE3E0] px-3 py-1 font-semibold text-[#2B2B2B]">
+                                                Download
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : null}
                 </motion.section>

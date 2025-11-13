@@ -25,6 +25,7 @@ type User = {
     email: string;
     name?: string;
     role: string;
+    avatarUrl?: string | null;
 };
 
 type EventRow = {
@@ -249,6 +250,20 @@ export default function DashboardPage() {
                                     icon={<BookOpen size={16} />}
                                     label="Resources"
                                 />
+                                {me?.role === "ADMIN" && (
+                                    <QuickAction
+                                        href="/admin"
+                                        icon={<ShieldCheck size={16} />}
+                                        label="Admin panel"
+                                    />
+                                )}
+                                {(me?.role === "TUTOR" || me?.role === "ADMIN") && (
+                                    <QuickAction
+                                        href="/tutors/dashboard"
+                                        icon={<Users size={16} />}
+                                        label="Tutor tools"
+                                    />
+                                )}
                             </div>
                         </div>
 

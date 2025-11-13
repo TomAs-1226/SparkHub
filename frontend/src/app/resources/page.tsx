@@ -91,12 +91,18 @@ export default function ResourcesPage() {
                                     <p className="mt-2 text-sm text-slate-600">
                                         {resource.summary || "No description has been added for this resource."}
                                     </p>
-                                    <div className="mt-4">
+                                    <div className="mt-4 flex flex-wrap gap-3 text-sm">
+                                        <Link
+                                            href={`/resources/${resource.id}`}
+                                            className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                        >
+                                            About this resource
+                                        </Link>
                                         <a
                                             href={resource.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white"
+                                            className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 font-semibold text-white"
                                         >
                                             Open resource
                                             <ExternalLink className="h-4 w-4" />

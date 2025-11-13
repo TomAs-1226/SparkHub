@@ -15,6 +15,8 @@ interface JobItem {
     contact: string;
     startTime?: string | null;
     endTime?: string | null;
+    photos?: string[];
+    files?: string[];
 }
 
 export default function OpportunitiesPage() {
@@ -111,15 +113,18 @@ export default function OpportunitiesPage() {
                                             <span className="font-semibold text-slate-900">Contact:</span> {job.contact}
                                         </div>
                                     </div>
-                                    <div className="mt-4 text-sm text-slate-600">
-                                        Use the job application endpoint in the backend to apply. This card simply reflects current data.
-                                    </div>
-                                    <div className="mt-4">
-                                        <a
-                                            href={`/api/jobs/${job.id}`}
-                                            className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white"
+                                    <div className="mt-4 flex flex-wrap gap-3 text-sm">
+                                        <Link
+                                            href={`/opportunities/${job.id}`}
+                                            className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 font-semibold text-[#2B2B2B] hover:bg-slate-50"
                                         >
-                                            View raw API
+                                            About this role
+                                        </Link>
+                                        <a
+                                            href={`mailto:${job.contact}`}
+                                            className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 font-semibold text-white"
+                                        >
+                                            Contact host
                                             <ExternalLink className="h-4 w-4" />
                                         </a>
                                     </div>

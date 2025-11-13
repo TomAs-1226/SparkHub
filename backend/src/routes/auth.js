@@ -3,6 +3,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
+const { requireAuth } = require("../middleware/auth");
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -11,8 +12,12 @@ const router = express.Router();
 function normalizeEmail(v) {
     return (v || "").trim().toLowerCase();
 }
-function signToken(userId) {
-    return jwt.sign({ uid: userId }, process.env.JWT_SECRET, { expiresIn: "7d" });
+function signToken(user) {
+    return jwt.sign(
+        { id: user.id, role: user.role, name: user.name },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" },
+    );
 }
 
 const ROLE_MAP = {
@@ -57,10 +62,10 @@ router.post("/register", async (req, res) => {
 
         const user = await prisma.user.create({
             data: { email, password: hash, name, role },
-            select: { id: true, email: true, name: true, role: true },
+            select: { id: true, email: true, name: true, role: true, avatarUrl: true },
         });
 
-        const token = signToken(user.id);
+        const token = signToken(user);
         return res.json({ ok: true, token, user });
     } catch (err) {
         console.error("REGISTER ERROR:", err);
@@ -106,9 +111,9 @@ router.post("/login", async (req, res) => {
         const ok = await bcrypt.compare(password, user.password);
         if (!ok) return res.status(401).json({ ok: false, msg: "Invalid credentials." });
 
-        const token = signToken(user.id);
-        const { id, email, name, role } = user;
-        return res.json({ ok: true, token, user: { id, email, name, role } });
+        const token = signToken(user);
+        const { id, email, name, role, avatarUrl } = user;
+        return res.json({ ok: true, token, user: { id, email, name, role, avatarUrl } });
     } catch (err) {
         console.error("LOGIN ERROR:", err);
         return res.status(500).json({ ok: false, msg: "Server error." });
@@ -124,14 +129,39 @@ router.get("/me", async (req, res) => {
 
         const payload = jwt.verify(token, process.env.JWT_SECRET);
         const user = await prisma.user.findUnique({
-            where: { id: payload.uid },
-            select: { id: true, email: true, name: true, role: true },
+            where: { id: payload.id || payload.uid },
+            select: { id: true, email: true, name: true, role: true, avatarUrl: true },
         });
         if (!user) return res.status(404).json({ ok: false, msg: "User not found." });
 
         return res.json({ ok: true, user });
     } catch (err) {
         return res.status(401).json({ ok: false, msg: "Invalid token." });
+    }
+});
+
+
+router.patch("/me", requireAuth, async (req, res) => {
+    try {
+        const next = {};
+        if (typeof req.body.name === "string" && req.body.name.trim()) {
+            next.name = req.body.name.trim();
+        }
+        if (typeof req.body.avatarUrl === "string") {
+            next.avatarUrl = req.body.avatarUrl.trim() || null;
+        }
+        if (Object.keys(next).length === 0) {
+            return res.status(400).json({ ok: false, msg: "No updates provided." });
+        }
+        const user = await prisma.user.update({
+            where: { id: req.user.id },
+            data: next,
+            select: { id: true, email: true, name: true, role: true, avatarUrl: true },
+        });
+        return res.json({ ok: true, user });
+    } catch (err) {
+        console.error("UPDATE PROFILE ERROR:", err);
+        return res.status(500).json({ ok: false, msg: "Server error." });
     }
 });
 

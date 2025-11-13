@@ -48,8 +48,9 @@ export default function RegisterPage() {
 
             if (data?.token) { setToken(data.token); router.push("/dashboard"); }
             else { router.push("/login"); }
-        } catch (e: any) {
-            setErr(e.message || "Unable to register.");
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Unable to register.";
+            setErr(message);
         } finally {
             setLoading(false);
         }

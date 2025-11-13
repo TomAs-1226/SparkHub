@@ -13,6 +13,7 @@ model User {
   password         String
   name             String
   role             String           @default("STUDENT")
+  avatarUrl        String?
   createdAt        DateTime         @default(now())
 
   coursesCreated   Course[]         @relation("CreatorCourses")
@@ -23,6 +24,8 @@ model User {
   feedbacks        Feedback[]
   messages         CourseMessage[]  @relation("UserMessages")
   eventSignups     EventSignup[]    @relation("UserEventSignups")
+  eventsCreated    Event[]          @relation("EventCreator")
+  resourcesAuthored Resource[]      @relation("ResourceAuthor")
   studentSessions  Session[]        @relation("StudentSessions")
   quizAttempts     QuizAttempt[]
   certificates     Certificate[]
@@ -89,6 +92,10 @@ model Event {
   endsAt      DateTime
   capacity    Int?
   description String?
+  coverUrl    String?
+  attachmentsJson String   @default("[]")
+  creator     User?        @relation("EventCreator", fields: [creatorId], references: [id])
+  creatorId   String?
   createdAt   DateTime    @default(now())
   signups     EventSignup[]
 }
@@ -140,6 +147,7 @@ model JobPosting {
   duration      String?
   benefits      String?
   photosCsv     String   @default("")
+  filesJson     String   @default("[]")
   contact       String
   createdAt     DateTime @default(now())
   applications  JobApplication[]
@@ -173,6 +181,11 @@ model Resource {
   kind      String
   url       String
   summary   String?
+  details   String?
+  imageUrl  String?
+  attachmentUrl String?
+  author    User?    @relation("ResourceAuthor", fields: [authorId], references: [id])
+  authorId  String?
   createdAt DateTime @default(now())
 }
 model Quiz {

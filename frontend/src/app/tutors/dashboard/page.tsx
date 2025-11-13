@@ -1,0 +1,464 @@
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { BookMarked, Briefcase, CalendarDays } from "lucide-react";
+
+import SiteNav from "@/components/site-nav";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { api } from "@/lib/api";
+import { uploadAsset } from "@/lib/upload";
+
+async function safeJson(res: Response) {
+    try {
+        return await res.json();
+    } catch {
+        return null;
+    }
+}
+
+export default function TutorWorkspacePage() {
+    const router = useRouter();
+    const { user, loading } = useCurrentUser();
+    const [denied, setDenied] = useState(false);
+    const [status, setStatus] = useState<string | null>(null);
+
+    const [events, setEvents] = useState<OwnedRow[]>([]);
+    const [resources, setResources] = useState<OwnedRow[]>([]);
+    const [jobs, setJobs] = useState<OwnedRow[]>([]);
+
+    const [eventForm, setEventForm] = useState({ title: "", location: "", startsAt: "", endsAt: "", description: "", coverUrl: "", attachments: [] as string[] });
+    const [resourceForm, setResourceForm] = useState({ title: "", kind: "", url: "", summary: "", details: "", imageUrl: "", attachmentUrl: "" });
+    const [jobForm, setJobForm] = useState({ title: "", description: "", contact: "", photos: [] as string[], files: [] as string[] });
+
+    const [saving, setSaving] = useState({ event: false, resource: false, job: false });
+
+    useEffect(() => {
+        if (loading) return;
+        if (!user) {
+            router.push("/login?from=/tutors/dashboard");
+            return;
+        }
+        if (user.role !== "TUTOR" && user.role !== "ADMIN") {
+            setDenied(true);
+            return;
+        }
+        let active = true;
+        (async () => {
+            const [eventRes, resourceRes, jobRes] = await Promise.all([
+                api("/events/mine", { method: "GET" }),
+                api("/resources/mine", { method: "GET" }),
+                api("/jobs/mine", { method: "GET" }),
+            ]);
+            const [eventJson, resourceJson, jobJson] = await Promise.all([
+                safeJson(eventRes),
+                safeJson(resourceRes),
+                safeJson(jobRes),
+            ]);
+            if (!active) return;
+            setEvents(Array.isArray(eventJson?.list) ? (eventJson.list as OwnedRow[]) : []);
+            setResources(Array.isArray(resourceJson?.list) ? (resourceJson.list as OwnedRow[]) : []);
+            setJobs(Array.isArray(jobJson?.list) ? (jobJson.list as OwnedRow[]) : []);
+        })();
+        return () => {
+            active = false;
+        };
+    }, [user, loading, router]);
+
+    async function handleCreateEvent(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        setSaving((s) => ({ ...s, event: true }));
+        setStatus(null);
+        try {
+            const res = await api("/events", {
+                method: "POST",
+                body: JSON.stringify(eventForm),
+            });
+            const json = await safeJson(res);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to create event");
+            setEventForm({ title: "", location: "", startsAt: "", endsAt: "", description: "", coverUrl: "", attachments: [] });
+            const refresh = await api("/events/mine", { method: "GET" });
+            const data = await safeJson(refresh);
+            setEvents(Array.isArray(data?.list) ? (data.list as OwnedRow[]) : []);
+            setStatus("Event published to the public feed.");
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to create event");
+        } finally {
+            setSaving((s) => ({ ...s, event: false }));
+        }
+    }
+
+    async function handleCreateResource(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        setSaving((s) => ({ ...s, resource: true }));
+        setStatus(null);
+        try {
+            const res = await api("/resources", {
+                method: "POST",
+                body: JSON.stringify(resourceForm),
+            });
+            const json = await safeJson(res);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to create resource");
+            setResourceForm({ title: "", kind: "", url: "", summary: "", details: "", imageUrl: "", attachmentUrl: "" });
+            const refresh = await api("/resources/mine", { method: "GET" });
+            const data = await safeJson(refresh);
+            setResources(Array.isArray(data?.list) ? (data.list as OwnedRow[]) : []);
+            setStatus("Resource submitted.");
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to create resource");
+        } finally {
+            setSaving((s) => ({ ...s, resource: false }));
+        }
+    }
+
+    async function handleCreateJob(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        setSaving((s) => ({ ...s, job: true }));
+        setStatus(null);
+        try {
+            const res = await api("/jobs", {
+                method: "POST",
+                body: JSON.stringify({
+                    title: jobForm.title,
+                    description: jobForm.description,
+                    contact: jobForm.contact,
+                    photos: jobForm.photos,
+                    files: jobForm.files,
+                }),
+            });
+            const json = await safeJson(res);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to post opportunity");
+            setJobForm({ title: "", description: "", contact: "", photos: [], files: [] });
+            const refresh = await api("/jobs/mine", { method: "GET" });
+            const data = await safeJson(refresh);
+            setJobs(Array.isArray(data?.list) ? (data.list as OwnedRow[]) : []);
+            setStatus("Opportunity submitted.");
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to post opportunity");
+        } finally {
+            setSaving((s) => ({ ...s, job: false }));
+        }
+    }
+
+    if (denied) {
+        return (
+            <div className="min-h-dvh bg-[#F5F7FB] text-slate-800">
+                <SiteNav />
+                <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-10">
+                    <div className="rounded-[32px] border border-white/60 bg-white/95 p-8 text-center shadow-2xl">
+                        <p className="text-sm text-slate-600">Only tutors can access this workspace.</p>
+                        <Link href="/mentors" className="mt-4 inline-flex items-center justify-center rounded-full bg-[#63C0B9] px-5 py-2 text-sm font-semibold text-white">
+                            Become a tutor
+                        </Link>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-dvh bg-[#F5F7FB] text-slate-800">
+            <SiteNav />
+            <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-10">
+                <motion.section
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45 }}
+                    className="rounded-[36px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-10"
+                >
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">Tutor workspace</p>
+                            <h1 className="mt-2 text-2xl font-semibold">Add your own events and resources</h1>
+                            <p className="mt-1 text-sm text-slate-500">Everything you create appears instantly on the public site.</p>
+                        </div>
+                        <Link href="/admin" className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50">
+                            Need full admin?
+                        </Link>
+                    </div>
+
+                    {status && (
+                        <div className="mt-4 rounded-2xl border border-[#CFE3E0] bg-[#E9F7F5] px-4 py-3 text-sm text-slate-700">
+                            {status}
+                        </div>
+                    )}
+
+                    <div className="mt-8 grid gap-6 md:grid-cols-2">
+                        <TutorCard title="Quick event" icon={<CalendarDays className="h-5 w-5" />}>
+                            <form onSubmit={handleCreateEvent} className="space-y-3 text-sm">
+                                <input
+                                    type="text"
+                                    placeholder="Title"
+                                    value={eventForm.title}
+                                    onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Location"
+                                    value={eventForm.location}
+                                    onChange={(e) => setEventForm({ ...eventForm, location: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    required
+                                />
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <input
+                                        type="datetime-local"
+                                        value={eventForm.startsAt}
+                                        onChange={(e) => setEventForm({ ...eventForm, startsAt: e.target.value })}
+                                        className="w-full rounded-2xl border border-slate-200 px-3 py-2"
+                                        required
+                                    />
+                                    <input
+                                        type="datetime-local"
+                                        value={eventForm.endsAt}
+                                        onChange={(e) => setEventForm({ ...eventForm, endsAt: e.target.value })}
+                                        className="w-full rounded-2xl border border-slate-200 px-3 py-2"
+                                        required
+                                    />
+                                </div>
+                                <textarea
+                                    placeholder="Description"
+                                    value={eventForm.description}
+                                    onChange={(e) => setEventForm({ ...eventForm, description: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    rows={2}
+                                />
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Cover photo
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="mt-1 w-full text-xs"
+                                        onChange={async (e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                const url = await uploadAsset(e.target.files[0]);
+                                                setEventForm((prev) => ({ ...prev, coverUrl: url }));
+                                                e.target.value = "";
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Attachments
+                                    <input
+                                        type="file"
+                                        multiple
+                                        className="mt-1 w-full text-xs"
+                                        onChange={async (e) => {
+                                            if (e.target.files && e.target.files.length > 0) {
+                                                const uploads = await Promise.all(Array.from(e.target.files).map((file) => uploadAsset(file)));
+                                                setEventForm((prev) => ({ ...prev, attachments: [...prev.attachments, ...uploads] }));
+                                                e.target.value = "";
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <button
+                                    type="submit"
+                                    disabled={saving.event}
+                                    className="w-full rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                >
+                                    {saving.event ? "Saving..." : "Publish event"}
+                                </button>
+                            </form>
+                        </TutorCard>
+
+                        <TutorCard title="Resource" icon={<BookMarked className="h-5 w-5" />}>
+                            <form onSubmit={handleCreateResource} className="space-y-3 text-sm">
+                                <input
+                                    type="text"
+                                    placeholder="Title"
+                                    value={resourceForm.title}
+                                    onChange={(e) => setResourceForm({ ...resourceForm, title: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Kind"
+                                    value={resourceForm.kind}
+                                    onChange={(e) => setResourceForm({ ...resourceForm, kind: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    required
+                                />
+                                <input
+                                    type="url"
+                                    placeholder="URL"
+                                    value={resourceForm.url}
+                                    onChange={(e) => setResourceForm({ ...resourceForm, url: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    required
+                                />
+                                <textarea
+                                    placeholder="Summary"
+                                    value={resourceForm.summary}
+                                    onChange={(e) => setResourceForm({ ...resourceForm, summary: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    rows={2}
+                                />
+                                <textarea
+                                    placeholder="Details"
+                                    value={resourceForm.details}
+                                    onChange={(e) => setResourceForm({ ...resourceForm, details: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    rows={2}
+                                />
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Cover photo
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="mt-1 w-full text-xs"
+                                        onChange={async (e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                const url = await uploadAsset(e.target.files[0]);
+                                                setResourceForm((prev) => ({ ...prev, imageUrl: url }));
+                                                e.target.value = "";
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Attachment
+                                    <input
+                                        type="file"
+                                        className="mt-1 w-full text-xs"
+                                        onChange={async (e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                const url = await uploadAsset(e.target.files[0]);
+                                                setResourceForm((prev) => ({ ...prev, attachmentUrl: url }));
+                                                e.target.value = "";
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <button
+                                    type="submit"
+                                    disabled={saving.resource}
+                                    className="w-full rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                >
+                                    {saving.resource ? "Saving..." : "Publish resource"}
+                                </button>
+                            </form>
+                        </TutorCard>
+
+                        <TutorCard title="Opportunity" icon={<Briefcase className="h-5 w-5" />}>
+                            <form onSubmit={handleCreateJob} className="space-y-3 text-sm">
+                                <input
+                                    type="text"
+                                    placeholder="Title"
+                                    value={jobForm.title}
+                                    onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    required
+                                />
+                                <textarea
+                                    placeholder="Description"
+                                    value={jobForm.description}
+                                    onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    rows={2}
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Contact"
+                                    value={jobForm.contact}
+                                    onChange={(e) => setJobForm({ ...jobForm, contact: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    required
+                                />
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Photos
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="mt-1 w-full text-xs"
+                                        onChange={async (e) => {
+                                            if (e.target.files) {
+                                                const uploads = await Promise.all(Array.from(e.target.files).map((file) => uploadAsset(file)));
+                                                setJobForm((prev) => ({ ...prev, photos: [...prev.photos, ...uploads] }));
+                                                e.target.value = "";
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Files
+                                    <input
+                                        type="file"
+                                        multiple
+                                        className="mt-1 w-full text-xs"
+                                        onChange={async (e) => {
+                                            if (e.target.files) {
+                                                const uploads = await Promise.all(Array.from(e.target.files).map((file) => uploadAsset(file)));
+                                                setJobForm((prev) => ({ ...prev, files: [...prev.files, ...uploads] }));
+                                                e.target.value = "";
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <button
+                                    type="submit"
+                                    disabled={saving.job}
+                                    className="w-full rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                >
+                                    {saving.job ? "Saving..." : "Publish opportunity"}
+                                </button>
+                            </form>
+                        </TutorCard>
+                    </div>
+
+                    <div className="mt-10 grid gap-6 md:grid-cols-2">
+                        <SummaryCard title="Your events" items={events} linkPrefix="/events/" />
+                        <SummaryCard title="Your resources" items={resources} linkPrefix="/resources/" />
+                        <SummaryCard title="Your opportunities" items={jobs} linkPrefix="/opportunities/" className="md:col-span-2" />
+                    </div>
+                </motion.section>
+            </main>
+        </div>
+    );
+}
+
+type OwnedRow = {
+    id: string;
+    title?: string;
+};
+
+function TutorCard({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
+    return (
+        <div className="rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <div className="rounded-full bg-[#E7F6F3] p-2 text-[#2D8F80]">{icon}</div>
+                <span>{title}</span>
+            </div>
+            <div className="mt-4">{children}</div>
+        </div>
+    );
+}
+
+function SummaryCard({ title, items, linkPrefix, className = "" }: { title: string; items: OwnedRow[]; linkPrefix: string; className?: string }) {
+    return (
+        <div className={`rounded-3xl border border-slate-100 bg-[#F9FBFF] p-5 shadow-inner ${className}`}>
+            <p className="text-sm font-semibold text-slate-700">{title}</p>
+            {items.length === 0 ? (
+                <p className="mt-2 text-sm text-slate-500">No entries yet.</p>
+            ) : (
+                <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                    {items.map((item) => (
+                        <li key={item.id} className="rounded-2xl bg-white px-4 py-2 shadow-sm">
+                            <Link href={`${linkPrefix}${item.id}`} className="font-semibold text-[#2B2E83] hover:underline">
+                                {item.title || "Untitled"}
+                            </Link>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}

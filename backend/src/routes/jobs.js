@@ -1,5 +1,3 @@
-
-
 const { z } = require('zod')
 const { validate } = require('../middleware/validate')
 const express = require('express')
@@ -18,13 +16,44 @@ const postJobSchema = z.object({
     duration: z.string().max(120).optional(),
     benefits: z.string().max(1000).optional(),
     photos: z.array(z.string().url()).optional().default([]),
+    files: z.array(z.string()).optional().default([]),
     contact: z.string().min(3).max(200)
   })
 })
 
-// 发布职位（招聘者）
-router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN']), validate(postJobSchema), async (req, res) => {
-    const { title, description, skills = [], startTime, endTime, duration, benefits, photos = [], contact } = req.body
+function csvToArray(value) {
+  if (!value) return []
+  return value.split(',').map((item) => item.trim()).filter(Boolean)
+}
+
+function filesFromJson(raw) {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function filesToJson(files) {
+  if (!Array.isArray(files)) return '[]'
+  return JSON.stringify(files)
+}
+
+function presentJob(row) {
+  if (!row) return null
+  return {
+    ...row,
+    skills: csvToArray(row.skillsCsv),
+    photos: csvToArray(row.photosCsv),
+    files: filesFromJson(row.filesJson),
+  }
+}
+
+// 发布职位（招聘者/管理员/导师）
+router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR']), validate(postJobSchema), async (req, res) => {
+    const { title, description, skills = [], startTime, endTime, duration, benefits, photos = [], files = [], contact } = req.body
     const skillsCsv = Array.isArray(skills) ? skills.join(',') : (skills || '')
     const photosCsv = Array.isArray(photos) ? photos.join(',') : (photos || '')
     const job = await prisma.jobPosting.create({
@@ -38,33 +67,43 @@ router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN']), validate(post
             duration,
             benefits,
             photosCsv,
+            filesJson: filesToJson(files),
             contact
         }
     })
-    res.json({ ok: true, job: { ...job, skills, photos } })
+    res.json({ ok: true, job: presentJob(job) })
 })
 
 // 职位列表
 router.get('/', async (_req, res) => {
     const rows = await prisma.jobPosting.findMany({ orderBy: { createdAt: 'desc' } })
-    const list = rows.map(j => ({
-        ...j,
-        skills: j.skillsCsv ? j.skillsCsv.split(',').filter(Boolean) : [],
-        photos: j.photosCsv ? j.photosCsv.split(',').filter(Boolean) : []
-    }))
+    const list = rows.map(presentJob)
     res.json({ ok: true, list })
+})
+
+router.get('/mine', requireAuth, async (req, res) => {
+    const rows = await prisma.jobPosting.findMany({
+        where: { recruiterId: req.user.id },
+        orderBy: { createdAt: 'desc' }
+    })
+    res.json({ ok: true, list: rows.map(presentJob) })
 })
 
 // 职位详情
 router.get('/:id', async (req, res) => {
     const jobRaw = await prisma.jobPosting.findUnique({ where: { id: req.params.id } })
     if (!jobRaw) return res.status(404).json({ ok: false, msg: '职位不存在' })
-    const job = {
-        ...jobRaw,
-        skills: jobRaw.skillsCsv ? jobRaw.skillsCsv.split(',').filter(Boolean) : [],
-        photos: jobRaw.photosCsv ? jobRaw.photosCsv.split(',').filter(Boolean) : []
+    res.json({ ok: true, job: presentJob(jobRaw) })
+})
+
+router.delete('/:id', requireAuth, async (req, res) => {
+    const job = await prisma.jobPosting.findUnique({ where: { id: req.params.id } })
+    if (!job) return res.status(404).json({ ok: false, msg: '职位不存在' })
+    if (req.user.role !== 'ADMIN' && job.recruiterId !== req.user.id) {
+        return res.status(403).json({ ok: false, msg: '无权限' })
     }
-    res.json({ ok: true, job })
+    await prisma.jobPosting.delete({ where: { id: job.id } })
+    res.json({ ok: true })
 })
 
 // 申请职位（学生）

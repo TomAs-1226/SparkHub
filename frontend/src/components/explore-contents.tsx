@@ -6,13 +6,37 @@ import CoverflowRow, { ContentItem } from "@/components/coverflow-row";
 type Cat = "resources" | "opportunities" | "courses";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
 
+type ApiContent = {
+    id?: string | number;
+    _id?: string;
+    slug?: string;
+    uuid?: string;
+    title?: string | null;
+    name?: string | null;
+    summary?: string | null;
+    description?: string | null;
+    details?: string | null;
+    content?: string | null;
+    overview?: string | null;
+    body?: string | null;
+    eventDescription?: string | null;
+    courseDescription?: string | null;
+    image?: string | null;
+    cover?: string | null;
+    thumbnail?: string | null;
+    banner?: string | null;
+    tag?: string | null;
+    category?: string | null;
+    type?: string | null;
+};
+
 function stableId(cat: Cat, title: string, idx: number) {
     // deterministic slug-ish id: cat-titlehash-idx
     const base = (title || "untitled").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     return `${cat}-${base || "item"}-${idx}`;
 }
 
-function pickSummary(obj: any): string | null {
+function pickSummary(obj: ApiContent | null | undefined): string | null {
     return (
         obj?.summary ??
         obj?.description ??
@@ -33,21 +57,25 @@ async function fetchCategory(cat: Cat): Promise<ContentItem[]> {
         try {
             const res = await fetch(url, { cache: "no-store" });
             if (!res.ok) continue;
-            const data = await res.json();
-            const arr = (data?.items || data?.data || data || []) as any[];
-            if (Array.isArray(arr) && arr.length) {
-                return arr.slice(0, 10).map((it, idx) => ({
-                    id:
-                        it.id ??
-                        it._id ??
-                        it.slug ??
-                        it.uuid ??
-                        stableId(cat, it.title ?? it.name ?? "", idx),
-                    title: it.title ?? it.name ?? "Untitled",
-                    summary: pickSummary(it),
-                    image: it.image ?? it.cover ?? it.thumbnail ?? it.banner ?? null,
-                    tag: it.tag ?? it.category ?? it.type ?? null,
-                }));
+            const data = (await res.json()) as unknown;
+            const payload = (data as { items?: unknown; data?: unknown; list?: unknown }) ?? {};
+            const arrCandidate = (payload.items ?? payload.data ?? payload.list ?? data) as unknown;
+            if (Array.isArray(arrCandidate) && arrCandidate.length) {
+                return arrCandidate.slice(0, 10).map((raw, idx) => {
+                    const it = raw as ApiContent;
+                    return {
+                        id:
+                            it.id ??
+                            it._id ??
+                            it.slug ??
+                            it.uuid ??
+                            stableId(cat, it.title ?? it.name ?? "", idx),
+                        title: it.title ?? it.name ?? "Untitled",
+                        summary: pickSummary(it),
+                        image: it.image ?? it.cover ?? it.thumbnail ?? it.banner ?? null,
+                        tag: it.tag ?? it.category ?? it.type ?? null,
+                    } satisfies ContentItem;
+                });
             }
         } catch {
             // ignore and try next url

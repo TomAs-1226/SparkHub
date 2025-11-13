@@ -3,13 +3,52 @@ const router = express.Router()
 const { prisma } = require('../prisma')
 const { requireAuth, requireRole } = require('../middleware/auth')
 
-// 创建活动（管理员）
-router.post('/', requireAuth, requireRole(['ADMIN']), async (req, res) => {
-    const { title, location, startsAt, endsAt, capacity, description } = req.body
-    const event = await prisma.event.create({
-        data: { title, location, startsAt: new Date(startsAt), endsAt: new Date(endsAt), capacity, description }
-    })
-    res.json({ ok: true, event })
+const creatorSelect = { select: { id: true, name: true, avatarUrl: true } }
+
+function parseAttachments(raw) {
+    if (!raw) return []
+    try {
+        const parsed = JSON.parse(raw)
+        return Array.isArray(parsed) ? parsed : []
+    } catch {
+        return []
+    }
+}
+
+function toJson(arr) {
+    if (!Array.isArray(arr)) return '[]'
+    return JSON.stringify(arr.filter((item) => typeof item === 'string' && item.trim().length > 0))
+}
+
+function presentEvent(event) {
+    if (!event) return null
+    const { attachmentsJson, ...rest } = event
+    return { ...rest, attachments: parseAttachments(attachmentsJson) }
+}
+
+// 创建活动（管理员 & 导师）
+router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR']), async (req, res) => {
+    const { title, location, startsAt, endsAt, capacity, description, coverUrl, attachments = [] } = req.body
+    try {
+        const event = await prisma.event.create({
+            data: {
+                title,
+                location,
+                startsAt: new Date(startsAt),
+                endsAt: new Date(endsAt),
+                capacity: capacity ? Number(capacity) : null,
+                description,
+                coverUrl: coverUrl || null,
+                attachmentsJson: toJson(attachments),
+                creatorId: req.user.id,
+            },
+            include: { creator: creatorSelect },
+        })
+        res.json({ ok: true, event: presentEvent(event) })
+    } catch (err) {
+        console.error('CREATE EVENT ERROR', err)
+        res.status(500).json({ ok: false, msg: '活动创建失败' })
+    }
 })
 
 // 活动列表
@@ -17,20 +56,73 @@ router.get('/', async (req, res) => {
     const limitRaw = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit
     const take = limitRaw ? parseInt(limitRaw, 10) : null
     const query = {
-        orderBy: { startsAt: 'asc' }
+        orderBy: { startsAt: 'asc' },
+        include: { creator: creatorSelect },
     }
     if (take && Number.isFinite(take) && take > 0) {
         query.take = take
     }
-    const list = await prisma.event.findMany(query)
-    res.json({ ok: true, list })
+    const rows = await prisma.event.findMany(query)
+    res.json({ ok: true, list: rows.map(presentEvent) })
+})
+
+// 我发布的活动
+router.get('/mine', requireAuth, async (req, res) => {
+    const rows = await prisma.event.findMany({
+        where: { creatorId: req.user.id },
+        orderBy: { createdAt: 'desc' },
+        include: { creator: creatorSelect },
+    })
+    res.json({ ok: true, list: rows.map(presentEvent) })
 })
 
 // 活动详情
 router.get('/:id', async (req, res) => {
-    const event = await prisma.event.findUnique({ where: { id: req.params.id } })
+    const event = await prisma.event.findUnique({
+        where: { id: req.params.id },
+        include: { creator: creatorSelect },
+    })
     if (!event) return res.status(404).json({ ok: false, msg: '活动不存在' })
-    res.json({ ok: true, event })
+    res.json({ ok: true, event: presentEvent(event) })
+})
+
+// 更新活动
+router.patch('/:id', requireAuth, async (req, res) => {
+    const existing = await prisma.event.findUnique({ where: { id: req.params.id } })
+    if (!existing) return res.status(404).json({ ok: false, msg: '活动不存在' })
+    if (req.user.role !== 'ADMIN' && existing.creatorId !== req.user.id) {
+        return res.status(403).json({ ok: false, msg: '无权限' })
+    }
+    const data = {}
+    const editableFields = ['title', 'location', 'description', 'coverUrl']
+    editableFields.forEach((field) => {
+        if (typeof req.body[field] === 'string') data[field] = req.body[field]
+    })
+    if (req.body.startsAt) data.startsAt = new Date(req.body.startsAt)
+    if (req.body.endsAt) data.endsAt = new Date(req.body.endsAt)
+    if (typeof req.body.capacity !== 'undefined') {
+        data.capacity = req.body.capacity === null ? null : Number(req.body.capacity)
+    }
+    if (Array.isArray(req.body.attachments)) {
+        data.attachmentsJson = toJson(req.body.attachments)
+    }
+    const event = await prisma.event.update({
+        where: { id: existing.id },
+        data,
+        include: { creator: creatorSelect },
+    })
+    res.json({ ok: true, event: presentEvent(event) })
+})
+
+// 删除活动
+router.delete('/:id', requireAuth, async (req, res) => {
+    const existing = await prisma.event.findUnique({ where: { id: req.params.id } })
+    if (!existing) return res.status(404).json({ ok: false, msg: '活动不存在' })
+    if (req.user.role !== 'ADMIN' && existing.creatorId !== req.user.id) {
+        return res.status(403).json({ ok: false, msg: '无权限' })
+    }
+    await prisma.event.delete({ where: { id: existing.id } })
+    res.json({ ok: true })
 })
 
 // 报名活动

@@ -1,7 +1,10 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import type { CSSProperties } from "react";
 import {
     motion,
     AnimatePresence,
@@ -48,6 +51,7 @@ const gradients = [
 ];
 
 const spring: FMTransition = { type: "spring", mass: 0.6, stiffness: 280, damping: 24 };
+const book3dStyle: CSSProperties = { perspective: 1200, transformStyle: "preserve-3d" };
 
 function dimsFor(viewW: number) {
     if (viewW < 640)   return { baseW: 118, baseH: 186, gap: 8,  maxExpandedCap: Math.floor(viewW * 0.92) };
@@ -150,7 +154,7 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
     }, [currentIdx, canPrev, canNext, isAnyExpanded, all]);
 
     // drag snaps one item
-    const onDragEnd = (_: any, info: PanInfo) => {
+    const onDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         const { offset, velocity } = info;
         if (offset.x < -DRAG_PX || velocity.x < -DRAG_VEL) move(1);
         else if (offset.x > DRAG_PX || velocity.x > DRAG_VEL) move(-1);
@@ -181,10 +185,10 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
     const insideRef = useRef(false);
 
     const stopAuto = () => { if (autoTimer.current) { clearInterval(autoTimer.current); autoTimer.current = null; } };
-    const startAuto = (dir: -1 | 1) => {
+    const startAuto = useCallback((dir: -1 | 1) => {
         if (autoTimer.current) return;
         autoTimer.current = setInterval(() => move(dir), EDGE_HOVER_RATE);
-    };
+    }, [move]);
 
     useEffect(() => {
         const onDocMove = (ev: MouseEvent) => {
@@ -202,7 +206,7 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
             document.removeEventListener("mousemove", onDocMove);
             stopAuto();
         };
-    }, [move]);
+    }, [move, startAuto]);
 
     const onMouseEnterContainer = () => { insideRef.current = true; };
     const onMouseLeaveContainer = () => { insideRef.current = false; stopAuto(); };
@@ -295,7 +299,9 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                                 const h = isExpanded ? Math.max(baseH, Math.max(expandedH, MIN_EXPANDED_H)) : baseH;
 
                                 const dist = i - currentIdx;
-                                const pushX = isExpanded ? 0 : Math.max(-PUSH_MAG_BASE, Math.min(PUSH_MAG_BASE, dist * (PUSH_MAG_BASE * Math.max(0.6, Math.min(1, 1))))); // simplified
+                                const pushX = isExpanded
+                                    ? 0
+                                    : Math.max(-PUSH_MAG_BASE, Math.min(PUSH_MAG_BASE, dist * (PUSH_MAG_BASE * tightnessFactor)));
 
                                 const z = isExpanded ? 1000 : 100 - Math.abs(dist);
                                 const gradient = gradients[i % gradients.length];
@@ -369,7 +375,7 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                                                         animate={{ opacity: 1 }}
                                                         exit={{ opacity: 0 }}
                                                         className="absolute inset-0 z-[1050] rounded-[18px] overflow-hidden"
-                                                        style={{ perspective: 1200, transformStyle: "preserve-3d" as any }}
+                                                        style={book3dStyle}
                                                         onClick={(e) => { e.stopPropagation(); }}
                                                     >
                                                         <div className="absolute inset-0 rounded-[18px] bg-neutral-50" />

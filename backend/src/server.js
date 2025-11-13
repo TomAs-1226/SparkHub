@@ -35,6 +35,7 @@ app.use('/quizzes', require('./routes/quizzes'))
 app.use('/availability', require('./routes/availability'))
 app.use('/feedback', require('./routes/feedback'))
 app.use('/resources', require('./routes/resources'))
+app.use('/admin', require('./routes/admin'))
 app.use('/upload', require('./routes/upload'))
 
 // Health
@@ -49,4 +50,9 @@ app.use((err, _req, res, _next) => {
 
 // Start
 const PORT = process.env.PORT || 3000
-app.listen(PORT, () => console.log(`API ready: http://localhost:${PORT}`))
+
+if (require.main === module) {
+    app.listen(PORT, () => console.log(`API ready: http://localhost:${PORT}`))
+}
+
+module.exports = app

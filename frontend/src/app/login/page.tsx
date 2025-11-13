@@ -30,8 +30,9 @@ export default function LoginPage() {
             if (!res.ok || !data?.ok) throw new Error(data?.msg || `Login failed (${res.status})`);
             setToken(data.token);
             router.push("/dashboard");
-        } catch (e: any) {
-            setErr(e.message || "Unable to login.");
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Unable to login.";
+            setErr(message);
         } finally {
             setLoading(false);
         }

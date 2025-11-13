@@ -25,3 +25,7 @@ __pycache__/
 *.pyc
 venv/
 .venv/
+
+# Prisma SQLite artifacts
+backend/prisma/*.db
+backend/prisma/**/*.db
