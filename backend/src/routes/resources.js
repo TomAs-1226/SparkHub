@@ -26,8 +26,8 @@ function presentResource(resource) {
     return resource
 }
 
-// 新增资源（管理员/导师）
-router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR']), async (req, res) => {
+// 新增资源（管理员/导师/创作者）
+router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR', 'CREATOR']), async (req, res) => {
     const { title, kind, url, summary, details, imageUrl, attachmentUrl } = req.body
     const resource = await runResourceQuery('create', {
         data: {

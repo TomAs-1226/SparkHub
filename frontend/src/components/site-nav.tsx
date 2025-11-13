@@ -14,6 +14,7 @@ const NAV_LINKS = [
     { href: "/tutors", label: "Find a tutor" },
     { href: "/resources", label: "Resources" },
     { href: "/opportunities", label: "Opportunities" },
+    { href: "/contact", label: "Contact" },
 ];
 
 export default function Navbar() {

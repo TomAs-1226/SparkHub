@@ -42,8 +42,8 @@ function presentEvent(event) {
     return { ...rest, attachments: parseAttachments(attachmentsJson) }
 }
 
-// 创建活动（管理员 & 导师）
-router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR']), async (req, res) => {
+// 创建活动（管理员 & 导师 & 创作者）
+router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR', 'CREATOR']), async (req, res) => {
     const { title, location, startsAt, endsAt, capacity, description, coverUrl, attachments = [] } = req.body
     try {
         const event = await runEventQuery('create', {

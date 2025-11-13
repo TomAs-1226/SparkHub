@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
 import { getToken, clearToken } from "@/lib/auth";
 
@@ -12,6 +12,27 @@ export type CurrentUser = {
     avatarUrl?: string | null;
 };
 
+type CurrentUserState = { user: CurrentUser | null; loading: boolean };
+
+const store: { state: CurrentUserState; listeners: Set<() => void> } = {
+    state: { user: null, loading: true },
+    listeners: new Set(),
+};
+
+function setState(patch: Partial<CurrentUserState>) {
+    store.state = { ...store.state, ...patch };
+    store.listeners.forEach((listener) => listener());
+}
+
+function subscribe(listener: () => void) {
+    store.listeners.add(listener);
+    return () => store.listeners.delete(listener);
+}
+
+function getSnapshot() {
+    return store.state;
+}
+
 async function safeJson(res: Response) {
     try {
         return await res.json();
@@ -20,39 +41,54 @@ async function safeJson(res: Response) {
     }
 }
 
-export function useCurrentUser() {
-    const [user, setUser] = useState<CurrentUser | null>(null);
-    const [loading, setLoading] = useState(true);
+async function fetchCurrentUser(): Promise<CurrentUser | null> {
+    if (!getToken()) {
+        setState({ user: null, loading: false });
+        return null;
+    }
+    setState({ loading: true });
+    try {
+        const res = await api("/auth/me", { method: "GET" });
+        if (!res.ok) {
+            if (res.status === 401) clearToken();
+            setState({ user: null });
+            return null;
+        }
+        const json = await safeJson(res);
+        if (json?.ok) {
+            const nextUser = (json.user || null) as CurrentUser | null;
+            setState({ user: nextUser });
+            return nextUser;
+        }
+        setState({ user: null });
+        return null;
+    } catch {
+        setState({ user: null });
+        return null;
+    } finally {
+        setState({ loading: false });
+    }
+}
 
-    const refresh = useCallback(async () => {
-        if (!getToken()) {
-            setUser(null);
-            setLoading(false);
-            return null;
-        }
-        setLoading(true);
-        try {
-            const res = await api("/auth/me", { method: "GET" });
-            if (!res.ok) {
-                if (res.status === 401) clearToken();
-                setUser(null);
-                return null;
-            }
-            const json = await safeJson(res);
-            if (json?.ok) {
-                setUser(json.user);
-                return json.user as CurrentUser;
-            }
-            setUser(null);
-            return null;
-        } finally {
-            setLoading(false);
-        }
+export async function refreshCurrentUserStore() {
+    return fetchCurrentUser();
+}
+
+let bootstrapped = false;
+
+export function useCurrentUser() {
+    const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+    const refresh = useCallback(async () => refreshCurrentUserStore(), []);
+    const setUser = useCallback((next: CurrentUser | null) => {
+        setState({ user: next, loading: false });
     }, []);
 
     useEffect(() => {
-        refresh();
+        if (!bootstrapped) {
+            bootstrapped = true;
+            refresh();
+        }
     }, [refresh]);
 
-    return { user, loading, refresh, setUser } as const;
+    return { user: snapshot.user, loading: snapshot.loading, refresh, setUser } as const;
 }

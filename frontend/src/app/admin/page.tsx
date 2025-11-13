@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BookMarked, Briefcase, CalendarDays, Trash2, UsersRound } from "lucide-react";
+import { BookMarked, Briefcase, CalendarDays, MessageSquare, Trash2, UsersRound } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { api } from "@/lib/api";
@@ -49,6 +49,14 @@ interface AdminUser {
     role: string;
     avatarUrl?: string | null;
     createdAt?: string;
+}
+
+interface FeedbackRow {
+    id: string;
+    topic: string;
+    content: string;
+    createdAt?: string;
+    userId?: string | null;
 }
 
 const EVENT_DEFAULT = {
@@ -97,6 +105,7 @@ export default function AdminPage() {
     const [resources, setResources] = useState<ResourceRow[]>([]);
     const [jobs, setJobs] = useState<JobRow[]>([]);
     const [users, setUsers] = useState<AdminUser[]>([]);
+    const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
 
     const [eventForm, setEventForm] = useState(EVENT_DEFAULT);
     const [resourceForm, setResourceForm] = useState(RESOURCE_DEFAULT);
@@ -105,24 +114,33 @@ export default function AdminPage() {
     const [saving, setSaving] = useState({ event: false, resource: false, job: false });
 
     const loadAll = useCallback(async () => {
-        const [eventRes, resourceRes, jobRes, usersRes] = await Promise.all([
+        const [eventRes, resourceRes, jobRes, usersRes, feedbackRes] = await Promise.all([
             api("/events", { method: "GET" }),
             api("/resources", { method: "GET" }),
             api("/jobs", { method: "GET" }),
             api("/admin/users", { method: "GET" }),
+            api("/feedback", { method: "GET" }),
         ]);
-        const [eventJson, resourceJson, jobJson, usersJson] = await Promise.all([
+        const [eventJson, resourceJson, jobJson, usersJson, feedbackJson] = await Promise.all([
             safeJson(eventRes),
             safeJson(resourceRes),
             safeJson(jobRes),
             safeJson(usersRes),
+            safeJson(feedbackRes),
         ]);
         return {
             events: Array.isArray(eventJson?.list) ? eventJson.list : [],
             resources: Array.isArray(resourceJson?.list) ? resourceJson.list : [],
             jobs: Array.isArray(jobJson?.list) ? jobJson.list : [],
             users: Array.isArray(usersJson?.list) ? usersJson.list : [],
-        } as { events: EventRow[]; resources: ResourceRow[]; jobs: JobRow[]; users: AdminUser[] };
+            feedback: Array.isArray(feedbackJson?.list) ? feedbackJson.list : [],
+        } as {
+            events: EventRow[];
+            resources: ResourceRow[];
+            jobs: JobRow[];
+            users: AdminUser[];
+            feedback: FeedbackRow[];
+        };
     }, []);
 
     useEffect(() => {
@@ -144,6 +162,7 @@ export default function AdminPage() {
             setResources(data.resources);
             setJobs(data.jobs);
             setUsers(data.users);
+            setFeedback(data.feedback);
             setBootstrap(false);
         })();
         return () => {
@@ -157,8 +176,9 @@ export default function AdminPage() {
             { label: "Resources", value: resources.length },
             { label: "Opportunities", value: jobs.length },
             { label: "Users", value: users.length },
+            { label: "Contacts", value: feedback.length },
         ],
-        [events.length, resources.length, jobs.length, users.length],
+        [events.length, resources.length, jobs.length, users.length, feedback.length],
     );
 
     const refreshAll = useCallback(async () => {
@@ -167,6 +187,7 @@ export default function AdminPage() {
         setResources(data.resources);
         setJobs(data.jobs);
         setUsers(data.users);
+        setFeedback(data.feedback);
     }, [loadAll]);
 
     async function handleCreateEvent(e: React.FormEvent<HTMLFormElement>) {
@@ -661,6 +682,37 @@ export default function AdminPage() {
                         </AdminCard>
                     </div>
 
+                    <div className="mt-10">
+                        <AdminCard title="Contact inbox" icon={<MessageSquare className="h-5 w-5" />}>
+                            <div className="space-y-3">
+                                {feedback.length === 0 ? (
+                                    <p className="text-sm text-slate-500">No messages yet. Reach out from the contact page to populate this inbox.</p>
+                                ) : (
+                                    feedback.slice(0, 5).map((entry) => (
+                                        <div key={entry.id} className="rounded-2xl border border-slate-100 bg-[#F9FBFF] p-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-slate-900">{entry.topic || "General"}</p>
+                                                    <p className="text-xs text-slate-500">{formatTimestamp(entry.createdAt)}</p>
+                                                </div>
+                                                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${entry.userId ? "bg-[#E7F6F3] text-[#2D8F80]" : "bg-slate-100 text-slate-600"}`}>
+                                                    {entry.userId ? "Member" : "Guest"}
+                                                </span>
+                                            </div>
+                                            <p className="mt-2 text-sm text-slate-600 whitespace-pre-line">{entry.content}</p>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+                                <p>Every submission is stored via the /feedback API.</p>
+                                <Link href="/contact" className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-700 hover:bg-white">
+                                    Contact page
+                                </Link>
+                            </div>
+                        </AdminCard>
+                    </div>
+
                     <div className="mt-10 space-y-6">
                         <DataCard
                             title="Live events"
@@ -902,4 +954,11 @@ function formatShort(iso?: string | null) {
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return "Date TBD";
     return date.toLocaleDateString();
+}
+
+function formatTimestamp(iso?: string | null) {
+    if (!iso) return "Just now";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "Just now";
+    return date.toLocaleString();
 }

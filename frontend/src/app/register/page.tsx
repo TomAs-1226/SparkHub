@@ -9,12 +9,14 @@ import { Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 import PasswordStrength from "@/components/password-strength";
+import { refreshCurrentUserStore } from "@/hooks/use-current-user";
 
-type AccountType = "learner" | "creator" | "admin";
+type AccountType = "learner" | "creator" | "tutor" | "admin";
 
 const ACCOUNT_OPTIONS: { label: string; value: AccountType; helper: string }[] = [
     { label: "Learner", value: "learner", helper: "Access mentoring, resources, and courses" },
     { label: "Creator", value: "creator", helper: "Publish learning experiences and content" },
+    { label: "Tutor", value: "tutor", helper: "Host sessions and manage events" },
     { label: "Admin", value: "admin", helper: "Manage events, resources, and opportunities" },
 ];
 
@@ -40,7 +42,11 @@ export default function RegisterPage() {
             const data = await safeJson(res);
             if (!res.ok || data?.ok === false) throw new Error(data?.msg || `Register failed (${res.status})`);
 
-            if (data?.token) { setToken(data.token); router.push("/dashboard"); }
+            if (data?.token) {
+                setToken(data.token);
+                await refreshCurrentUserStore();
+                router.push("/dashboard");
+            }
             else { router.push("/login"); }
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : "Unable to register.";
