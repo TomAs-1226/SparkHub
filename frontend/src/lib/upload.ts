@@ -10,6 +10,8 @@ export async function uploadAsset(file: File): Promise<string> {
         method: "POST",
         headers,
         body: form,
+        cache: "no-store",
+        credentials: "include",
     });
     const json = await safeJson(res);
     if (!res.ok || json?.ok !== true || !json?.path) {

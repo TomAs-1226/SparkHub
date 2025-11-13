@@ -138,7 +138,7 @@ function ProfileMenu({
     onSignOut,
     showTutorWorkspace,
 }: {
-    user: { name?: string | null; avatarUrl?: string | null; role: string };
+    user: { id: string; name?: string | null; avatarUrl?: string | null; role: string };
     onSignOut: () => void;
     showTutorWorkspace: boolean;
 }) {

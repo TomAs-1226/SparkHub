@@ -31,6 +31,7 @@ model User {
   certificates     Certificate[]
   tutorAvailabilities TutorAvailability[]
   auditLogs        AuditLog[]
+  resetTokens     PasswordResetToken[]
 }
 
 model Course {
@@ -186,6 +187,16 @@ model Resource {
   attachmentUrl String?
   author    User?    @relation("ResourceAuthor", fields: [authorId], references: [id])
   authorId  String?
+  createdAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
   createdAt DateTime @default(now())
 }
 model Quiz {

@@ -102,6 +102,7 @@ export default function AdminPage() {
     const [denied, setDenied] = useState(false);
     const [bootstrap, setBootstrap] = useState(true);
     const [statusMsg, setStatusMsg] = useState<string | null>(null);
+    const [loadAlert, setLoadAlert] = useState<string | null>(null);
 
     const [events, setEvents] = useState<EventRow[]>([]);
     const [resources, setResources] = useState<ResourceRow[]>([]);
@@ -116,33 +117,47 @@ export default function AdminPage() {
     const [saving, setSaving] = useState({ event: false, resource: false, job: false });
 
     const loadAll = useCallback(async () => {
-        const [eventRes, resourceRes, jobRes, usersRes, feedbackRes] = await Promise.all([
-            api("/events", { method: "GET" }),
-            api("/resources", { method: "GET" }),
-            api("/jobs", { method: "GET" }),
-            api("/admin/users", { method: "GET" }),
-            api("/feedback", { method: "GET" }),
-        ]);
-        const [eventJson, resourceJson, jobJson, usersJson, feedbackJson] = await Promise.all([
-            safeJson(eventRes),
-            safeJson(resourceRes),
-            safeJson(jobRes),
-            safeJson(usersRes),
-            safeJson(feedbackRes),
-        ]);
-        return {
-            events: Array.isArray(eventJson?.list) ? eventJson.list : [],
-            resources: Array.isArray(resourceJson?.list) ? resourceJson.list : [],
-            jobs: Array.isArray(jobJson?.list) ? jobJson.list : [],
-            users: Array.isArray(usersJson?.list) ? usersJson.list : [],
-            feedback: Array.isArray(feedbackJson?.list) ? feedbackJson.list : [],
-        } as {
-            events: EventRow[];
-            resources: ResourceRow[];
-            jobs: JobRow[];
-            users: AdminUser[];
-            feedback: FeedbackRow[];
+        const endpoints = [
+            { key: "events", path: "/events" },
+            { key: "resources", path: "/resources" },
+            { key: "jobs", path: "/jobs" },
+            { key: "users", path: "/admin/users" },
+            { key: "feedback", path: "/feedback" },
+        ] as const;
+
+        const settled = await Promise.all(
+            endpoints.map(async (endpoint) => {
+                try {
+                    const res = await api(endpoint.path, { method: "GET" });
+                    const json = await safeJson(res);
+                    if (!res.ok) throw new Error(json?.msg || `Failed to load ${endpoint.key}`);
+                    return { key: endpoint.key, list: Array.isArray(json?.list) ? json.list : [] };
+                } catch (err) {
+                    return {
+                        key: endpoint.key,
+                        error: err instanceof Error ? err.message : `Failed to load ${endpoint.key}`,
+                    };
+                }
+            }),
+        );
+
+        const next = {
+            events: [] as EventRow[],
+            resources: [] as ResourceRow[],
+            jobs: [] as JobRow[],
+            users: [] as AdminUser[],
+            feedback: [] as FeedbackRow[],
         };
+        const errors: string[] = [];
+        settled.forEach((result) => {
+            if ("error" in result) {
+                errors.push(result.error);
+                return;
+            }
+            // @ts-expect-error dynamic assignment
+            next[result.key] = result.list;
+        });
+        return { data: next, errors };
     }, []);
 
     useEffect(() => {
@@ -158,13 +173,14 @@ export default function AdminPage() {
         }
         let active = true;
         (async () => {
-            const data = await loadAll();
+            const { data, errors } = await loadAll();
             if (!active) return;
             setEvents(data.events);
             setResources(data.resources);
             setJobs(data.jobs);
             setUsers(data.users);
             setFeedback(data.feedback);
+            setLoadAlert(errors.length ? `Some sections failed to load: ${errors.join(" · ")}` : null);
             setBootstrap(false);
         })();
         return () => {
@@ -184,12 +200,13 @@ export default function AdminPage() {
     );
 
     const refreshAll = useCallback(async () => {
-        const data = await loadAll();
+        const { data, errors } = await loadAll();
         setEvents(data.events);
         setResources(data.resources);
         setJobs(data.jobs);
         setUsers(data.users);
         setFeedback(data.feedback);
+        setLoadAlert(errors.length ? `Some sections failed to load: ${errors.join(" · ")}` : null);
     }, [loadAll]);
 
     async function handleCreateEvent(e: React.FormEvent<HTMLFormElement>) {
@@ -391,6 +408,12 @@ export default function AdminPage() {
                             </div>
                         ))}
                     </div>
+
+                    {loadAlert && (
+                        <div className="mt-6 rounded-2xl border border-[#FAD7A0] bg-[#FEF4E6] px-4 py-3 text-sm text-[#9C6200]">
+                            {loadAlert}
+                        </div>
+                    )}
 
                     {statusMsg && (
                         <div className="mt-6 rounded-2xl border border-[#CFE3E0] bg-[#E9F7F5] px-4 py-3 text-sm text-slate-700">

@@ -6,6 +6,17 @@ const { isUnknownFieldError, cloneArgs } = require('../utils/prisma-compat')
 
 const creatorSelect = { select: { id: true, name: true, avatarUrl: true } }
 
+function cleanString(value) {
+    if (typeof value !== 'string') return ''
+    return value.trim()
+}
+
+function parseDateInput(value) {
+    if (!value) return null
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? null : date
+}
+
 async function runEventQuery(method, args, allowCreator = true) {
     const baseArgs = cloneArgs(args)
     const finalArgs = allowCreator
@@ -44,17 +55,31 @@ function presentEvent(event) {
 
 // 创建活动（管理员 & 导师 & 创作者）
 router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR', 'CREATOR']), async (req, res) => {
-    const { title, location, startsAt, endsAt, capacity, description, coverUrl, attachments = [] } = req.body
+    const title = cleanString(req.body.title)
+    const location = cleanString(req.body.location)
+    const startsAt = parseDateInput(req.body.startsAt)
+    const endsAt = parseDateInput(req.body.endsAt)
+    const capacity = req.body.capacity ? Number(req.body.capacity) : null
+    const description = cleanString(req.body.description || '')
+    const coverUrl = cleanString(req.body.coverUrl || '') || null
+    const attachments = Array.isArray(req.body.attachments) ? req.body.attachments : []
+
+    if (!title || !location || !startsAt || !endsAt) {
+        return res.status(400).json({ ok: false, msg: 'Title, location, and valid start/end times are required.' })
+    }
+    if (!(endsAt > startsAt)) {
+        return res.status(400).json({ ok: false, msg: 'End time must be after start time.' })
+    }
     try {
         const event = await runEventQuery('create', {
             data: {
                 title,
                 location,
-                startsAt: new Date(startsAt),
-                endsAt: new Date(endsAt),
-                capacity: capacity ? Number(capacity) : null,
+                startsAt,
+                endsAt,
+                capacity,
                 description,
-                coverUrl: coverUrl || null,
+                coverUrl,
                 attachmentsJson: toJson(attachments),
                 creatorId: req.user.id,
             }
@@ -111,8 +136,16 @@ router.patch('/:id', requireAuth, async (req, res) => {
     editableFields.forEach((field) => {
         if (typeof req.body[field] === 'string') data[field] = req.body[field]
     })
-    if (req.body.startsAt) data.startsAt = new Date(req.body.startsAt)
-    if (req.body.endsAt) data.endsAt = new Date(req.body.endsAt)
+    if (req.body.startsAt) {
+        const parsed = parseDateInput(req.body.startsAt)
+        if (!parsed) return res.status(400).json({ ok: false, msg: 'Invalid start time' })
+        data.startsAt = parsed
+    }
+    if (req.body.endsAt) {
+        const parsedEnd = parseDateInput(req.body.endsAt)
+        if (!parsedEnd) return res.status(400).json({ ok: false, msg: 'Invalid end time' })
+        data.endsAt = parsedEnd
+    }
     if (typeof req.body.capacity !== 'undefined') {
         data.capacity = req.body.capacity === null ? null : Number(req.body.capacity)
     }
