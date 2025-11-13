@@ -90,6 +90,15 @@ export default function TutorWorkspacePage() {
         }
     }
 
+    async function handleUpload(file: File, onSuccess: (url: string) => void) {
+        try {
+            const url = await uploadAsset(file);
+            onSuccess(url);
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Upload failed. Please try again.");
+        }
+    }
+
     async function handleCreateResource(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setSaving((s) => ({ ...s, resource: true }));
@@ -240,8 +249,7 @@ export default function TutorWorkspacePage() {
                                         className="mt-1 w-full text-xs"
                                         onChange={async (e) => {
                                             if (e.target.files && e.target.files[0]) {
-                                                const url = await uploadAsset(e.target.files[0]);
-                                                setEventForm((prev) => ({ ...prev, coverUrl: url }));
+                                                await handleUpload(e.target.files[0], (url) => setEventForm((prev) => ({ ...prev, coverUrl: url })));
                                                 e.target.value = "";
                                             }
                                         }}
@@ -255,8 +263,13 @@ export default function TutorWorkspacePage() {
                                         className="mt-1 w-full text-xs"
                                         onChange={async (e) => {
                                             if (e.target.files && e.target.files.length > 0) {
-                                                const uploads = await Promise.all(Array.from(e.target.files).map((file) => uploadAsset(file)));
-                                                setEventForm((prev) => ({ ...prev, attachments: [...prev.attachments, ...uploads] }));
+                                                const uploads: string[] = [];
+                                                for (const file of Array.from(e.target.files)) {
+                                                    await handleUpload(file, (url) => uploads.push(url));
+                                                }
+                                                if (uploads.length > 0) {
+                                                    setEventForm((prev) => ({ ...prev, attachments: [...prev.attachments, ...uploads] }));
+                                                }
                                                 e.target.value = "";
                                             }
                                         }}
@@ -304,8 +317,10 @@ export default function TutorWorkspacePage() {
                                         className="mt-1 w-full text-xs"
                                         onChange={async (e) => {
                                             if (e.target.files && e.target.files[0]) {
-                                                const url = await uploadAsset(e.target.files[0]);
-                                                setResourceForm((prev) => ({ ...prev, url, primaryFileName: e.target.files?.[0]?.name || prev.primaryFileName }));
+                                                const file = e.target.files[0];
+                                                await handleUpload(file, (url) =>
+                                                    setResourceForm((prev) => ({ ...prev, url, primaryFileName: file.name || prev.primaryFileName }))
+                                                );
                                                 e.target.value = "";
                                             }
                                         }}
@@ -337,8 +352,7 @@ export default function TutorWorkspacePage() {
                                         className="mt-1 w-full text-xs"
                                         onChange={async (e) => {
                                             if (e.target.files && e.target.files[0]) {
-                                                const url = await uploadAsset(e.target.files[0]);
-                                                setResourceForm((prev) => ({ ...prev, imageUrl: url }));
+                                                await handleUpload(e.target.files[0], (url) => setResourceForm((prev) => ({ ...prev, imageUrl: url })));
                                                 e.target.value = "";
                                             }
                                         }}
@@ -351,8 +365,7 @@ export default function TutorWorkspacePage() {
                                         className="mt-1 w-full text-xs"
                                         onChange={async (e) => {
                                             if (e.target.files && e.target.files[0]) {
-                                                const url = await uploadAsset(e.target.files[0]);
-                                                setResourceForm((prev) => ({ ...prev, attachmentUrl: url }));
+                                                await handleUpload(e.target.files[0], (url) => setResourceForm((prev) => ({ ...prev, attachmentUrl: url })));
                                                 e.target.value = "";
                                             }
                                         }}
@@ -403,8 +416,13 @@ export default function TutorWorkspacePage() {
                                         className="mt-1 w-full text-xs"
                                         onChange={async (e) => {
                                             if (e.target.files) {
-                                                const uploads = await Promise.all(Array.from(e.target.files).map((file) => uploadAsset(file)));
-                                                setJobForm((prev) => ({ ...prev, photos: [...prev.photos, ...uploads] }));
+                                                const uploads: string[] = [];
+                                                for (const file of Array.from(e.target.files)) {
+                                                    await handleUpload(file, (url) => uploads.push(url));
+                                                }
+                                                if (uploads.length > 0) {
+                                                    setJobForm((prev) => ({ ...prev, photos: [...prev.photos, ...uploads] }));
+                                                }
                                                 e.target.value = "";
                                             }
                                         }}
@@ -418,8 +436,13 @@ export default function TutorWorkspacePage() {
                                         className="mt-1 w-full text-xs"
                                         onChange={async (e) => {
                                             if (e.target.files) {
-                                                const uploads = await Promise.all(Array.from(e.target.files).map((file) => uploadAsset(file)));
-                                                setJobForm((prev) => ({ ...prev, files: [...prev.files, ...uploads] }));
+                                                const uploads: string[] = [];
+                                                for (const file of Array.from(e.target.files)) {
+                                                    await handleUpload(file, (url) => uploads.push(url));
+                                                }
+                                                if (uploads.length > 0) {
+                                                    setJobForm((prev) => ({ ...prev, files: [...prev.files, ...uploads] }));
+                                                }
                                                 e.target.value = "";
                                             }
                                         }}

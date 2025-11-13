@@ -24,6 +24,24 @@ router.get('/mine', requireAuth, requireRole(['CREATOR', 'ADMIN']), async (req, 
     res.json({ ok: true, list })
 })
 
+// 我的选课列表
+router.get('/enrollments/mine', requireAuth, async (req, res) => {
+    const rows = await prisma.enrollment.findMany({
+        where: { userId: req.user.id },
+        include: { course: true },
+        orderBy: { createdAt: 'desc' }
+    })
+    res.json({
+        ok: true,
+        list: rows.map((row) => ({
+            id: row.id,
+            courseId: row.courseId,
+            createdAt: row.createdAt,
+            course: row.course
+        }))
+    })
+})
+
 // 课程详情
 router.get('/:id', async (req, res) => {
     const course = await prisma.course.findUnique({ where: { id: req.params.id }, include: { lessons: true } })
@@ -72,6 +90,7 @@ router.post('/:id/enroll', requireAuth, async (req, res) => {
     })
     res.json({ ok: true, enrollment })
 })
+
 
 // 课程留言（与课程管理者互动）
 router.post('/:id/messages', requireAuth, async (req, res) => {

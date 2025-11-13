@@ -96,14 +96,14 @@ export default function ResourceDetailPage({ params }: { params: { id: string } 
                                         Upload pending
                                     </span>
                                 )}
-                                {resource.attachmentUrl && resource.attachmentUrl !== resource.url && (
+                                {resource.attachmentUrl && (
                                     <a
                                         href={resource.attachmentUrl}
                                         target="_blank"
                                         rel="noreferrer"
                                         className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 text-[#2B2B2B]"
                                     >
-                                        <Download className="h-4 w-4" /> Download attachment
+                                        <Download className="h-4 w-4" /> {fileName(resource.attachmentUrl)}
                                     </a>
                                 )}
                             </div>
@@ -113,4 +113,9 @@ export default function ResourceDetailPage({ params }: { params: { id: string } 
             </main>
         </div>
     );
+}
+
+function fileName(path?: string | null) {
+    if (!path) return "Download";
+    return path.split("/").pop() || "Download";
 }

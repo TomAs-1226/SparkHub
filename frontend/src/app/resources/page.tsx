@@ -15,6 +15,7 @@ interface ResourceItem {
     url?: string | null;
     summary?: string | null;
     attachmentUrl?: string | null;
+    imageUrl?: string | null;
 }
 
 export default function ResourcesPage() {
@@ -112,6 +113,12 @@ export default function ResourcesPage() {
                                     <p className="mt-2 text-sm text-slate-600">
                                         {resource.summary || "No description has been added for this resource."}
                                     </p>
+                                    {resource.imageUrl && (
+                                        <div
+                                            className="mt-3 h-40 w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-50"
+                                            style={{ backgroundImage: `url(${resource.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
+                                        />
+                                    )}
                                     <div className="mt-4 flex flex-wrap gap-3 text-sm">
                                         <Link
                                             href={`/resources/${resource.id}`}
@@ -134,14 +141,14 @@ export default function ResourcesPage() {
                                                 Upload pending
                                             </span>
                                         )}
-                                        {resource.attachmentUrl && resource.attachmentUrl !== resource.url && (
+                                        {resource.attachmentUrl && (
                                             <a
                                                 href={resource.attachmentUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 font-semibold text-[#2B2B2B]"
                                             >
-                                                <Download className="h-4 w-4" /> Download
+                                                <Download className="h-4 w-4" /> {fileName(resource.attachmentUrl)}
                                             </a>
                                         )}
                                     </div>
@@ -153,4 +160,15 @@ export default function ResourcesPage() {
             </main>
         </div>
     );
+}
+
+function fileName(path?: string | null) {
+    if (!path) return "Download";
+    try {
+        const url = new URL(path, typeof window === "undefined" ? "http://localhost" : window.location.origin);
+        const segments = url.pathname.split("/").filter(Boolean);
+        return segments[segments.length - 1] || "Download";
+    } catch {
+        return path.split("/").pop() || "Download";
+    }
 }

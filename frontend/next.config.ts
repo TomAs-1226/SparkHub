@@ -1,6 +1,11 @@
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 
 const nextConfig = {
+    images: {
+        remotePatterns: [
+            { protocol: "https", hostname: "api.dicebear.com", pathname: "/**" },
+        ],
+    },
     async rewrites() {
         return [
             {

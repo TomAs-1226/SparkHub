@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -8,21 +9,51 @@ import SparkHubLogo from "@/components/SparkHubLogo";
 import { clearToken } from "@/lib/auth";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
-const NAV_LINKS = [
+type RoleAwareLink = { href: string; label: string; roles?: string[] };
+
+const NAV_LINKS: RoleAwareLink[] = [
     { href: "/courses", label: "Courses" },
     { href: "/events", label: "Events" },
-    { href: "/tutors", label: "Find a tutor" },
+    { href: "/tutors", label: "Find a tutor", roles: ["ANON", "STUDENT"] },
     { href: "/resources", label: "Resources" },
     { href: "/opportunities", label: "Opportunities" },
     { href: "/contact", label: "Contact" },
 ];
+
+const ROLE_LINKS: Record<string, RoleAwareLink[]> = {
+    ADMIN: [
+        { href: "/admin", label: "Admin" },
+        { href: "/tutors/dashboard", label: "Publishing" },
+    ],
+    TUTOR: [
+        { href: "/tutors/dashboard", label: "Tutor workspace" },
+    ],
+    CREATOR: [
+        { href: "/tutors/dashboard", label: "Creator workspace" },
+    ],
+    STUDENT: [
+        { href: "/courses#catalog", label: "My courses" },
+    ],
+    RECRUITER: [
+        { href: "/opportunities", label: "Hire students" },
+    ],
+};
 
 export default function Navbar() {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const { user, setUser } = useCurrentUser();
     const showTutorWorkspace = !!user && ["TUTOR", "ADMIN", "CREATOR"].includes(user.role);
-    const desktopLinks = useMemo(() => NAV_LINKS, []);
+    const desktopLinks = useMemo(() => {
+        const role = user?.role;
+        const base = NAV_LINKS.filter((link) => {
+            if (!link.roles) return true;
+            if (!role) return link.roles.includes("ANON");
+            return link.roles.includes(role);
+        });
+        if (!role) return base;
+        return [...base, ...(ROLE_LINKS[role] || [])];
+    }, [user?.role]);
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/90 backdrop-blur">
@@ -73,7 +104,7 @@ export default function Navbar() {
                 <div className="border-t border-slate-200/60 bg-white md:hidden">
                     <div className="mx-auto max-w-[1180px] px-4 py-3 sm:px-6 lg:px-8">
                         <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-                            {NAV_LINKS.map((link) => (
+                            {desktopLinks.map((link) => (
                                 <Link key={link.href} href={link.href} className="hover:text-slate-900">
                                     {link.label}
                                 </Link>
@@ -128,7 +159,9 @@ function ProfileMenu({
         return () => document.removeEventListener("click", handleClick);
     }, [open]);
 
-    const avatar = user.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name || "SparkHub")}`;
+    const avatar = user.avatarUrl
+        ? `${user.avatarUrl}${user.avatarUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(user.id)}`
+        : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name || "SparkHub")}`;
     const go = (href: string) => {
         setOpen(false);
         router.push(href);
@@ -150,10 +183,12 @@ function ProfileMenu({
             >
                 <span className="hidden text-sm font-semibold text-slate-700 lg:inline">{user.name || "Account"}</span>
                 <span
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100"
-                    style={{ backgroundImage: `url(${avatar})`, backgroundSize: "cover" }}
+                    key={avatar}
+                    className="inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-slate-100"
                     aria-label="Profile menu"
-                />
+                >
+                    <Image src={avatar} alt="Profile avatar" width={36} height={36} className="h-full w-full object-cover" />
+                </span>
             </button>
             {open && (
                 <div className="absolute right-0 mt-3 w-56 rounded-2xl border border-slate-100 bg-white/95 p-3 text-sm shadow-2xl">
@@ -172,6 +207,7 @@ function ProfileMenu({
                     </div>
                     <div className="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
                         Signed in as <span className="font-semibold text-slate-800">{user.name || "SparkHub"}</span>
+                        <div className="text-[11px] uppercase tracking-wide text-slate-400">Role: {user.role}</div>
                     </div>
                     <button
                         type="button"

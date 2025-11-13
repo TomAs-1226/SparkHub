@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { CalendarDays, Clock4, MapPin, NotebookPen } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { api } from "@/lib/api";
 
 interface EventRow {
     id: string;
@@ -20,6 +22,9 @@ export default function EventsPage() {
     const [events, setEvents] = useState<EventRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [signingUp, setSigningUp] = useState(false);
+    const [signupStatus, setSignupStatus] = useState<string | null>(null);
+    const { user } = useCurrentUser();
 
     useEffect(() => {
         let active = true;
@@ -128,18 +133,34 @@ export default function EventsPage() {
                                     <DetailRow icon={<MapPin className="h-4 w-4" />} label="Location">
                                         {selected.location || "Location to be announced"}
                                     </DetailRow>
-                                    <div className="rounded-2xl border border-dashed border-[#CFE3E0] bg-white/80 p-4 text-sm text-slate-600">
-                                        <p className="font-semibold text-slate-900">Need more info?</p>
-                                        <p>
-                                            Open the detailed view to contact hosts, view notes, and sign up using the SparkHub backend.
-                                        </p>
-                                        <Link
-                                            href={`/events/${selected.id}`}
-                                            className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white"
-                                        >
-                                            <NotebookPen className="h-4 w-4" /> Open detail view
-                                        </Link>
-                                    </div>
+                                    <RoleCallout
+                                        event={selected}
+                                        role={user?.role}
+                                        userId={user?.id}
+                                        signingUp={signingUp}
+                                        signupStatus={signupStatus}
+                                        onSignup={async () => {
+                                            if (!user) {
+                                                window.location.href = "/login?from=/events";
+                                                return;
+                                            }
+                                            setSigningUp(true);
+                                            setSignupStatus(null);
+                                            try {
+                                                const res = await api(`/events/${selected.id}/signup`, {
+                                                    method: "POST",
+                                                    body: JSON.stringify({ note: "Saved from events catalog" }),
+                                                });
+                                                const json = await res.json();
+                                                if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to RSVP");
+                                                setSignupStatus("You’re signed up for this event.");
+                                            } catch (err) {
+                                                setSignupStatus(err instanceof Error ? err.message : "Unable to RSVP.");
+                                            } finally {
+                                                setSigningUp(false);
+                                            }
+                                        }}
+                                    />
                                 </div>
                             ) : loading ? (
                                 <div className="h-64 animate-pulse rounded-2xl bg-slate-100" />
@@ -152,6 +173,115 @@ export default function EventsPage() {
             </main>
         </div>
     );
+}
+
+function RoleCallout({
+    role,
+    event,
+    userId,
+    signingUp,
+    signupStatus,
+    onSignup,
+}: {
+    role?: string;
+    event: EventRow;
+    userId?: string;
+    signingUp: boolean;
+    signupStatus: string | null;
+    onSignup: () => Promise<void>;
+}) {
+    const calendarUrl = createCalendarLink(event);
+    if (role === "ADMIN") {
+        return (
+            <div className="rounded-2xl border border-dashed border-[#CFE3E0] bg-white/80 p-4 text-sm text-slate-600">
+                <p className="font-semibold text-slate-900">Admin shortcut</p>
+                <p>Jump into the control panel to edit, duplicate, or delete this event.</p>
+                <Link
+                    href={`/admin?event=${event.id}`}
+                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white"
+                >
+                    Manage in admin
+                </Link>
+            </div>
+        );
+    }
+
+    if (role && ["TUTOR", "CREATOR"].includes(role)) {
+        return (
+            <div className="rounded-2xl border border-dashed border-[#CFE3E0] bg-white/80 p-4 text-sm text-slate-600">
+                <p className="font-semibold text-slate-900">Need to host something similar?</p>
+                <p>Head to the publishing workspace to duplicate this format or attach new assets.</p>
+                <Link
+                    href="/tutors/dashboard"
+                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white"
+                >
+                    Open workspace
+                </Link>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-3 rounded-2xl border border-dashed border-[#CFE3E0] bg-white/80 p-4 text-sm text-slate-600">
+            <div>
+                <p className="font-semibold text-slate-900">Add to your calendar</p>
+                <p>Save the invite and optionally RSVP so hosts know you’re coming.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+                <a
+                    href={calendarUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B]"
+                >
+                    Add to calendar
+                </a>
+                {userId ? (
+                    <button
+                        type="button"
+                        onClick={onSignup}
+                        disabled={signingUp}
+                        className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
+                    >
+                        {signingUp ? "Saving..." : "Save me a seat"}
+                    </button>
+                ) : (
+                    <Link
+                        href="/login?from=/events"
+                        className="inline-flex items-center gap-2 rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white"
+                    >
+                        Sign in to RSVP
+                    </Link>
+                )}
+            </div>
+            {signupStatus && <p className="text-xs text-[#2D8F80]">{signupStatus}</p>}
+            <Link
+                href={`/events/${event.id}`}
+                className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#2D8F80]"
+            >
+                <NotebookPen className="h-3.5 w-3.5" /> View full details
+            </Link>
+        </div>
+    );
+}
+
+function createCalendarLink(event: EventRow) {
+    const base = new URL("https://calendar.google.com/calendar/render");
+    base.searchParams.set("action", "TEMPLATE");
+    base.searchParams.set("text", event.title);
+    const start = toCalendarStamp(event.startsAt);
+    const end = toCalendarStamp(event.endsAt || event.startsAt);
+    if (start) base.searchParams.set("dates", `${start}/${end || start}`);
+    if (event.description) base.searchParams.set("details", event.description);
+    if (event.location) base.searchParams.set("location", event.location);
+    return base.toString();
+}
+
+function toCalendarStamp(iso?: string | null) {
+    if (!iso) return null;
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
 }
 
 function formatEventDate(iso?: string | null) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays, CheckCircle2, UserPlus } from "lucide-react";
 import SiteNav from "@/components/site-nav";
@@ -25,6 +26,10 @@ const calendarWeeks = [
 ];
 
 export default function MentorsPage() {
+    const [selectedDay, setSelectedDay] = useState<string | null>(null);
+    const [format, setFormat] = useState("Video call");
+    const [notes, setNotes] = useState("");
+
     return (
         <div className="min-h-dvh bg-[#F5F7FB] text-slate-800">
             <SiteNav />
@@ -92,7 +97,9 @@ export default function MentorsPage() {
                             <div className="flex items-center justify-between text-sm font-semibold text-slate-700">
                                 <div>
                                     <p>September 2025</p>
-                                    <p className="text-xs text-slate-500">Pick a slot to confirm</p>
+                                    <p className="text-xs text-slate-500">
+                                        {selectedDay ? `You selected September ${selectedDay}` : "Pick a slot to confirm"}
+                                    </p>
                                 </div>
                                 <div className="flex gap-2 text-xs">
                                     <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[#2D8F80]">
@@ -118,11 +125,16 @@ export default function MentorsPage() {
                                         {calendarWeeks.map((week, idx) => (
                                             <tr key={idx} className="divide-x divide-slate-50">
                                                 {week.map((day) => (
-                                                    <td key={`${idx}-${day}`} className="h-14 align-middle">
+                                                    <td key={`${idx}-${day || idx}`} className="h-14 align-middle">
                                                         {day && (
                                                             <button
                                                                 type="button"
-                                                                className="mx-auto flex h-10 w-10 items-center justify-center rounded-2xl bg-[#E6F5F3] text-sm font-semibold text-[#2D8F80] shadow-sm"
+                                                                onClick={() => setSelectedDay(day)}
+                                                                className={`mx-auto flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-semibold shadow-sm transition ${
+                                                                    selectedDay === day
+                                                                        ? "bg-[#2D8F80] text-white"
+                                                                        : "bg-[#E6F5F3] text-[#2D8F80]"
+                                                                }`}
                                                             >
                                                                 {day}
                                                             </button>
@@ -141,11 +153,17 @@ export default function MentorsPage() {
                                         {field.type === "textarea" ? (
                                             <textarea
                                                 placeholder={field.placeholder}
+                                                value={notes}
+                                                onChange={(e) => setNotes(e.target.value)}
                                                 className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700"
                                                 rows={4}
                                             />
                                         ) : field.type === "select" ? (
-                                            <select className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
+                                            <select
+                                                className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700"
+                                                value={format}
+                                                onChange={(e) => setFormat(e.target.value)}
+                                            >
                                                 {field.options?.map((option) => (
                                                     <option key={option}>{option}</option>
                                                 ))}
@@ -162,7 +180,9 @@ export default function MentorsPage() {
                             </div>
                             <div className="mt-4 rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-600">
                                 <p className="font-semibold text-slate-900">Session summary</p>
-                                <p className="mt-1">1 hour · Creative prototyping · Mentor: Taylor</p>
+                                <p className="mt-1">
+                                    {selectedDay ? `Sept ${selectedDay}` : "Select a date"} · {format} · Notes: {notes || "Add context"}
+                                </p>
                             </div>
                             <button
                                 type="button"
