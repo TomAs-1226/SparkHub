@@ -5,6 +5,7 @@ const { requireAuth, requireRole, maybeAuth } = require('../middleware/auth')
 
 const COURSE_MANAGER_ROLES = ['CREATOR', 'ADMIN', 'TUTOR']
 const MATERIAL_VISIBILITY = new Set(['PUBLIC', 'ENROLLED', 'STAFF'])
+const ENROLLMENT_STATUSES = new Set(['PENDING', 'APPROVED', 'REJECTED'])
 const DEFAULT_FORM_QUESTIONS = [
     {
         id: 'intent',
@@ -80,6 +81,55 @@ function normalizeAnswers(rawAnswers, questions) {
     return answers
 }
 
+function normalizeStringList(input) {
+    if (Array.isArray(input)) {
+        return input
+            .map((item) => (typeof item === 'string' ? item : String(item ?? '')))
+            .map((item) => item.trim())
+            .filter(Boolean)
+    }
+    if (typeof input === 'string') {
+        return input
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean)
+    }
+    return []
+}
+
+function parseJsonArray(raw, fallback = []) {
+    try {
+        const parsed = JSON.parse(raw || '[]')
+        return Array.isArray(parsed) ? parsed : fallback
+    } catch {
+        return fallback
+    }
+}
+
+function formatEnrollment(row) {
+    return {
+        id: row.id,
+        status: row.status,
+        joinedViaCode: row.joinedViaCode,
+        createdAt: row.createdAt,
+        adminNote: row.adminNote || null,
+        formAnswers: safeJsonParse(row.formAnswersJson, {}),
+        user: row.user
+            ? {
+                  id: row.user.id,
+                  name: row.user.name,
+                  email: row.user.email,
+                  role: row.user.role,
+                  avatarUrl: row.user.avatarUrl,
+              }
+            : null,
+    }
+}
+
+function isApprovedEnrollment(enrollment) {
+    return Boolean(enrollment && enrollment.status === 'APPROVED')
+}
+
 function canManageCourse(course, user) {
     if (!course || !user) return false
     if (user.role === 'ADMIN') return true
@@ -109,12 +159,76 @@ async function buildCoursePayload(courseId, viewer) {
         })
     }
     const canManage = canManageCourse(course, viewer)
+    const enrollmentApproved = isApprovedEnrollment(enrollment)
+
+    const assignmentInclude = canManage
+        ? {
+              submissions: {
+                  include: { student: { select: { id: true, name: true, avatarUrl: true, email: true } } },
+                  orderBy: { createdAt: 'desc' },
+              },
+          }
+        : viewer && viewer.role === 'STUDENT'
+        ? { submissions: { where: { studentId: viewer.id } } }
+        : undefined
+
+    const assignmentsRaw = await prisma.courseAssignment.findMany({
+        where: { courseId },
+        orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }],
+        include: assignmentInclude,
+    })
+
+    const assignments = assignmentsRaw.map((assignment) => {
+        const resources = parseJsonArray(assignment.resourcesJson, [])
+        const attachments = parseJsonArray(assignment.attachmentsJson, [])
+        const base = {
+            id: assignment.id,
+            title: assignment.title,
+            description: assignment.description,
+            dueAt: assignment.dueAt,
+            resources,
+            attachments,
+            creatorId: assignment.creatorId,
+            createdAt: assignment.createdAt,
+            stats: canManage ? { submissions: assignment.submissions ? assignment.submissions.length : 0 } : undefined,
+        }
+        if (canManage && Array.isArray(assignment.submissions)) {
+            base.submissions = assignment.submissions.map((submission) => ({
+                id: submission.id,
+                status: submission.status,
+                grade: submission.grade,
+                feedback: submission.feedback,
+                attachmentUrl: submission.attachmentUrl,
+                submittedAt: submission.createdAt,
+                student: submission.student
+                    ? {
+                          id: submission.student.id,
+                          name: submission.student.name,
+                          email: submission.student.email,
+                          avatarUrl: submission.student.avatarUrl,
+                      }
+                    : null,
+            }))
+        } else if (Array.isArray(assignment.submissions) && assignment.submissions[0]) {
+            const submission = assignment.submissions[0]
+            base.viewerSubmission = {
+                id: submission.id,
+                status: submission.status,
+                grade: submission.grade,
+                feedback: submission.feedback,
+                attachmentUrl: submission.attachmentUrl,
+                content: submission.content,
+                submittedAt: submission.createdAt,
+            }
+        }
+        return base
+    })
 
     const materials = course.materials.map((material) => {
         const visible =
             material.visibleTo === 'PUBLIC' ||
             canManage ||
-            (material.visibleTo === 'ENROLLED' && Boolean(enrollment))
+            (material.visibleTo === 'ENROLLED' && enrollmentApproved)
         return {
             id: material.id,
             title: material.title,
@@ -132,6 +246,16 @@ async function buildCoursePayload(courseId, viewer) {
         }
     })
 
+    let enrollmentRoster
+    if (canManage) {
+        const rows = await prisma.enrollment.findMany({
+            where: { courseId },
+            orderBy: { createdAt: 'desc' },
+            include: { user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } } },
+        })
+        enrollmentRoster = rows.map(formatEnrollment)
+    }
+
     return {
         ok: true,
         course: {
@@ -145,14 +269,17 @@ async function buildCoursePayload(courseId, viewer) {
             lessons: course.lessons,
             sessions: course.sessions,
             materials,
+            assignments,
             enrollQuestions,
             joinCode: canManage ? course.joinCode : undefined,
         },
         viewer: {
             canManage,
-            isEnrolled: Boolean(enrollment),
+            isEnrolled: enrollmentApproved,
+            enrollmentStatus: enrollment?.status || null,
             formAnswers: enrollment ? safeJsonParse(enrollment.formAnswersJson, {}) : null,
         },
+        enrollments: enrollmentRoster,
     }
 }
 
@@ -250,16 +377,26 @@ router.post('/join-code', requireAuth, async (req, res) => {
     if (!Object.keys(answers).length) {
         answers.intent = 'Joined via code'
     }
-    const enrollment = await prisma.enrollment.upsert({
+    const existing = await prisma.enrollment.findUnique({
         where: { userId_courseId: { userId: req.user.id, courseId: course.id } },
-        create: {
-            userId: req.user.id,
-            courseId: course.id,
-            formAnswersJson: JSON.stringify(answers),
-            joinedViaCode: true,
-        },
-        update: { formAnswersJson: JSON.stringify(answers), joinedViaCode: true },
     })
+    const payloadData = {
+        formAnswersJson: JSON.stringify(answers),
+        joinedViaCode: true,
+        status: 'APPROVED',
+    }
+    let enrollment
+    if (existing) {
+        enrollment = await prisma.enrollment.update({ where: { id: existing.id }, data: payloadData })
+    } else {
+        enrollment = await prisma.enrollment.create({
+            data: {
+                userId: req.user.id,
+                courseId: course.id,
+                ...payloadData,
+            },
+        })
+    }
     const payload = await buildCoursePayload(course.id, req.user)
     res.json({ ok: true, enrollment, ...payload })
 })
@@ -388,6 +525,146 @@ router.get('/:id/materials', requireAuth, async (req, res) => {
     res.json({ ok: true, list: payload.course.materials })
 })
 
+router.post('/:id/assignments', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {
+    const { course, error } = await ensureCourseForManager(req.params.id, req.user)
+    if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
+    const { title, description, dueAt, resources = [], attachments = [] } = req.body || {}
+    if (!title || typeof title !== 'string') {
+        return res.status(400).json({ ok: false, msg: '需要作业标题' })
+    }
+    const assignment = await prisma.courseAssignment.create({
+        data: {
+            courseId: course.id,
+            title: title.trim(),
+            description,
+            dueAt: dueAt ? new Date(dueAt) : null,
+            resourcesJson: JSON.stringify(normalizeStringList(resources)),
+            attachmentsJson: JSON.stringify(normalizeStringList(attachments)),
+            creatorId: req.user.id,
+        },
+    })
+    const payload = await buildCoursePayload(course.id, req.user)
+    res.json({ ok: true, assignment, ...payload })
+})
+
+router.patch('/:id/assignments/:assignmentId', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {
+    const { course, error } = await ensureCourseForManager(req.params.id, req.user)
+    if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
+    const assignment = await prisma.courseAssignment.findUnique({ where: { id: req.params.assignmentId } })
+    if (!assignment || assignment.courseId !== course.id) {
+        return res.status(404).json({ ok: false, msg: '作业不存在' })
+    }
+    const data = { ...req.body }
+    if (req.body.resources) {
+        data.resourcesJson = JSON.stringify(normalizeStringList(req.body.resources))
+        delete data.resources
+    }
+    if (req.body.attachments) {
+        data.attachmentsJson = JSON.stringify(normalizeStringList(req.body.attachments))
+        delete data.attachments
+    }
+    if (req.body.dueAt) {
+        data.dueAt = new Date(req.body.dueAt)
+    }
+    const updated = await prisma.courseAssignment.update({ where: { id: assignment.id }, data })
+    const payload = await buildCoursePayload(course.id, req.user)
+    res.json({ ok: true, assignment: updated, ...payload })
+})
+
+router.delete('/:id/assignments/:assignmentId', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {
+    const { course, error } = await ensureCourseForManager(req.params.id, req.user)
+    if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
+    const assignment = await prisma.courseAssignment.findUnique({ where: { id: req.params.assignmentId } })
+    if (!assignment || assignment.courseId !== course.id) {
+        return res.status(404).json({ ok: false, msg: '作业不存在' })
+    }
+    await prisma.courseAssignment.delete({ where: { id: assignment.id } })
+    const payload = await buildCoursePayload(course.id, req.user)
+    res.json({ ok: true, ...payload })
+})
+
+router.get('/:id/assignments/:assignmentId/submissions', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {
+    const { course, error } = await ensureCourseForManager(req.params.id, req.user)
+    if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
+    const assignment = await prisma.courseAssignment.findUnique({ where: { id: req.params.assignmentId } })
+    if (!assignment || assignment.courseId !== course.id) {
+        return res.status(404).json({ ok: false, msg: '作业不存在' })
+    }
+    const list = await prisma.courseSubmission.findMany({
+        where: { assignmentId: assignment.id },
+        orderBy: { createdAt: 'desc' },
+        include: { student: { select: { id: true, name: true, email: true, avatarUrl: true } } },
+    })
+    res.json({
+        ok: true,
+        list: list.map((submission) => ({
+            id: submission.id,
+            status: submission.status,
+            grade: submission.grade,
+            feedback: submission.feedback,
+            attachmentUrl: submission.attachmentUrl,
+            content: submission.content,
+            createdAt: submission.createdAt,
+            student: submission.student,
+        })),
+    })
+})
+
+router.patch(
+    '/:id/assignments/:assignmentId/submissions/:submissionId',
+    requireAuth,
+    requireRole(COURSE_MANAGER_ROLES),
+    async (req, res) => {
+        const { course, error } = await ensureCourseForManager(req.params.id, req.user)
+        if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
+        const assignment = await prisma.courseAssignment.findUnique({ where: { id: req.params.assignmentId } })
+        if (!assignment || assignment.courseId !== course.id) {
+            return res.status(404).json({ ok: false, msg: '作业不存在' })
+        }
+        const submission = await prisma.courseSubmission.findUnique({ where: { id: req.params.submissionId } })
+        if (!submission || submission.assignmentId !== assignment.id) {
+            return res.status(404).json({ ok: false, msg: '提交不存在' })
+        }
+        const data = {}
+        if (typeof req.body.status === 'string') data.status = req.body.status.toUpperCase()
+        if (typeof req.body.grade === 'string') data.grade = req.body.grade
+        if (typeof req.body.feedback === 'string') data.feedback = req.body.feedback
+        const updated = await prisma.courseSubmission.update({ where: { id: submission.id }, data })
+        res.json({ ok: true, submission: updated })
+    }
+)
+
+router.post('/:id/assignments/:assignmentId/submissions', requireAuth, async (req, res) => {
+    if (req.user.role !== 'STUDENT') {
+        return res.status(403).json({ ok: false, msg: '只有学生可以提交作业' })
+    }
+    const course = await prisma.course.findUnique({ where: { id: req.params.id } })
+    if (!course || !course.isPublished) return res.status(404).json({ ok: false, msg: '课程不存在' })
+    const enrollment = await prisma.enrollment.findUnique({
+        where: { userId_courseId: { userId: req.user.id, courseId: course.id } },
+    })
+    if (!isApprovedEnrollment(enrollment)) {
+        return res.status(403).json({ ok: false, msg: '请等待管理员批准' })
+    }
+    const assignment = await prisma.courseAssignment.findUnique({ where: { id: req.params.assignmentId } })
+    if (!assignment || assignment.courseId !== course.id) {
+        return res.status(404).json({ ok: false, msg: '作业不存在' })
+    }
+    const { content = '', attachmentUrl } = req.body || {}
+    const submission = await prisma.courseSubmission.upsert({
+        where: { assignmentId_studentId: { assignmentId: assignment.id, studentId: req.user.id } },
+        create: {
+            assignmentId: assignment.id,
+            studentId: req.user.id,
+            content,
+            attachmentUrl,
+        },
+        update: { content, attachmentUrl, status: 'SUBMITTED' },
+    })
+    const payload = await buildCoursePayload(course.id, req.user)
+    res.json({ ok: true, submission, ...payload })
+})
+
 // 课程报名表单
 router.post('/:id/enroll', requireAuth, async (req, res) => {
     if (req.user.role !== 'STUDENT') return res.status(403).json({ ok: false, msg: '只有学生才能报名' })
@@ -402,18 +679,58 @@ router.post('/:id/enroll', requireAuth, async (req, res) => {
     if (!Object.keys(answers).length) {
         return res.status(400).json({ ok: false, msg: '请填写报名表单' })
     }
-    const enrollment = await prisma.enrollment.upsert({
+    const existing = await prisma.enrollment.findUnique({
         where: { userId_courseId: { userId: req.user.id, courseId: course.id } },
-        create: {
-            userId: req.user.id,
-            courseId: course.id,
-            formAnswersJson: JSON.stringify(answers),
-            joinedViaCode: Boolean(joinCodeInput),
-        },
-        update: { formAnswersJson: JSON.stringify(answers), joinedViaCode: Boolean(joinCodeInput) },
     })
+    const baseData = {
+        formAnswersJson: JSON.stringify(answers),
+        joinedViaCode: Boolean(joinCodeInput),
+    }
+    if (joinCodeInput) {
+        baseData.status = 'APPROVED'
+    } else if (!existing) {
+        baseData.status = 'PENDING'
+    }
+    let enrollment
+    if (existing) {
+        enrollment = await prisma.enrollment.update({ where: { id: existing.id }, data: baseData })
+    } else {
+        enrollment = await prisma.enrollment.create({
+            data: {
+                userId: req.user.id,
+                courseId: course.id,
+                status: baseData.status || 'PENDING',
+                ...baseData,
+            },
+        })
+    }
     const payload = await buildCoursePayload(course.id, req.user)
     res.json({ ok: true, enrollment, ...payload })
+})
+
+router.patch('/:id/enrollments/:enrollmentId', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {
+    const { course, error } = await ensureCourseForManager(req.params.id, req.user)
+    if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
+    const { status, adminNote } = req.body || {}
+    if (status && !ENROLLMENT_STATUSES.has(String(status).toUpperCase())) {
+        return res.status(400).json({ ok: false, msg: '无效的状态' })
+    }
+    const enrollment = await prisma.enrollment.findUnique({
+        where: { id: req.params.enrollmentId },
+        include: { user: { select: { id: true, name: true, email: true, role: true, avatarUrl: true } } },
+    })
+    if (!enrollment || enrollment.courseId !== course.id) {
+        return res.status(404).json({ ok: false, msg: '报名不存在' })
+    }
+    const updated = await prisma.enrollment.update({
+        where: { id: enrollment.id },
+        data: {
+            status: status ? String(status).toUpperCase() : enrollment.status,
+            adminNote,
+        },
+    })
+    const payload = await buildCoursePayload(course.id, req.user)
+    res.json({ ok: true, enrollment: formatEnrollment({ ...updated, user: enrollment.user }), ...payload })
 })
 
 // 课程留言（与课程管理者互动）

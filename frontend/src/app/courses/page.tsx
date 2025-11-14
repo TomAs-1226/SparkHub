@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -77,6 +77,28 @@ interface CourseMaterial {
     uploader?: { id: string; name?: string | null; avatarUrl?: string | null } | null;
 }
 
+interface AssignmentSubmission {
+    id: string;
+    status: string;
+    grade?: string | null;
+    feedback?: string | null;
+    attachmentUrl?: string | null;
+    content?: string | null;
+    submittedAt?: string | null;
+}
+
+interface CourseAssignment {
+    id: string;
+    title: string;
+    description?: string | null;
+    dueAt?: string | null;
+    resources?: string[];
+    attachments?: string[];
+    stats?: { submissions: number };
+    submissions?: AssignmentSubmission[];
+    viewerSubmission?: AssignmentSubmission;
+}
+
 interface EnrollQuestion {
     id: string;
     label: string;
@@ -88,6 +110,7 @@ interface CourseDetail extends LiveCourse {
     lessons: CourseLesson[];
     sessions: CourseSession[];
     materials: CourseMaterial[];
+    assignments: CourseAssignment[];
     enrollQuestions: EnrollQuestion[];
     joinCode?: string;
 }
@@ -95,6 +118,26 @@ interface CourseDetail extends LiveCourse {
 interface ViewerState {
     canManage: boolean;
     isEnrolled: boolean;
+    enrollmentStatus?: string | null;
+    formAnswers?: Record<string, string> | null;
+}
+
+interface EnrollmentRecord {
+    id: string;
+    status: string;
+    joinedViaCode: boolean;
+    createdAt: string;
+    adminNote?: string | null;
+    formAnswers: Record<string, string>;
+    user?: { id: string; name?: string | null; email?: string | null; role?: string | null; avatarUrl?: string | null } | null;
+}
+
+interface EnrollmentListItem {
+    id: string;
+    courseId: string;
+    status: string;
+    createdAt: string;
+    course?: LiveCourse;
 }
 
 export default function CoursesPage() {
@@ -103,6 +146,7 @@ export default function CoursesPage() {
     const [catalog, setCatalog] = useState<LiveCourse[]>([]);
     const [loadingCatalog, setLoadingCatalog] = useState(true);
     const [enrolledIds, setEnrolledIds] = useState<string[]>([]);
+    const [myEnrollments, setMyEnrollments] = useState<EnrollmentListItem[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [detail, setDetail] = useState<CourseDetail | null>(null);
     const [viewer, setViewer] = useState<ViewerState | null>(null);
@@ -110,6 +154,9 @@ export default function CoursesPage() {
     const [drawerBusy, setDrawerBusy] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
     const [codeForm, setCodeForm] = useState({ code: "", note: "", busy: false, msg: "" });
+    const [managerEnrollments, setManagerEnrollments] = useState<EnrollmentRecord[]>([]);
+    const [assignmentDrafts, setAssignmentDrafts] = useState<Record<string, { note: string; attachmentUrl?: string }>>({});
+    const [assignmentBusy, setAssignmentBusy] = useState<string | null>(null);
 
     useEffect(() => {
         let active = true;
@@ -133,6 +180,7 @@ export default function CoursesPage() {
     useEffect(() => {
         if (!user) {
             setEnrolledIds([]);
+            setMyEnrollments([]);
             return;
         }
         let active = true;
@@ -141,10 +189,14 @@ export default function CoursesPage() {
                 const res = await api("/courses/enrollments/mine", { method: "GET" });
                 const json = await res.json();
                 if (!active) return;
-                const ids = Array.isArray(json?.list) ? json.list.map((row: { courseId: string }) => row.courseId) : [];
-                setEnrolledIds(ids);
+                const rows = Array.isArray(json?.list) ? (json.list as EnrollmentListItem[]) : [];
+                setEnrolledIds(rows.map((row) => row.courseId));
+                setMyEnrollments(rows);
             } catch {
-                if (active) setEnrolledIds([]);
+                if (active) {
+                    setEnrolledIds([]);
+                    setMyEnrollments([]);
+                }
             }
         })();
         return () => {
@@ -153,6 +205,76 @@ export default function CoursesPage() {
     }, [user]);
 
     const enrolledSet = useMemo(() => new Set(enrolledIds), [enrolledIds]);
+
+    const refreshMyEnrollments = useCallback(async () => {
+        if (!user) return;
+        try {
+            const res = await api("/courses/enrollments/mine", { method: "GET" });
+            const json = await res.json();
+            const rows = Array.isArray(json?.list) ? (json.list as EnrollmentListItem[]) : [];
+            setEnrolledIds(rows.map((row) => row.courseId));
+            setMyEnrollments(rows);
+        } catch {
+            // keep the previous optimistic state; dashboard will retry on navigation
+        }
+    }, [user]);
+
+    function hydrateAssignmentDrafts(assignments: CourseAssignment[] = []) {
+        const next: Record<string, { note: string; attachmentUrl?: string }> = {};
+        assignments.forEach((assignment) => {
+            next[assignment.id] = {
+                note: assignment.viewerSubmission?.content || "",
+                attachmentUrl: assignment.viewerSubmission?.attachmentUrl || undefined,
+            };
+        });
+        setAssignmentDrafts(next);
+    }
+
+    function handleAssignmentDraftChange(
+        assignmentId: string,
+        patch: Partial<{ note: string; attachmentUrl?: string }>,
+    ) {
+        setAssignmentDrafts((prev) => ({
+            ...prev,
+            [assignmentId]: {
+                note: prev[assignmentId]?.note || "",
+                attachmentUrl: prev[assignmentId]?.attachmentUrl || undefined,
+                ...patch,
+            },
+        }));
+    }
+
+    async function handleAssignmentSubmit(assignmentId: string) {
+        if (!detail || !user) return;
+        if (user.role !== "STUDENT") {
+            setStatus("Switch to a student account to submit work.");
+            return;
+        }
+        if (viewer?.enrollmentStatus !== "APPROVED") {
+            setStatus("Wait for approval before turning in assignments.");
+            return;
+        }
+        const draft = assignmentDrafts[assignmentId] || { note: "", attachmentUrl: undefined };
+        if (!draft.note && !draft.attachmentUrl) {
+            setStatus("Add a reflection or upload a file before submitting.");
+            return;
+        }
+        try {
+            setAssignmentBusy(assignmentId);
+            const res = await api(`/courses/${detail.id}/assignments/${assignmentId}/submissions`, {
+                method: "POST",
+                body: JSON.stringify({ content: draft.note, attachmentUrl: draft.attachmentUrl }),
+            });
+            const json = await res.json();
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to submit assignment");
+            await refreshDetail();
+            setStatus("Submission uploaded!");
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to submit assignment");
+        } finally {
+            setAssignmentBusy(null);
+        }
+    }
 
     async function openCourseDrawer(courseId: string) {
         setSelectedId(courseId);
@@ -165,6 +287,8 @@ export default function CoursesPage() {
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to load course.");
             setDetail(json.course);
             setViewer(json.viewer);
+            setManagerEnrollments(Array.isArray(json?.enrollments) ? (json.enrollments as EnrollmentRecord[]) : []);
+            hydrateAssignmentDrafts(Array.isArray(json.course?.assignments) ? (json.course.assignments as CourseAssignment[]) : []);
         } catch (err) {
             setStatus(err instanceof Error ? err.message : "Unable to load course");
         } finally {
@@ -198,78 +322,20 @@ export default function CoursesPage() {
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to enroll");
             setDetail(json.course);
             setViewer(json.viewer);
+            setManagerEnrollments(Array.isArray(json?.enrollments) ? (json.enrollments as EnrollmentRecord[]) : []);
+            hydrateAssignmentDrafts(Array.isArray(json.course?.assignments) ? (json.course.assignments as CourseAssignment[]) : []);
             setEnrolledIds((prev) => (prev.includes(detail.id) ? prev : [...prev, detail.id]));
-            setStatus("Enrollment submitted. Watch your inbox for confirmation!");
+            await refreshMyEnrollments();
+            const enrollmentStatus = json.viewer?.enrollmentStatus;
+            if (enrollmentStatus === "PENDING") {
+                setStatus("Thanks! Your application is pending admin approval.");
+            } else if (json.viewer?.isEnrolled) {
+                setStatus("You're in! Resources have been unlocked.");
+            } else {
+                setStatus("Enrollment submitted. Watch your inbox for confirmation!");
+            }
         } catch (err) {
             setStatus(err instanceof Error ? err.message : "Unable to submit enrollment");
-        } finally {
-            setDrawerBusy(false);
-        }
-    }
-
-    async function handleSessionCreate(data: { startsAt: string; endsAt?: string; location?: string; mode?: string; note?: string }) {
-        if (!detail) return;
-        try {
-            setDrawerBusy(true);
-            const res = await api(`/courses/${detail.id}/sessions`, {
-                method: "POST",
-                body: JSON.stringify(data),
-            });
-            const json = await res.json();
-            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to save session");
-            await refreshDetail();
-        } catch (err) {
-            setStatus(err instanceof Error ? err.message : "Unable to save session");
-        } finally {
-            setDrawerBusy(false);
-        }
-    }
-
-    async function handleLessonCreate(data: { title: string; type: string; body?: string; videoUrl?: string }) {
-        if (!detail) return;
-        try {
-            setDrawerBusy(true);
-            const res = await api(`/courses/${detail.id}/lessons`, {
-                method: "POST",
-                body: JSON.stringify({ ...data, order: detail.lessons.length + 1 }),
-            });
-            const json = await res.json();
-            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to save lesson");
-            await refreshDetail();
-        } catch (err) {
-            setStatus(err instanceof Error ? err.message : "Unable to save lesson");
-        } finally {
-            setDrawerBusy(false);
-        }
-    }
-
-    async function handleMaterialCreate(data: {
-        title: string;
-        description?: string;
-        visibleTo: string;
-        attachmentFile?: File | null;
-        coverFile?: File | null;
-    }) {
-        if (!detail) return;
-        try {
-            setDrawerBusy(true);
-            const body: Record<string, string> = {
-                title: data.title,
-                visibleTo: data.visibleTo,
-            };
-            if (data.description) body.description = data.description;
-            if (data.attachmentFile) {
-                body.attachmentUrl = await uploadAsset(data.attachmentFile);
-            }
-            if (data.coverFile) {
-                body.coverUrl = await uploadAsset(data.coverFile);
-            }
-            const res = await api(`/courses/${detail.id}/materials`, { method: "POST", body: JSON.stringify(body) });
-            const json = await res.json();
-            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to upload material");
-            await refreshDetail();
-        } catch (err) {
-            setStatus(err instanceof Error ? err.message : "Unable to upload material");
         } finally {
             setDrawerBusy(false);
         }
@@ -292,12 +358,14 @@ export default function CoursesPage() {
             if (json.course?.id) {
                 setEnrolledIds((prev) => (prev.includes(json.course.id) ? prev : [...prev, json.course.id]));
             }
+            await refreshMyEnrollments();
         } catch (err) {
             setCodeForm((prev) => ({ ...prev, busy: false, msg: err instanceof Error ? err.message : "Unable to join" }));
         }
     }
 
     const canCreateCourses = !!user && ["ADMIN", "CREATOR", "TUTOR"].includes(user.role);
+    const isStudent = user?.role === "STUDENT";
 
     return (
         <div className="min-h-dvh bg-[#F6F8FC] text-slate-800">
@@ -316,6 +384,22 @@ export default function CoursesPage() {
                                 The SparkHub lesson suite lets tutors publish full courses, attach private materials, and manage meeting dates
                                 while students submit enrollment forms or join via a shareable code.
                             </p>
+                            <div className="mt-6 flex flex-wrap gap-3">
+                                <Link
+                                    href="#catalog"
+                                    className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+                                >
+                                    Browse catalog
+                                </Link>
+                                {canCreateCourses && (
+                                    <Link
+                                        href="/courses/studio"
+                                        className="rounded-full bg-[#2B2E83] px-5 py-2 text-sm font-semibold text-white hover:brightness-110"
+                                    >
+                                        Launch Course Studio
+                                    </Link>
+                                )}
+                            </div>
                         </div>
                         <div className="flex flex-col gap-4 md:w-[320px]">
                             {heroCourses.map((course) => (
@@ -369,6 +453,61 @@ export default function CoursesPage() {
                         </div>
                     </div>
                 </section>
+
+                {isStudent && (
+                    <section className="mt-10 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm" id="my-enrollments">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-2xl font-semibold text-slate-900">My enrollments</h2>
+                                <p className="text-sm text-slate-600">Courses awaiting approval or already unlocked for your account.</p>
+                            </div>
+                            <span className="rounded-full bg-slate-50 px-4 py-1 text-xs font-semibold text-slate-600">
+                                {myEnrollments.length} active
+                            </span>
+                        </div>
+                        {myEnrollments.length === 0 ? (
+                            <p className="mt-4 text-sm text-slate-500">Submit an enrollment form or join with a code to see your roster populate.</p>
+                        ) : (
+                            <div className="mt-6 grid gap-4 md:grid-cols-2">
+                                {myEnrollments.map((enrollment) => {
+                                    const approved = enrollment.status === "APPROVED";
+                                    return (
+                                        <div key={enrollment.id} className="rounded-2xl border border-slate-100 p-4 text-sm shadow-sm">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div>
+                                                    <p className="text-base font-semibold text-slate-900">{enrollment.course?.title || "Course"}</p>
+                                                    <p className="text-xs text-slate-500">
+                                                        Applied {new Date(enrollment.createdAt).toLocaleDateString()} · {enrollment.status}
+                                                    </p>
+                                                </div>
+                                                <span
+                                                    className={`rounded-full px-3 py-1 text-[11px] font-semibold ${
+                                                        approved ? "bg-[#E8F7F4] text-[#1F6C62]" : "bg-[#FFF4E5] text-[#9C6200]"
+                                                    }`}
+                                                >
+                                                    {approved ? "Approved" : "Pending"}
+                                                </span>
+                                            </div>
+                                            <p className="mt-2 line-clamp-2 text-slate-600">{enrollment.course?.summary || "Stay tuned for your facilitator's updates."}</p>
+                                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openCourseDrawer(enrollment.courseId)}
+                                                    className="rounded-full border border-slate-200 px-4 py-1.5 font-semibold text-slate-800 hover:border-slate-300"
+                                                >
+                                                    Open workspace
+                                                </button>
+                                                {!approved && (
+                                                    <span className="rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-700">Waiting for instructor</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </section>
+                )}
 
                 {canCreateCourses && <CourseBuilderCard onCreated={(course) => setCatalog((prev) => [course, ...prev])} />}
 
@@ -455,9 +594,11 @@ export default function CoursesPage() {
                                     isBusy={drawerBusy}
                                     onClose={() => setDrawerOpen(false)}
                                     onEnroll={handleEnrollSubmit}
-                                    onSessionCreate={handleSessionCreate}
-                                    onLessonCreate={handleLessonCreate}
-                                    onMaterialCreate={handleMaterialCreate}
+                                    managerEnrollments={managerEnrollments}
+                                    assignmentDrafts={assignmentDrafts}
+                                    onAssignmentDraftChange={handleAssignmentDraftChange}
+                                    onAssignmentSubmit={handleAssignmentSubmit}
+                                    assignmentBusy={assignmentBusy}
                                 />
                             ) : (
                                 <p className="text-sm text-red-500">{status || "Unable to load course"}</p>
@@ -591,9 +732,11 @@ function CourseDetailPanel({
     isBusy,
     onClose,
     onEnroll,
-    onSessionCreate,
-    onLessonCreate,
-    onMaterialCreate,
+    managerEnrollments,
+    assignmentDrafts,
+    onAssignmentDraftChange,
+    onAssignmentSubmit,
+    assignmentBusy,
 }: {
     detail: CourseDetail;
     viewer: ViewerState | null;
@@ -601,32 +744,37 @@ function CourseDetailPanel({
     isBusy: boolean;
     onClose: () => void;
     onEnroll: (payload: { answers: Record<string, string>; joinCode?: string }) => Promise<void>;
-    onSessionCreate: (data: { startsAt: string; endsAt?: string; location?: string; mode?: string; note?: string }) => Promise<void>;
-    onLessonCreate: (data: { title: string; type: string; body?: string; videoUrl?: string }) => Promise<void>;
-    onMaterialCreate: (data: { title: string; description?: string; visibleTo: string; attachmentFile?: File | null; coverFile?: File | null }) => Promise<void>;
+    managerEnrollments: EnrollmentRecord[];
+    assignmentDrafts: Record<string, { note: string; attachmentUrl?: string }>;
+    onAssignmentDraftChange: (assignmentId: string, patch: Partial<{ note: string; attachmentUrl?: string }>) => void;
+    onAssignmentSubmit: (assignmentId: string) => Promise<void>;
+    assignmentBusy: string | null;
 }) {
-    const [answers, setAnswers] = useState<Record<string, string>>({});
+    const [answers, setAnswers] = useState<Record<string, string>>(viewer?.formAnswers || {});
     const [joinCodeInput, setJoinCodeInput] = useState("");
-    const [sessionDraft, setSessionDraft] = useState({ startsAt: "", endsAt: "", location: "", mode: "Live", note: "" });
-    const [lessonDraft, setLessonDraft] = useState({ title: "", type: "TEXT", body: "", videoUrl: "" });
-    const [materialDraft, setMaterialDraft] = useState<{ title: string; description: string; visibleTo: string; file: File | null; cover: File | null }>({
-        title: "",
-        description: "",
-        visibleTo: "ENROLLED",
-        file: null,
-        cover: null,
-    });
+    const [codeStatus, setCodeStatus] = useState<string | null>(null);
 
     useEffect(() => {
-        setAnswers({});
+        setAnswers(viewer?.formAnswers || {});
         setJoinCodeInput("");
-        setSessionDraft({ startsAt: "", endsAt: "", location: "", mode: "Live", note: "" });
-        setLessonDraft({ title: "", type: "TEXT", body: "", videoUrl: "" });
-        setMaterialDraft({ title: "", description: "", visibleTo: "ENROLLED", file: null, cover: null });
-    }, [detail.id]);
+        setCodeStatus(null);
+    }, [detail.id, viewer?.formAnswers]);
 
     const canManage = viewer?.canManage;
     const isStudent = userRole === "STUDENT";
+    const pendingCount = managerEnrollments.filter((row) => row.status === "PENDING").length;
+    const approved = viewer?.enrollmentStatus === "APPROVED";
+
+    async function handleCopyJoinCode() {
+        if (!detail.joinCode) return;
+        try {
+            await navigator.clipboard.writeText(detail.joinCode);
+            setCodeStatus("Join code copied");
+            window.setTimeout(() => setCodeStatus(null), 2200);
+        } catch {
+            setCodeStatus("Unable to copy code");
+        }
+    }
 
     return (
         <div className="space-y-6">
@@ -635,176 +783,115 @@ function CourseDetailPanel({
                     <p className="text-xs font-semibold uppercase tracking-wider text-[#5C9E95]">Course workspace</p>
                     <h2 className="text-3xl font-semibold text-slate-900">{detail.title}</h2>
                     <p className="mt-2 text-sm text-slate-600">{detail.summary}</p>
+                    {viewer?.enrollmentStatus && (
+                        <span
+                            className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                                approved ? "bg-[#E8F7F4] text-[#1F6C62]" : "bg-[#FFF4E5] text-[#9C6200]"
+                            }`}
+                        >
+                            Status: {viewer.enrollmentStatus}
+                        </span>
+                    )}
                 </div>
                 <button onClick={onClose} className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500">
                     Close
                 </button>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-4">
                 <StatPill icon={<UsersRound className="h-4 w-4" />} label="Lessons" value={detail.lessons.length.toString()} />
                 <StatPill icon={<CalendarDays className="h-4 w-4" />} label="Sessions" value={detail.sessions.length.toString()} />
                 <StatPill icon={<FileText className="h-4 w-4" />} label="Materials" value={detail.materials.length.toString()} />
+                <StatPill icon={<ClipboardList className="h-4 w-4" />} label="Assignments" value={detail.assignments.length.toString()} />
             </div>
-            {canManage && detail.joinCode && (
+            {canManage && (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Shareable join code</p>
-                    <p className="mt-1 text-2xl font-semibold text-slate-900">{detail.joinCode}</p>
-                    <p className="text-xs text-slate-500">Learners can enroll instantly from the courses hub or /courses/join.</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Instructor shortcuts</p>
+                    <p className="mt-1 text-slate-900">
+                        {pendingCount === 0 ? "No pending requests." : `${pendingCount} enrollment${pendingCount > 1 ? "s" : ""} awaiting review.`}
+                    </p>
+                    <Link
+                        href="/courses/studio"
+                        className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#2B2E83] px-4 py-1.5 text-xs font-semibold text-white"
+                    >
+                        Open course studio <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Link>
+                </div>
+            )}
+            {canManage && detail.joinCode && (
+                <div className="rounded-2xl border border-[#2B2E83]/20 bg-[#F5F7FF] p-4 text-sm text-slate-700">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">Shareable join code</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <span className="font-mono text-2xl tracking-[0.3em] text-[#2B2E83]">{detail.joinCode}</span>
+                        <button
+                            type="button"
+                            onClick={handleCopyJoinCode}
+                            className="rounded-full border border-[#2B2E83] px-3 py-1 text-xs font-semibold text-[#2B2E83]"
+                        >
+                            Copy
+                        </button>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">Learners with this code skip the approval queue; others remain pending until you review them.</p>
+                    {codeStatus && <p className="mt-1 text-xs text-[#2D8F80]">{codeStatus}</p>}
                 </div>
             )}
 
-            <div className="space-y-4">
+            <section className="space-y-3">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-slate-900">Live schedule</h3>
-                    {canManage && (
-                        <button
-                            type="button"
-                            disabled={isBusy || !sessionDraft.startsAt}
-                            onClick={async () => {
-                                await onSessionCreate({
-                                    startsAt: sessionDraft.startsAt,
-                                    endsAt: sessionDraft.endsAt,
-                                    location: sessionDraft.location,
-                                    mode: sessionDraft.mode,
-                                    note: sessionDraft.note,
-                                });
-                                setSessionDraft({ startsAt: "", endsAt: "", location: "", mode: "Live", note: "" });
-                            }}
-                            className="text-sm font-semibold text-[#2D8F80] disabled:opacity-60"
-                        >
-                            + Add session
-                        </button>
-                    )}
                 </div>
+                {detail.sessions.length === 0 && <p className="text-sm text-slate-500">No sessions scheduled yet.</p>}
                 <div className="space-y-2">
-                    {detail.sessions.length === 0 && <p className="text-sm text-slate-500">No sessions scheduled yet.</p>}
                     {detail.sessions.map((session) => (
                         <div key={session.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
-                            <p className="font-semibold text-slate-800">
-                                {new Date(session.startsAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                            </p>
+                            <p className="font-semibold text-slate-800">{formatDate(session.startsAt)}</p>
                             <p className="text-slate-500">{session.location || session.mode || "Virtual"}</p>
                             {session.note && <p className="text-xs text-slate-400">{session.note}</p>}
                         </div>
                     ))}
                 </div>
-                {canManage && (
-                    <div className="grid gap-2 rounded-2xl border border-slate-200 p-4 text-xs text-slate-600 sm:grid-cols-2">
-                        <input
-                            type="datetime-local"
-                            value={sessionDraft.startsAt}
-                            onChange={(e) => setSessionDraft((prev) => ({ ...prev, startsAt: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2"
-                        />
-                        <input
-                            type="datetime-local"
-                            value={sessionDraft.endsAt}
-                            onChange={(e) => setSessionDraft((prev) => ({ ...prev, endsAt: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2"
-                        />
-                        <input
-                            placeholder="Location"
-                            value={sessionDraft.location}
-                            onChange={(e) => setSessionDraft((prev) => ({ ...prev, location: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2"
-                        />
-                        <input
-                            placeholder="Mode"
-                            value={sessionDraft.mode}
-                            onChange={(e) => setSessionDraft((prev) => ({ ...prev, mode: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2"
-                        />
-                        <input
-                            placeholder="Notes"
-                            value={sessionDraft.note}
-                            onChange={(e) => setSessionDraft((prev) => ({ ...prev, note: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2 sm:col-span-2"
-                        />
-                    </div>
-                )}
-            </div>
+            </section>
 
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-slate-900">Lessons</h3>
-                    {canManage && (
-                        <button
-                            type="button"
-                            disabled={isBusy || !lessonDraft.title}
-                            onClick={async () => {
-                                await onLessonCreate(lessonDraft);
-                                setLessonDraft({ title: "", type: "TEXT", body: "", videoUrl: "" });
-                            }}
-                            className="text-sm font-semibold text-[#2D8F80] disabled:opacity-60"
-                        >
-                            + Add lesson
-                        </button>
-                    )}
-                </div>
+            <section className="space-y-3">
+                <h3 className="text-lg font-semibold text-slate-900">Lessons</h3>
+                {detail.lessons.length === 0 && <p className="text-sm text-slate-500">No lessons yet.</p>}
                 <div className="space-y-2">
-                    {detail.lessons.length === 0 && <p className="text-sm text-slate-500">No lessons published yet.</p>}
                     {detail.lessons.map((lesson) => (
-                        <div key={lesson.id} className="rounded-2xl border border-slate-100 bg-white p-4 text-sm shadow-sm">
+                        <div key={lesson.id} className="rounded-2xl border border-slate-100 bg-gradient-to-br from-white to-[#F7FBFF] p-4">
                             <p className="font-semibold text-slate-900">{lesson.title}</p>
-                            <p className="text-xs text-slate-500">{lesson.type}</p>
-                            {lesson.body && <p className="mt-2 text-slate-600">{lesson.body}</p>}
+                            <p className="text-xs uppercase tracking-wide text-slate-500">{lesson.type}</p>
+                            {lesson.body && <p className="mt-2 text-sm text-slate-600">{lesson.body}</p>}
+                            {lesson.videoUrl && (
+                                <Link href={lesson.videoUrl} className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-[#2B2E83]">
+                                    Watch lesson <ArrowUpRight className="h-3 w-3" />
+                                </Link>
+                            )}
                         </div>
                     ))}
                 </div>
-                {canManage && (
-                    <div className="grid gap-2 rounded-2xl border border-slate-200 p-4 text-xs text-slate-600">
-                        <input
-                            placeholder="Lesson title"
-                            value={lessonDraft.title}
-                            onChange={(e) => setLessonDraft((prev) => ({ ...prev, title: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2"
-                        />
-                        <input
-                            placeholder="Lesson type"
-                            value={lessonDraft.type}
-                            onChange={(e) => setLessonDraft((prev) => ({ ...prev, type: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2"
-                        />
-                        <textarea
-                            placeholder="Lesson summary"
-                            value={lessonDraft.body}
-                            onChange={(e) => setLessonDraft((prev) => ({ ...prev, body: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2"
-                        />
-                    </div>
-                )}
-            </div>
+            </section>
 
-            <div className="space-y-4">
+            <section className="space-y-3">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-slate-900">Course materials</h3>
-                    {canManage && (
-                        <button
-                            type="button"
-                            disabled={isBusy || !materialDraft.title}
-                            onClick={async () => {
-                                await onMaterialCreate({
-                                    title: materialDraft.title,
-                                    description: materialDraft.description,
-                                    visibleTo: materialDraft.visibleTo,
-                                    attachmentFile: materialDraft.file,
-                                    coverFile: materialDraft.cover,
-                                });
-                                setMaterialDraft({ title: "", description: "", visibleTo: "ENROLLED", file: null, cover: null });
-                            }}
-                            className="text-sm font-semibold text-[#2D8F80] disabled:opacity-60"
-                        >
-                            + Upload
-                        </button>
-                    )}
+                    <h3 className="text-lg font-semibold text-slate-900">Materials</h3>
                 </div>
+                {detail.materials.length === 0 && <p className="text-sm text-slate-500">No materials uploaded yet.</p>}
                 <div className="space-y-3">
-                    {detail.materials.length === 0 && <p className="text-sm text-slate-500">Materials stay hidden until you upload them.</p>}
                     {detail.materials.map((material) => (
-                        <div key={material.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
-                            <p className="font-semibold text-slate-900">{material.title}</p>
-                            <p className="text-xs text-slate-500">Visibility: {material.visibility}</p>
-                            {material.description && <p className="mt-1 text-slate-600">{material.description}</p>}
+                        <div key={material.id} className="rounded-2xl border border-slate-100 bg-white p-4 text-sm shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-semibold text-slate-900">{material.title}</p>
+                                    <p className="text-xs text-slate-500">{material.visibility}</p>
+                                </div>
+                                <span
+                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                        material.locked ? "bg-slate-100 text-slate-500" : "bg-[#E8F7F4] text-[#1F6C62]"
+                                    }`}
+                                >
+                                    {material.locked ? "Locked" : "Ready"}
+                                </span>
+                            </div>
+                            <p className="mt-2 text-slate-600">{material.description || "No description"}</p>
                             {material.locked ? (
                                 <div className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
                                     <Lock className="h-3.5 w-3.5" /> Enrolled learners only
@@ -826,42 +913,92 @@ function CourseDetailPanel({
                         </div>
                     ))}
                 </div>
-                {canManage && (
-                    <div className="grid gap-2 rounded-2xl border border-slate-200 p-4 text-xs text-slate-600">
-                        <input
-                            placeholder="Material title"
-                            value={materialDraft.title}
-                            onChange={(e) => setMaterialDraft((prev) => ({ ...prev, title: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2"
-                        />
-                        <textarea
-                            placeholder="Description"
-                            value={materialDraft.description}
-                            onChange={(e) => setMaterialDraft((prev) => ({ ...prev, description: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2"
-                        />
-                        <select
-                            value={materialDraft.visibleTo}
-                            onChange={(e) => setMaterialDraft((prev) => ({ ...prev, visibleTo: e.target.value }))}
-                            className="rounded-xl border border-slate-200 px-3 py-2"
-                        >
-                            <option value="ENROLLED">Enrolled learners</option>
-                            <option value="PUBLIC">Public</option>
-                            <option value="STAFF">Staff only</option>
-                        </select>
-                        <label className="text-xs">
-                            Upload file
-                            <input type="file" onChange={(e) => setMaterialDraft((prev) => ({ ...prev, file: e.target.files?.[0] || null }))} />
-                        </label>
-                        <label className="text-xs">
-                            Upload cover
-                            <input type="file" onChange={(e) => setMaterialDraft((prev) => ({ ...prev, cover: e.target.files?.[0] || null }))} />
-                        </label>
-                    </div>
-                )}
-            </div>
+            </section>
 
-            {isStudent && !viewer?.isEnrolled && (
+            <section className="space-y-3" id="assignments">
+                <h3 className="text-lg font-semibold text-slate-900">Assignments</h3>
+                {detail.assignments.length === 0 && <p className="text-sm text-slate-500">No assignments posted yet.</p>}
+                <div className="space-y-3">
+                    {detail.assignments.map((assignment) => {
+                        const draft = assignmentDrafts[assignment.id] || { note: "", attachmentUrl: undefined };
+                        return (
+                            <div key={assignment.id} className="rounded-2xl border border-slate-100 bg-white p-4 text-sm shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-semibold text-slate-900">{assignment.title}</p>
+                                        <p className="text-xs text-slate-500">Due {assignment.dueAt ? formatDate(assignment.dueAt) : "TBA"}</p>
+                                    </div>
+                                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                                        {assignment.stats?.submissions || 0} submissions
+                                    </span>
+                                </div>
+                                {assignment.description && <p className="mt-2 text-slate-600">{assignment.description}</p>}
+                                <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
+                                    {(assignment.resources || []).map((url) => (
+                                        <Link key={url} href={url} target="_blank" className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1">
+                                            <ArrowUpRight className="h-3 w-3" /> Resource
+                                        </Link>
+                                    ))}
+                                    {(assignment.attachments || []).map((url) => (
+                                        <Link key={url} href={url} target="_blank" className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1">
+                                            <FileText className="h-3 w-3" /> Attachment
+                                        </Link>
+                                    ))}
+                                </div>
+                                {isStudent ? (
+                                    approved ? (
+                                        <div className="mt-3 space-y-2">
+                                            {assignment.viewerSubmission ? (
+                                                <p className="text-xs text-slate-500">
+                                                    Submitted {assignment.viewerSubmission.submittedAt ? formatDate(assignment.viewerSubmission.submittedAt) : ""} · {assignment.viewerSubmission.status}
+                                                </p>
+                                            ) : (
+                                                <p className="text-xs text-slate-500">Upload your response below.</p>
+                                            )}
+                                            <textarea
+                                                value={draft.note}
+                                                onChange={(e) => onAssignmentDraftChange(assignment.id, { note: e.target.value })}
+                                                placeholder="Share your reflection or link"
+                                                className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                                            />
+                                            <label className="inline-flex items-center gap-2 text-xs text-slate-500">
+                                                <input
+                                                    type="file"
+                                                    className="text-xs"
+                                                    onChange={async (event) => {
+                                                        const file = event.target.files?.[0];
+                                                        if (!file) return;
+                                                        const url = await uploadAsset(file);
+                                                        onAssignmentDraftChange(assignment.id, { attachmentUrl: url });
+                                                        event.target.value = "";
+                                                    }}
+                                                />
+                                                {draft.attachmentUrl ? "File attached" : "Attach file"}
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => onAssignmentSubmit(assignment.id)}
+                                                disabled={isBusy || assignmentBusy === assignment.id}
+                                                className="rounded-full bg-[#2B2E83] px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                                            >
+                                                {assignmentBusy === assignment.id ? "Submitting…" : assignment.viewerSubmission ? "Resubmit" : "Submit assignment"}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p className="mt-2 text-xs text-slate-500">Assignments unlock once your enrollment is approved.</p>
+                                    )
+                                ) : canManage ? (
+                                    <Link href="/courses/studio" className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[#2B2E83]">
+                                        Review submissions in Course Studio <ArrowUpRight className="h-3 w-3" />
+                                    </Link>
+                                ) : null}
+                            </div>
+                        );
+                    })}
+                </div>
+            </section>
+
+            {isStudent && !approved && (
                 <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                         <ClipboardList className="h-4 w-4 text-[#2D8F80]" /> Enrollment form
@@ -900,10 +1037,10 @@ function CourseDetailPanel({
                 </div>
             )}
 
-            {viewer?.isEnrolled && (
+            {approved && (
                 <div className="rounded-3xl border border-[#2D8F80]/30 bg-[#E8F7F4] p-5 text-sm text-slate-700">
                     <p className="font-semibold text-[#1F6C62]">You&rsquo;re enrolled!</p>
-                    <p>Check course materials for the latest files, add dates to your calendar, and reach out in the mentor dashboard.</p>
+                    <p>Materials and assignments are unlocked. Add sessions to your calendar and stay tuned for announcements.</p>
                 </div>
             )}
         </div>

@@ -24,16 +24,20 @@ const NAV_LINKS: RoleAwareLink[] = [
 const ROLE_LINKS: Record<string, RoleAwareLink[]> = {
     ADMIN: [
         { href: "/admin", label: "Admin" },
+        { href: "/courses/studio", label: "Course studio" },
         { href: "/tutors/dashboard", label: "Publishing" },
     ],
     TUTOR: [
         { href: "/tutors/dashboard", label: "Tutor workspace" },
+        { href: "/courses/studio", label: "Course studio" },
     ],
     CREATOR: [
         { href: "/tutors/dashboard", label: "Creator workspace" },
+        { href: "/courses/studio", label: "Course studio" },
     ],
     STUDENT: [
         { href: "/courses#catalog", label: "My courses" },
+        { href: "/courses#assignments", label: "Assignments" },
     ],
     RECRUITER: [
         { href: "/opportunities", label: "Hire students" },
@@ -172,6 +176,7 @@ function ProfileMenu({
         { label: "Dashboard", href: "/dashboard" },
         { label: "Profile settings", href: "/settings" },
         user.role === "ADMIN" ? { label: "Admin control", href: "/admin" } : null,
+        showTutorWorkspace ? { label: "Course studio", href: "/courses/studio" } : null,
         showTutorWorkspace ? { label: "Publishing workspace", href: "/tutors/dashboard" } : null,
     ].filter(Boolean) as { label: string; href: string }[];
 

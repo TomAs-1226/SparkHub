@@ -11,20 +11,33 @@ const flexibleStringArray = z.union([
   z.string().max(500).optional(),
 ])
 
+const optionalDateInput = z.preprocess((val) => {
+  if (typeof val !== 'string') return undefined
+  const trimmed = val.trim()
+  return trimmed.length ? trimmed : undefined
+}, z.string().max(120).optional())
+
 const postJobSchema = z.object({
   body: z.object({
     title: z.string().min(2).max(120),
     description: z.string().min(10).max(5000),
     skills: flexibleStringArray.optional(),
-    startTime: z.string().datetime().optional(),
-    endTime: z.string().datetime().optional(),
-    duration: z.string().max(120).optional(),
-    benefits: z.string().max(1000).optional(),
+    startTime: optionalDateInput,
+    endTime: optionalDateInput,
+    duration: z.preprocess((val) => (typeof val === 'string' && !val.trim() ? undefined : val), z.string().max(120).optional()),
+    benefits: z.preprocess((val) => (typeof val === 'string' && !val.trim() ? undefined : val), z.string().max(1000).optional()),
     photos: z.array(z.string().url()).optional().default([]),
     files: z.array(z.string()).optional().default([]),
     contact: z.string().min(3).max(200)
   })
 })
+
+function parseDateInput(value) {
+  if (!value || typeof value !== 'string') return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date
+}
 
 function csvToArray(value) {
   if (!value) return []
@@ -62,14 +75,16 @@ router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR', 'CREAT
     const normalizedSkills = Array.isArray(skills) ? skills : csvToArray(skills)
     const skillsCsv = normalizedSkills.join(',')
     const photosCsv = Array.isArray(photos) ? photos.join(',') : (photos || '')
+    const parsedStart = parseDateInput(startTime)
+    const parsedEnd = parseDateInput(endTime)
     const job = await prisma.jobPosting.create({
         data: {
             recruiterId: req.user.id,
             title,
             description,
             skillsCsv,
-            startTime: startTime ? new Date(startTime) : null,
-            endTime: endTime ? new Date(endTime) : null,
+            startTime: parsedStart,
+            endTime: parsedEnd,
             duration,
             benefits,
             photosCsv,

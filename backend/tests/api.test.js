@@ -18,6 +18,8 @@ async function resetDb() {
     await prisma.jobApplication.deleteMany()
     await prisma.jobPosting.deleteMany()
     await prisma.courseMessage.deleteMany()
+    await prisma.courseSubmission.deleteMany()
+    await prisma.courseAssignment.deleteMany()
     await prisma.courseMaterial.deleteMany()
     await prisma.courseSession.deleteMany()
     await prisma.lesson.deleteMany()
@@ -196,6 +198,7 @@ test('courses expose join codes, gated materials, and enrollment forms', async (
         .send({ title: 'Studio Lab', summary: 'Build side projects', isPublished: true })
     assert.equal(createRes.status, 200)
     const courseId = createRes.body.course.id
+    const joinCode = createRes.body.course.joinCode
 
     const sessionRes = await request(app)
         .post(`/courses/${courseId}/sessions`)
@@ -218,11 +221,77 @@ test('courses expose join codes, gated materials, and enrollment forms', async (
         .set('Authorization', `Bearer ${tokenFor(student)}`)
         .send({ answers: { intent: 'I love labs' } })
     assert.equal(enrollRes.status, 200)
-    assert.equal(enrollRes.body.viewer.isEnrolled, true)
+    assert.equal(enrollRes.body.viewer.isEnrolled, false)
+    assert.equal(enrollRes.body.viewer.enrollmentStatus, 'PENDING')
+
+    const enrollmentId = enrollRes.body.enrollment.id
+    const approvalRes = await request(app)
+        .patch(`/courses/${courseId}/enrollments/${enrollmentId}`)
+        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+        .send({ status: 'APPROVED', adminNote: 'Welcome aboard' })
+    assert.equal(approvalRes.status, 200)
 
     const detailPrivate = await request(app)
         .get(`/courses/${courseId}`)
         .set('Authorization', `Bearer ${tokenFor(student)}`)
     assert.equal(detailPrivate.status, 200)
     assert.equal(detailPrivate.body.course.materials[0].attachmentUrl, 'https://example.com/deck.pdf')
+    assert.equal(detailPrivate.body.viewer.enrollmentStatus, 'APPROVED')
+
+    const codeJoin = await request(app)
+        .post('/courses/join-code')
+        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .send({ code: joinCode })
+    assert.equal(codeJoin.status, 200)
+    assert.equal(codeJoin.body.viewer.isEnrolled, true)
+})
+
+test('course assignments allow creators to collect submissions', async () => {
+    const tutor = await createUser({ role: 'TUTOR' })
+    const student = await createUser({ role: 'STUDENT' })
+
+    const createRes = await request(app)
+        .post('/courses')
+        .set('Authorization', `Bearer ${tokenFor(tutor)}`)
+        .send({ title: 'Creative Writing', summary: 'Weekly prompts', isPublished: true })
+    assert.equal(createRes.status, 200)
+    const courseId = createRes.body.course.id
+    const joinCode = createRes.body.course.joinCode
+
+    const assignmentRes = await request(app)
+        .post(`/courses/${courseId}/assignments`)
+        .set('Authorization', `Bearer ${tokenFor(tutor)}`)
+        .send({
+            title: 'Prompt 1',
+            description: 'Write 300 words about your city',
+            dueAt: new Date(Date.now() + 3600_000).toISOString(),
+            resources: ['https://example.com/reference.pdf'],
+        })
+    assert.equal(assignmentRes.status, 200)
+    const assignmentId = assignmentRes.body.assignment.id
+
+    await request(app)
+        .post(`/courses/${courseId}/enroll`)
+        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .send({ joinCode, answers: { intent: 'Love writing' } })
+
+    const submitRes = await request(app)
+        .post(`/courses/${courseId}/assignments/${assignmentId}/submissions`)
+        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .send({ content: 'Here is my story', attachmentUrl: 'https://example.com/story.pdf' })
+    assert.equal(submitRes.status, 200)
+    const submissionId = submitRes.body.submission.id
+
+    const listRes = await request(app)
+        .get(`/courses/${courseId}/assignments/${assignmentId}/submissions`)
+        .set('Authorization', `Bearer ${tokenFor(tutor)}`)
+    assert.equal(listRes.status, 200)
+    assert.equal(listRes.body.list.length, 1)
+
+    const gradeRes = await request(app)
+        .patch(`/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}`)
+        .set('Authorization', `Bearer ${tokenFor(tutor)}`)
+        .send({ status: 'REVIEWED', grade: 'A', feedback: 'Great work!' })
+    assert.equal(gradeRes.status, 200)
+    assert.equal(gradeRes.body.submission.grade, 'A')
 })
