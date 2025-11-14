@@ -41,7 +41,7 @@ model Course {
   summary      String
   coverUrl     String?
   isPublished  Boolean         @default(false)
-  joinCode     String          @unique @default(uuid())
+  joinCode     String          @unique
   enrollQuestionsJson String   @default("[]")
   creator      User            @relation("CreatorCourses", fields: [creatorId], references: [id])
   creatorId    String

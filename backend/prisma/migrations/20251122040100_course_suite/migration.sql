@@ -1,7 +1,28 @@
--- Add join codes + enrollment form metadata to courses
-ALTER TABLE "Course" ADD COLUMN "joinCode" TEXT NOT NULL DEFAULT (lower(hex(randomblob(16))));
-ALTER TABLE "Course" ADD COLUMN "enrollQuestionsJson" TEXT NOT NULL DEFAULT '[]';
+PRAGMA defer_foreign_keys=ON;
+PRAGMA foreign_keys=OFF;
+CREATE TABLE "new_Course" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "title" TEXT NOT NULL,
+    "summary" TEXT NOT NULL,
+    "coverUrl" TEXT,
+    "isPublished" BOOLEAN NOT NULL DEFAULT false,
+    "creatorId" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    "joinCode" TEXT NOT NULL,
+    "enrollQuestionsJson" TEXT NOT NULL DEFAULT '[]',
+    CONSTRAINT "Course_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+INSERT INTO "new_Course" (
+    "id", "title", "summary", "coverUrl", "isPublished", "creatorId", "createdAt", "updatedAt", "joinCode", "enrollQuestionsJson"
+) SELECT
+    "id", "title", "summary", "coverUrl", "isPublished", "creatorId", "createdAt", "updatedAt", lower(hex(randomblob(16))), '[]'
+FROM "Course";
+DROP TABLE "Course";
+ALTER TABLE "new_Course" RENAME TO "Course";
 CREATE UNIQUE INDEX "Course_joinCode_key" ON "Course"("joinCode");
+PRAGMA foreign_keys=ON;
+PRAGMA defer_foreign_keys=OFF;
 
 -- Persist enrollment form answers + flag for join-code enrollment
 ALTER TABLE "Enrollment" ADD COLUMN "formAnswersJson" TEXT NOT NULL DEFAULT '{}';
