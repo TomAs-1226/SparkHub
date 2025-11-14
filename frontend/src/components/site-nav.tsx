@@ -13,6 +13,7 @@ type RoleAwareLink = { href: string; label: string; roles?: string[] };
 
 const NAV_LINKS: RoleAwareLink[] = [
     { href: "/courses", label: "Courses" },
+    { href: "/courses/join", label: "Join with code" },
     { href: "/events", label: "Events" },
     { href: "/tutors", label: "Find a tutor", roles: ["ANON", "STUDENT"] },
     { href: "/resources", label: "Resources" },

@@ -26,6 +26,7 @@ model User {
   eventSignups     EventSignup[]    @relation("UserEventSignups")
   eventsCreated    Event[]          @relation("EventCreator")
   resourcesAuthored Resource[]      @relation("ResourceAuthor")
+  materialsUploaded CourseMaterial[] @relation("CourseMaterialUploader")
   studentSessions  Session[]        @relation("StudentSessions")
   quizAttempts     QuizAttempt[]
   certificates     Certificate[]
@@ -40,6 +41,8 @@ model Course {
   summary      String
   coverUrl     String?
   isPublished  Boolean         @default(false)
+  joinCode     String          @unique @default(uuid())
+  enrollQuestionsJson String   @default("[]")
   creator      User            @relation("CreatorCourses", fields: [creatorId], references: [id])
   creatorId    String
   createdAt    DateTime        @default(now())
@@ -50,6 +53,8 @@ model Course {
   messages     CourseMessage[]
   quizzes      Quiz[]
   certificates Certificate[]
+  sessions     CourseSession[]
+  materials    CourseMaterial[]
 }
 
 model Lesson {
@@ -71,8 +76,38 @@ model Enrollment {
   course    Course   @relation(fields: [courseId], references: [id])
   courseId  String
   createdAt DateTime @default(now())
+  formAnswersJson String  @default("{}")
+  joinedViaCode   Boolean @default(false)
 
   @@unique([userId, courseId])
+}
+
+model CourseSession {
+  id        String   @id @default(cuid())
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
+  startsAt  DateTime
+  endsAt    DateTime?
+  location  String?
+  mode      String? // virtual / in-person / hybrid
+  note      String?
+  createdAt DateTime @default(now())
+}
+
+model CourseMaterial {
+  id           String   @id @default(cuid())
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId     String
+  title        String
+  description  String?
+  coverUrl     String?
+  attachmentUrl String?
+  contentUrl   String?
+  contentType  String?
+  visibleTo    String   @default("ENROLLED")
+  uploader     User?    @relation("CourseMaterialUploader", fields: [uploaderId], references: [id], onDelete: SetNull)
+  uploaderId   String?
+  createdAt    DateTime @default(now())
 }
 
 model CourseMessage {
