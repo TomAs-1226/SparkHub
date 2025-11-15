@@ -16,6 +16,25 @@ const LOCAL_DEV_ORIGINS = [
     'http://10.0.2.2:5173'
 ]
 
+const PRIVATE_NET_MATCHERS = [
+    /^10\.(\d{1,3}\.){2}\d{1,3}$/,
+    /^192\.168\.(\d{1,3})\.(\d{1,3})$/,
+    /^172\.(1[6-9]|2\d|3[0-1])\.(\d{1,3})\.(\d{1,3})$/
+]
+
+function isPrivateNetworkHost(hostname = '') {
+    return PRIVATE_NET_MATCHERS.some((regex) => regex.test(hostname))
+}
+
+function originHost(origin) {
+    if (!origin) return ''
+    try {
+        return new URL(origin).hostname
+    } catch (_err) {
+        return ''
+    }
+}
+
 function normalizeOrigins(list = []) {
     return Array.from(new Set(list.filter(Boolean)))
 }
@@ -52,6 +71,11 @@ module.exports = function wireSecurity(app, opts = { frontendOrigins: [] }) {
         }
         const localMatch = /^https?:\/\/((localhost)|(127\.0\.0\.1))(?:\:\d+)?$/i.test(origin)
         if (localMatch && process.env.ALLOW_LOCAL_ORIGINS !== 'false') {
+            callback(null, true)
+            return
+        }
+        const host = originHost(origin)
+        if (isPrivateNetworkHost(host) && process.env.ALLOW_LAN_ORIGINS !== 'false') {
             callback(null, true)
             return
         }
@@ -100,7 +124,7 @@ module.exports = function wireSecurity(app, opts = { frontendOrigins: [] }) {
     // Global rate limit (memory store is fine for dev)
     const globalLimiter = rateLimit({
         windowMs: 15 * 60 * 1000,
-        max: 300,
+        max: Number(process.env.RATE_LIMIT_MAX_REQUESTS || 1200),
         standardHeaders: true,
         legacyHeaders: false,
         // For production at scale, prefer Redis:
