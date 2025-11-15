@@ -106,6 +106,58 @@ function parseJsonArray(raw, fallback = []) {
     }
 }
 
+function icsEscape(value = '') {
+    return String(value || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/,/g, '\\,')
+        .replace(/;/g, '\\;')
+        .replace(/\r?\n/g, '\\n')
+}
+
+function formatICSDate(input) {
+    const date = input instanceof Date ? input : new Date(input)
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
+    return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+}
+
+function buildCourseCalendarICS(course) {
+    const nowStamp = formatICSDate(new Date())
+    const events = (course.sessions || [])
+        .map((session) => {
+            const start = formatICSDate(session.startsAt)
+            if (!start) return null
+            const end = formatICSDate(session.endsAt || new Date(new Date(session.startsAt).getTime() + 60 * 60 * 1000))
+            const summary = icsEscape(`${course.title} · ${session.mode || 'Session'}`)
+            const description = icsEscape(session.note || course.summary || 'SparkHub course session')
+            const location = icsEscape(session.location || session.mode || 'Virtual')
+            return [
+                'BEGIN:VEVENT',
+                `UID:${session.id}@sparkhub`,
+                nowStamp ? `DTSTAMP:${nowStamp}` : null,
+                `DTSTART:${start}`,
+                end ? `DTEND:${end}` : null,
+                `SUMMARY:${summary}`,
+                `DESCRIPTION:${description}`,
+                `LOCATION:${location}`,
+                'END:VEVENT',
+            ]
+                .filter(Boolean)
+                .join('\r\n')
+        })
+        .filter(Boolean)
+    if (!events.length) return null
+    const title = icsEscape(course.title || 'SparkHub Course')
+    return [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//SparkHub//LMS//EN',
+        `X-WR-CALNAME:${title} schedule`,
+        ...events,
+        'END:VCALENDAR',
+        '',
+    ].join('\r\n')
+}
+
 function formatEnrollment(row) {
     return {
         id: row.id,
@@ -272,12 +324,14 @@ async function buildCoursePayload(courseId, viewer) {
             assignments,
             enrollQuestions,
             joinCode: canManage ? course.joinCode : undefined,
+            calendarDownloadUrl: canManage || enrollmentApproved ? `/courses/${course.id}/calendar.ics` : null,
         },
         viewer: {
             canManage,
             isEnrolled: enrollmentApproved,
             enrollmentStatus: enrollment?.status || null,
             formAnswers: enrollment ? safeJsonParse(enrollment.formAnswersJson, {}) : null,
+            calendarUnlocked: Boolean(canManage || enrollmentApproved),
         },
         enrollments: enrollmentRoster,
     }
@@ -399,6 +453,27 @@ router.post('/join-code', requireAuth, async (req, res) => {
     }
     const payload = await buildCoursePayload(course.id, req.user)
     res.json({ ok: true, enrollment, ...payload })
+})
+
+router.get('/:id/calendar.ics', maybeAuth, async (req, res) => {
+    if (!req.user) return res.status(401).json({ ok: false, msg: '请先登录' })
+    const course = await prisma.course.findUnique({
+        where: { id: req.params.id },
+        include: { sessions: { orderBy: { startsAt: 'asc' } } },
+    })
+    if (!course || !course.isPublished) return res.status(404).json({ ok: false, msg: '课程不存在' })
+    const enrollment = await prisma.enrollment.findUnique({
+        where: { userId_courseId: { userId: req.user.id, courseId: course.id } },
+    })
+    if (!canManageCourse(course, req.user) && !isApprovedEnrollment(enrollment)) {
+        return res.status(403).json({ ok: false, msg: '请先报名课程' })
+    }
+    const ics = buildCourseCalendarICS(course)
+    if (!ics) return res.status(404).json({ ok: false, msg: '暂无课程日程' })
+    const filename = `${(course.title || 'sparkhub-course').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'sparkhub-course'}-schedule.ics`
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    res.send(ics)
 })
 
 // 课程详情（可选鉴权）
@@ -671,22 +746,25 @@ router.post('/:id/enroll', requireAuth, async (req, res) => {
     const course = await prisma.course.findUnique({ where: { id: req.params.id } })
     if (!course || !course.isPublished) return res.status(404).json({ ok: false, msg: '课程不存在' })
     const joinCodeInput = typeof req.body.joinCode === 'string' ? req.body.joinCode.trim().toUpperCase() : ''
-    if (joinCodeInput && joinCodeInput !== course.joinCode) {
-        return res.status(400).json({ ok: false, msg: '课程代码不正确' })
-    }
+    const normalizedCourseCode = (course.joinCode || '').trim().toUpperCase()
+    const joinCodeMatches = Boolean(joinCodeInput) && joinCodeInput === normalizedCourseCode
     const questions = safeJsonParse(course.enrollQuestionsJson, DEFAULT_FORM_QUESTIONS)
     const answers = normalizeAnswers(req.body.answers, questions)
     if (!Object.keys(answers).length) {
-        return res.status(400).json({ ok: false, msg: '请填写报名表单' })
+        if (joinCodeMatches) {
+            answers.intent = 'Joined via instructor code'
+        } else {
+            return res.status(400).json({ ok: false, msg: '请填写报名表单' })
+        }
     }
     const existing = await prisma.enrollment.findUnique({
         where: { userId_courseId: { userId: req.user.id, courseId: course.id } },
     })
     const baseData = {
         formAnswersJson: JSON.stringify(answers),
-        joinedViaCode: Boolean(joinCodeInput),
+        joinedViaCode: joinCodeMatches,
     }
-    if (joinCodeInput) {
+    if (joinCodeMatches) {
         baseData.status = 'APPROVED'
     } else if (!existing) {
         baseData.status = 'PENDING'
@@ -705,7 +783,8 @@ router.post('/:id/enroll', requireAuth, async (req, res) => {
         })
     }
     const payload = await buildCoursePayload(course.id, req.user)
-    res.json({ ok: true, enrollment, ...payload })
+    const codeStatus = joinCodeMatches ? 'APPROVED' : joinCodeInput ? 'INVALID' : null
+    res.json({ ok: true, enrollment, codeStatus, ...payload })
 })
 
 router.patch('/:id/enrollments/:enrollmentId', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {

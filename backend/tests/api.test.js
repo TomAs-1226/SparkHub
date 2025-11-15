@@ -216,6 +216,11 @@ test('courses expose join codes, gated materials, and enrollment forms', async (
     assert.equal(detailPublic.status, 200)
     assert.equal(detailPublic.body.course.materials[0].locked, true)
 
+    const lockedCalendar = await request(app)
+        .get(`/courses/${courseId}/calendar.ics`)
+        .set('Authorization', `Bearer ${tokenFor(student)}`)
+    assert.equal(lockedCalendar.status, 403)
+
     const enrollRes = await request(app)
         .post(`/courses/${courseId}/enroll`)
         .set('Authorization', `Bearer ${tokenFor(student)}`)
@@ -224,12 +229,26 @@ test('courses expose join codes, gated materials, and enrollment forms', async (
     assert.equal(enrollRes.body.viewer.isEnrolled, false)
     assert.equal(enrollRes.body.viewer.enrollmentStatus, 'PENDING')
 
+    const invalidCodeRes = await request(app)
+        .post(`/courses/${courseId}/enroll`)
+        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .send({ answers: { intent: 'Retry' }, joinCode: 'WRONG' })
+    assert.equal(invalidCodeRes.status, 200)
+    assert.equal(invalidCodeRes.body.codeStatus, 'INVALID')
+    assert.equal(invalidCodeRes.body.viewer.enrollmentStatus, 'PENDING')
+
     const enrollmentId = enrollRes.body.enrollment.id
     const approvalRes = await request(app)
         .patch(`/courses/${courseId}/enrollments/${enrollmentId}`)
         .set('Authorization', `Bearer ${tokenFor(creator)}`)
         .send({ status: 'APPROVED', adminNote: 'Welcome aboard' })
     assert.equal(approvalRes.status, 200)
+
+    const calendarRes = await request(app)
+        .get(`/courses/${courseId}/calendar.ics`)
+        .set('Authorization', `Bearer ${tokenFor(student)}`)
+    assert.equal(calendarRes.status, 200)
+    assert.ok(/BEGIN:VCALENDAR/.test(calendarRes.text))
 
     const detailPrivate = await request(app)
         .get(`/courses/${courseId}`)

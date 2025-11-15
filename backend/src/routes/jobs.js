@@ -17,6 +17,12 @@ const optionalDateInput = z.preprocess((val) => {
   return trimmed.length ? trimmed : undefined
 }, z.string().max(120).optional())
 
+const contactField = z.preprocess((val) => {
+  if (typeof val !== 'string') return undefined
+  const trimmed = val.trim()
+  return trimmed.length ? trimmed : undefined
+}, z.string().max(200).optional())
+
 const postJobSchema = z.object({
   body: z.object({
     title: z.string().min(2).max(120),
@@ -28,7 +34,7 @@ const postJobSchema = z.object({
     benefits: z.preprocess((val) => (typeof val === 'string' && !val.trim() ? undefined : val), z.string().max(1000).optional()),
     photos: z.array(z.string().url()).optional().default([]),
     files: z.array(z.string()).optional().default([]),
-    contact: z.string().min(3).max(200)
+    contact: contactField
   })
 })
 
@@ -72,11 +78,13 @@ function presentJob(row) {
 // 发布职位（招聘者/管理员/导师）
 router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR', 'CREATOR']), validate(postJobSchema), async (req, res) => {
     const { title, description, skills = [], startTime, endTime, duration, benefits, photos = [], files = [], contact } = req.body
+    const actor = await prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true } })
     const normalizedSkills = Array.isArray(skills) ? skills : csvToArray(skills)
     const skillsCsv = normalizedSkills.join(',')
     const photosCsv = Array.isArray(photos) ? photos.join(',') : (photos || '')
     const parsedStart = parseDateInput(startTime)
     const parsedEnd = parseDateInput(endTime)
+    const contactValue = contact || actor?.email || 'info@sparkhub.dev'
     const job = await prisma.jobPosting.create({
         data: {
             recruiterId: req.user.id,
@@ -89,7 +97,7 @@ router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR', 'CREAT
             benefits,
             photosCsv,
             filesJson: filesToJson(files),
-            contact
+            contact: contactValue
         }
     })
     res.json({ ok: true, job: presentJob(job) })

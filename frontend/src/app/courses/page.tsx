@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, CalendarDays, ClipboardList, FileText, Lock, Sparkles, UsersRound } from "lucide-react";
+import { ArrowUpRight, CalendarDays, ClipboardList, Download, FileText, Lock, Sparkles, UsersRound } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -113,6 +113,7 @@ interface CourseDetail extends LiveCourse {
     assignments: CourseAssignment[];
     enrollQuestions: EnrollQuestion[];
     joinCode?: string;
+    calendarDownloadUrl?: string | null;
 }
 
 interface ViewerState {
@@ -120,6 +121,7 @@ interface ViewerState {
     isEnrolled: boolean;
     enrollmentStatus?: string | null;
     formAnswers?: Record<string, string> | null;
+    calendarUnlocked?: boolean;
 }
 
 interface EnrollmentRecord {
@@ -327,10 +329,12 @@ export default function CoursesPage() {
             setEnrolledIds((prev) => (prev.includes(detail.id) ? prev : [...prev, detail.id]));
             await refreshMyEnrollments();
             const enrollmentStatus = json.viewer?.enrollmentStatus;
-            if (enrollmentStatus === "PENDING") {
-                setStatus("Thanks! Your application is pending admin approval.");
-            } else if (json.viewer?.isEnrolled) {
+            if (json.codeStatus === "INVALID") {
+                setStatus("That code didn’t match, so we queued your application for instructor review.");
+            } else if (json.codeStatus === "APPROVED" || json.viewer?.isEnrolled) {
                 setStatus("You're in! Resources have been unlocked.");
+            } else if (enrollmentStatus === "PENDING") {
+                setStatus("Thanks! Your application is pending admin approval.");
             } else {
                 setStatus("Enrollment submitted. Watch your inbox for confirmation!");
             }
@@ -752,27 +756,44 @@ function CourseDetailPanel({
 }) {
     const [answers, setAnswers] = useState<Record<string, string>>(viewer?.formAnswers || {});
     const [joinCodeInput, setJoinCodeInput] = useState("");
-    const [codeStatus, setCodeStatus] = useState<string | null>(null);
+    const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
     useEffect(() => {
         setAnswers(viewer?.formAnswers || {});
         setJoinCodeInput("");
-        setCodeStatus(null);
+        setCopyStatus(null);
     }, [detail.id, viewer?.formAnswers]);
 
     const canManage = viewer?.canManage;
     const isStudent = userRole === "STUDENT";
     const pendingCount = managerEnrollments.filter((row) => row.status === "PENDING").length;
     const approved = viewer?.enrollmentStatus === "APPROVED";
+    const questionMap = useMemo(() => {
+        const map = new Map<string, string>();
+        detail.enrollQuestions.forEach((question) => {
+            map.set(question.id, question.label);
+        });
+        return map;
+    }, [detail.enrollQuestions]);
+    const submittedAnswers = useMemo(() => {
+        if (!viewer?.formAnswers) return [] as { id: string; label: string; value: string }[];
+        return Object.entries(viewer.formAnswers)
+            .filter(([, value]) => Boolean(value))
+            .map(([key, value]) => ({
+                id: key,
+                label: questionMap.get(key) || key,
+                value: typeof value === "string" ? value : String(value ?? ""),
+            }));
+    }, [viewer?.formAnswers, questionMap]);
 
     async function handleCopyJoinCode() {
         if (!detail.joinCode) return;
         try {
             await navigator.clipboard.writeText(detail.joinCode);
-            setCodeStatus("Join code copied");
-            window.setTimeout(() => setCodeStatus(null), 2200);
+            setCopyStatus("Join code copied");
+            window.setTimeout(() => setCopyStatus(null), 2200);
         } catch {
-            setCodeStatus("Unable to copy code");
+            setCopyStatus("Unable to copy code");
         }
     }
 
@@ -803,6 +824,7 @@ function CourseDetailPanel({
                 <StatPill icon={<FileText className="h-4 w-4" />} label="Materials" value={detail.materials.length.toString()} />
                 <StatPill icon={<ClipboardList className="h-4 w-4" />} label="Assignments" value={detail.assignments.length.toString()} />
             </div>
+            {isStudent && <CourseApplicationTimeline status={viewer?.enrollmentStatus} />}
             {canManage && (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Instructor shortcuts</p>
@@ -831,25 +853,75 @@ function CourseDetailPanel({
                         </button>
                     </div>
                     <p className="mt-2 text-xs text-slate-500">Learners with this code skip the approval queue; others remain pending until you review them.</p>
-                    {codeStatus && <p className="mt-1 text-xs text-[#2D8F80]">{codeStatus}</p>}
+                    {copyStatus && <p className="mt-1 text-xs text-[#2D8F80]">{copyStatus}</p>}
                 </div>
             )}
 
             <section className="space-y-3">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-slate-900">Live schedule</h3>
-                </div>
-                {detail.sessions.length === 0 && <p className="text-sm text-slate-500">No sessions scheduled yet.</p>}
-                <div className="space-y-2">
-                    {detail.sessions.map((session) => (
-                        <div key={session.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
-                            <p className="font-semibold text-slate-800">{formatDate(session.startsAt)}</p>
-                            <p className="text-slate-500">{session.location || session.mode || "Virtual"}</p>
-                            {session.note && <p className="text-xs text-slate-400">{session.note}</p>}
-                        </div>
-                    ))}
+                <h3 className="text-lg font-semibold text-slate-900">Live schedule</h3>
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                    <div className="space-y-2">
+                        {detail.sessions.length === 0 && <p className="text-sm text-slate-500">No sessions scheduled yet.</p>}
+                        {detail.sessions.map((session) => (
+                            <div key={session.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm">
+                                <p className="font-semibold text-slate-800">{formatDate(session.startsAt)}</p>
+                                <p className="text-slate-500">{session.location || session.mode || "Virtual"}</p>
+                                {session.note && <p className="text-xs text-slate-400">{session.note}</p>}
+                            </div>
+                        ))}
+                    </div>
+                    <CourseCalendar sessions={detail.sessions} calendarUrl={detail.calendarDownloadUrl} />
                 </div>
             </section>
+
+            {canManage && managerEnrollments.length > 0 && (
+                <section className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-slate-900">Enrollment queue</h3>
+                        <span className="text-xs text-slate-500">{pendingCount} pending</span>
+                    </div>
+                    <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                        {managerEnrollments.map((record) => (
+                            <div
+                                key={record.id}
+                                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-sm shadow-sm"
+                            >
+                                <div className="flex items-center gap-3">
+                                    {record.user?.avatarUrl ? (
+                                        <Image
+                                            src={record.user.avatarUrl}
+                                            alt={record.user?.name || "Student avatar"}
+                                            width={40}
+                                            height={40}
+                                            className="h-10 w-10 rounded-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
+                                            {record.user?.name?.charAt(0) || "?"}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="font-semibold text-slate-900">{record.user?.name || "Awaiting profile"}</p>
+                                        <p className="text-xs text-slate-500">{record.user?.email || "No email"}</p>
+                                        <p className="text-xs text-slate-400">{formatDate(record.createdAt)}</p>
+                                    </div>
+                                </div>
+                                <span
+                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                        record.status === "APPROVED"
+                                            ? "bg-[#E8F7F4] text-[#1F6C62]"
+                                            : record.status === "REJECTED"
+                                            ? "bg-[#FDECEC] text-[#B6483D]"
+                                            : "bg-[#FFF4E5] text-[#9C6200]"
+                                    }`}
+                                >
+                                    {record.status}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
 
             <section className="space-y-3">
                 <h3 className="text-lg font-semibold text-slate-900">Lessons</h3>
@@ -998,6 +1070,20 @@ function CourseDetailPanel({
                 </div>
             </section>
 
+            {isStudent && submittedAnswers.length > 0 && (
+                <section className="space-y-3">
+                    <h3 className="text-lg font-semibold text-slate-900">Your submitted answers</h3>
+                    <div className="space-y-2 text-sm">
+                        {submittedAnswers.map((answer) => (
+                            <div key={answer.id} className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{answer.label}</p>
+                                <p className="mt-1 whitespace-pre-wrap text-slate-700">{answer.value}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+
             {isStudent && !approved && (
                 <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
@@ -1020,6 +1106,7 @@ function CourseDetailPanel({
                         placeholder="Course code (optional)"
                         className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-[#2D8F80] focus:outline-none"
                     />
+                    <p className="text-xs text-slate-500">Have a fast-track code? Enter it to skip the approval queue.</p>
                     <button
                         onClick={() => {
                             const sanitized = Object.fromEntries(
@@ -1057,4 +1144,140 @@ function StatPill({ icon, label, value }: { icon: ReactNode; label: string; valu
             <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
         </div>
     );
+}
+
+function CourseCalendar({ sessions, calendarUrl }: { sessions: CourseSession[]; calendarUrl?: string | null }) {
+    const unlocked = Boolean(calendarUrl);
+    const groups = groupSessionsByDay(sessions);
+    return (
+        <div className="rounded-3xl border border-slate-100 bg-[#F8FAFF] p-4 text-sm shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+                <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">Calendar sync</p>
+                    <p className="text-slate-600">Download the .ics feed to drop every session into your calendar.</p>
+                </div>
+                {unlocked ? (
+                    <a
+                        href={calendarUrl ? `/api${calendarUrl}` : "#"}
+                        className="inline-flex items-center gap-2 rounded-full border border-[#2B2E83] px-3 py-1 text-xs font-semibold text-[#2B2E83]"
+                        download
+                    >
+                        <Download className="h-3.5 w-3.5" /> Download
+                    </a>
+                ) : (
+                    <span className="text-xs text-slate-500">Apply or get approved to unlock the download.</span>
+                )}
+            </div>
+            <div className="mt-4 space-y-3">
+                {groups.length === 0 ? (
+                    <p className="text-xs text-slate-500">No sessions scheduled yet.</p>
+                ) : (
+                    groups.map((group) => (
+                        <div key={group.key} className="rounded-2xl border border-white/60 bg-white p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">{group.label}</p>
+                            <ul className="mt-1 space-y-1 text-xs text-slate-600">
+                                {group.sessions.map((session) => (
+                                    <li key={session.id} className="flex items-center justify-between gap-2">
+                                        <span>{session.mode || session.location || "Session"}</span>
+                                        <span className="font-mono text-[11px] text-slate-500">{formatTimeRange(session)}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+}
+
+function CourseApplicationTimeline({ status }: { status?: string | null }) {
+    const normalized = status ? status.toUpperCase() : null;
+    const steps = [
+        { id: "APPLY", title: "Apply", description: "Complete the enrollment form" },
+        { id: "REVIEW", title: "Review", description: "Instructor reviews your answers" },
+        { id: "ENROLLED", title: "Enrolled", description: "Unlock materials & sessions" },
+    ];
+    const currentIndex = normalized === "APPROVED" ? 2 : normalized === "PENDING" ? 1 : normalized === "REJECTED" ? 1 : 0;
+    return (
+        <div className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">Enrollment journey</p>
+            <div className="mt-3 space-y-3">
+                {steps.map((step, index) => {
+                    const complete = index < currentIndex;
+                    const active = index === currentIndex;
+                    return (
+                        <div key={step.id} className="flex items-start gap-3 text-sm">
+                            <span
+                                className={`mt-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full ${
+                                    complete
+                                        ? "bg-[#2D8F80]"
+                                        : active
+                                        ? "border-2 border-[#2D8F80]"
+                                        : "border-2 border-slate-200"
+                                }`}
+                            />
+                            <div>
+                                <p className={`font-semibold ${complete || active ? "text-slate-900" : "text-slate-500"}`}>
+                                    {step.title}
+                                </p>
+                                <p className="text-xs text-slate-500">{step.description}</p>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+            {normalized === "REJECTED" && (
+                <p className="mt-3 text-xs text-[#B6483D]">Need to make changes? Update your answers and resubmit.</p>
+            )}
+            {normalized === "APPROVED" && <p className="mt-3 text-xs text-[#2D8F80]">You&rsquo;re all set! Check the schedule above.</p>}
+        </div>
+    );
+}
+
+function formatDate(iso?: string | null, options?: Intl.DateTimeFormatOptions) {
+    if (!iso) return "TBA";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "TBA";
+    return date.toLocaleDateString(undefined, options ?? { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatTimeRange(session: CourseSession) {
+    if (!session.startsAt) return "TBA";
+    const start = new Date(session.startsAt);
+    if (Number.isNaN(start.getTime())) return "TBA";
+    const end = session.endsAt ? new Date(session.endsAt) : null;
+    const formatter = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+    const startLabel = formatter.format(start);
+    const endLabel = end && !Number.isNaN(end.getTime()) ? formatter.format(end) : null;
+    return endLabel ? `${startLabel} – ${endLabel}` : startLabel;
+}
+
+function groupSessionsByDay(sessions: CourseSession[]) {
+    const buckets = new Map<string, CourseSession[]>();
+    sessions.forEach((session) => {
+        if (!session.startsAt) return;
+        const date = new Date(session.startsAt);
+        if (Number.isNaN(date.getTime())) return;
+        const key = date.toISOString().split("T")[0];
+        const bucket = buckets.get(key) || [];
+        bucket.push(session);
+        buckets.set(key, bucket);
+    });
+    return Array.from(buckets.entries())
+        .map(([key, rows]) => ({
+            key,
+            label: formatDate(rows[0]?.startsAt, { weekday: "short", month: "short", day: "numeric" }),
+            sessions: rows.sort((a, b) => {
+                const aTime = a.startsAt ? new Date(a.startsAt).getTime() : 0;
+                const bTime = b.startsAt ? new Date(b.startsAt).getTime() : 0;
+                return aTime - bTime;
+            }),
+        }))
+        .sort((a, b) => {
+            const aTime = a.sessions[0]?.startsAt ? new Date(a.sessions[0].startsAt).getTime() : 0;
+            const bTime = b.sessions[0]?.startsAt ? new Date(b.sessions[0].startsAt).getTime() : 0;
+            return aTime - bTime;
+        })
+        .slice(0, 6);
 }
