@@ -1752,15 +1752,15 @@ function CourseChatBoard({
         setMessages(detail.chatMessages ?? []);
     }, [detail.chatMessages, detail.id]);
 
-    useEffect(() => {
-        if (!listRef.current) return;
-        listRef.current.scrollTop = listRef.current.scrollHeight;
-    }, [orderedMessages]);
-
     const orderedMessages = useMemo(
         () => [...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
         [messages],
     );
+
+    useEffect(() => {
+        if (!listRef.current) return;
+        listRef.current.scrollTop = listRef.current.scrollHeight;
+    }, [orderedMessages]);
 
     const refreshChat = useCallback(async () => {
         if (!canChat) return;

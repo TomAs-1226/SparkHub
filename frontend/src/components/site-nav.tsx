@@ -48,9 +48,16 @@ export default function Navbar() {
     const router = useRouter();
     const [open, setOpen] = useState(false);
     const { user, setUser } = useCurrentUser();
-    const showTutorWorkspace = !!user && ["TUTOR", "ADMIN", "CREATOR"].includes(user.role);
+    const [clientReady, setClientReady] = useState(false);
+
+    useEffect(() => {
+        setClientReady(true);
+    }, []);
+
+    const resolvedUser = clientReady ? user : null;
+    const role = resolvedUser?.role;
+    const showTutorWorkspace = Boolean(role && ["TUTOR", "ADMIN", "CREATOR"].includes(role));
     const desktopLinks = useMemo(() => {
-        const role = user?.role;
         const base = NAV_LINKS.filter((link) => {
             if (!link.roles) return true;
             if (!role) return link.roles.includes("ANON");
@@ -58,7 +65,7 @@ export default function Navbar() {
         });
         if (!role) return base;
         return [...base, ...(ROLE_LINKS[role] || [])];
-    }, [user?.role]);
+    }, [role]);
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/90 backdrop-blur">
@@ -76,9 +83,9 @@ export default function Navbar() {
                 </nav>
 
                 <div className="hidden items-center gap-2 md:flex">
-                    {user ? (
+                    {resolvedUser ? (
                         <ProfileMenu
-                            user={user}
+                            user={resolvedUser}
                             onSignOut={() => {
                                 clearToken();
                                 setUser(null);
@@ -114,10 +121,10 @@ export default function Navbar() {
                                     {link.label}
                                 </Link>
                             ))}
-                            {user ? (
+                            {resolvedUser ? (
                                 <>
                                     <Link href="/dashboard">Dashboard</Link>
-                                    {user.role === "ADMIN" && <Link href="/admin">Admin panel</Link>}
+                                    {resolvedUser.role === "ADMIN" && <Link href="/admin">Admin panel</Link>}
                                     {showTutorWorkspace && <Link href="/tutors/dashboard">Publishing workspace</Link>}
                                     <Link href="/settings">Profile settings</Link>
                                 </>
@@ -125,7 +132,7 @@ export default function Navbar() {
                                 <Link href="/dashboard">Dashboard</Link>
                             )}
                         </div>
-                        {!user && (
+                        {!resolvedUser && (
                             <div className="mt-3 flex gap-2">
                                 <Link href="/register" className="rounded-full border px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sign up</Link>
                                 <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-white hover:brightness-110">Log in</Link>
