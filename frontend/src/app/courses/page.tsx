@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, CalendarDays, ClipboardList, Download, FileText, Lock, Sparkles, UsersRound } from "lucide-react";
+import { ArrowUpRight, CalendarDays, ClipboardList, Download, FileText, Link2, Lock, Sparkles, UsersRound, Video } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -15,7 +15,9 @@ import { fetchCourseWorkspace } from "./load-course";
 import {
     type CourseAssignment,
     type CourseDetail,
+    type CourseMeetingLink,
     type CourseSession,
+    type CourseTag,
     type EnrollmentListItem,
     type EnrollmentRecord,
     type LiveCourse,
@@ -66,6 +68,8 @@ export default function CoursesPage() {
     const [managerEnrollments, setManagerEnrollments] = useState<EnrollmentRecord[]>([]);
     const [assignmentDrafts, setAssignmentDrafts] = useState<Record<string, { note: string; attachmentUrl?: string }>>({});
     const [assignmentBusy, setAssignmentBusy] = useState<string | null>(null);
+    const [interestTags, setInterestTags] = useState<CourseTag[]>([]);
+    const [activeInterest, setActiveInterest] = useState<string | null>(null);
 
     useEffect(() => {
         let active = true;
@@ -79,6 +83,23 @@ export default function CoursesPage() {
                 if (active) setCatalog([]);
             } finally {
                 if (active) setLoadingCatalog(false);
+            }
+        })();
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+        (async () => {
+            try {
+                const res = await fetch("/api/courses/tags", { cache: "no-store" });
+                const json = await res.json();
+                if (!active) return;
+                setInterestTags(Array.isArray(json?.tags) ? (json.tags as CourseTag[]) : []);
+            } catch {
+                if (active) setInterestTags([]);
             }
         })();
         return () => {
@@ -114,6 +135,18 @@ export default function CoursesPage() {
     }, [user]);
 
     const enrolledSet = useMemo(() => new Set(enrolledIds), [enrolledIds]);
+    const displayedCatalog = useMemo(() => {
+        if (!activeInterest) return catalog;
+        return catalog.filter((course) => course.tags?.some((tag) => tag.slug === activeInterest));
+    }, [catalog, activeInterest]);
+    const interestOptions = useMemo(() => {
+        if (interestTags.length > 0) return interestTags;
+        return categories.map((category) => ({
+            label: category.title,
+            slug: category.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+            description: category.description,
+        }));
+    }, [interestTags]);
 
     useEffect(() => {
         if (!detail || !viewer) return;
@@ -456,7 +489,10 @@ export default function CoursesPage() {
                     <div className="mt-6 grid gap-5 md:grid-cols-2">
                         {loadingCatalog && <p className="text-sm text-slate-500">Loading courses…</p>}
                         {!loadingCatalog && catalog.length === 0 && <p className="text-sm text-slate-500">No published courses yet.</p>}
-                        {catalog.map((course) => (
+                        {!loadingCatalog && catalog.length > 0 && displayedCatalog.length === 0 && (
+                            <p className="text-sm text-slate-500">No courses match this interest yet.</p>
+                        )}
+                        {displayedCatalog.map((course) => (
                             <button
                                 key={course.id}
                                 onClick={() => openCourseDrawer(course.id)}
@@ -473,6 +509,11 @@ export default function CoursesPage() {
                                 </div>
                                 <p className="mt-2 line-clamp-2 text-sm text-slate-600">{course.summary}</p>
                                 <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                    {course.tags && course.tags.length > 0 && (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-[#EEF0FF] px-3 py-1 text-[#2B2E83]">
+                                            <Link2 className="h-3 w-3" /> {course.tags[0]?.label}
+                                        </span>
+                                    )}
                                     {(course.upcomingSessions || []).slice(0, 2).map((session) => (
                                         <span key={session.id} className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-3 py-1">
                                             <CalendarDays className="h-3.5 w-3.5" />
@@ -488,14 +529,39 @@ export default function CoursesPage() {
                     </div>
                 </section>
 
-                <section className="mt-16">
-                    <h2 className="text-2xl font-semibold text-slate-900">Browse by interest</h2>
+                <section className="mt-16" id="interests">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 className="text-2xl font-semibold text-slate-900">Browse by interest</h2>
+                            <p className="text-sm text-slate-500">Tap a tag to filter the live catalog.</p>
+                        </div>
+                        {activeInterest && (
+                            <button
+                                type="button"
+                                onClick={() => setActiveInterest(null)}
+                                className="rounded-full border border-slate-200 px-4 py-1 text-xs font-semibold text-slate-600"
+                            >
+                                Clear filter
+                            </button>
+                        )}
+                    </div>
                     <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {categories.map((category) => (
-                            <div key={category.title} className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
-                                <p className="text-sm font-semibold text-slate-900">{category.title}</p>
-                                <p className="mt-1 text-xs text-slate-500">{category.description}</p>
-                            </div>
+                        {interestOptions.map((tag) => (
+                            <button
+                                key={tag.slug}
+                                type="button"
+                                onClick={() => setActiveInterest(tag.slug)}
+                                className={`rounded-3xl border p-4 text-left shadow-sm transition ${
+                                    activeInterest === tag.slug
+                                        ? "border-[#2B2E83] bg-[#EEF0FF] text-[#2B2E83]"
+                                        : "border-slate-100 bg-white text-slate-700 hover:border-[#2B2E83]"
+                                }`}
+                            >
+                                <p className="text-base font-semibold">{tag.label}</p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    {tag.count ? `${tag.count} course${tag.count > 1 ? "s" : ""}` : tag.description || "See matching cohorts"}
+                                </p>
+                            </button>
                         ))}
                     </div>
                 </section>
@@ -707,7 +773,11 @@ export function CourseDetailPanel({
 
     const canManage = viewer?.canManage;
     const isStudent = userRole === "STUDENT";
-    const pendingCount = managerEnrollments.filter((row) => row.status === "PENDING").length;
+    const pendingEnrollments = useMemo(
+        () => managerEnrollments.filter((row) => row.status === "PENDING"),
+        [managerEnrollments],
+    );
+    const pendingCount = pendingEnrollments.length;
     const approved = viewer?.enrollmentStatus === "APPROVED";
     const questionMap = useMemo(() => {
         const map = new Map<string, string>();
@@ -746,6 +816,18 @@ export function CourseDetailPanel({
                         <p className="text-xs font-semibold uppercase tracking-wider text-[#5C9E95]">Course workspace</p>
                         <h2 className="text-3xl font-semibold text-slate-900">{detail.title}</h2>
                         <p className="mt-2 text-sm text-slate-600">{detail.summary}</p>
+                        {detail.tags && detail.tags.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {detail.tags.map((tag) => (
+                                    <span
+                                        key={tag.slug}
+                                        className="rounded-full bg-[#EEF2FF] px-3 py-1 text-[11px] font-semibold text-[#2B2E83]"
+                                    >
+                                        {tag.label}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                         {viewer?.enrollmentStatus && (
                             <span
                                 className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
@@ -816,10 +898,48 @@ export function CourseDetailPanel({
                 )}
             </section>
 
+            <section id="meetings" className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-slate-900">Meeting links</h3>
+                    {viewer?.calendarUnlocked && detail.calendarDownloadUrl && (
+                        <Link
+                            href={detail.calendarDownloadUrl}
+                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600"
+                        >
+                            Download calendar <Download className="h-3.5 w-3.5" />
+                        </Link>
+                    )}
+                </div>
+                {detail.meetingLinks.length === 0 ? (
+                    <p className="text-sm text-slate-500">Instructors will drop live meeting links here once the cohort starts.</p>
+                ) : (
+                    <div className="grid gap-3 md:grid-cols-2">
+                        {detail.meetingLinks.map((link) => (
+                            <div key={link.id} className="rounded-2xl border border-slate-100 bg-white p-4 text-sm shadow-sm">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="font-semibold text-slate-900">{link.title}</p>
+                                        <p className="text-xs text-slate-500">{formatDate(link.createdAt)}</p>
+                                    </div>
+                                    <Link
+                                        href={link.url}
+                                        target="_blank"
+                                        className="inline-flex items-center gap-1 rounded-full bg-[#2B2E83] px-3 py-1 text-xs font-semibold text-white"
+                                    >
+                                        Join call <Video className="h-3 w-3" />
+                                    </Link>
+                                </div>
+                                {link.note && <p className="mt-2 text-slate-600">{link.note}</p>}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
+
             <CourseTeamChannel
                 detail={detail}
                 viewer={viewer}
-                managerEnrollments={managerEnrollments}
+                pendingEnrollments={pendingEnrollments}
                 currentUser={currentUser}
                 userRole={userRole}
             />
@@ -841,14 +961,14 @@ export function CourseDetailPanel({
                 </div>
             </section>
 
-            {canManage && managerEnrollments.length > 0 && (
+            {canManage && pendingEnrollments.length > 0 && (
                 <section className="space-y-3">
                     <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold text-slate-900">Enrollment queue</h3>
                         <span className="text-xs text-slate-500">{pendingCount} pending</span>
                     </div>
                     <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
-                        {managerEnrollments.map((record) => (
+                        {pendingEnrollments.map((record) => (
                             <div
                                 key={record.id}
                                 className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-sm shadow-sm"
@@ -899,6 +1019,13 @@ export function CourseDetailPanel({
                             <p className="font-semibold text-slate-900">{lesson.title}</p>
                             <p className="text-xs uppercase tracking-wide text-slate-500">{lesson.type}</p>
                             {lesson.body && <p className="mt-2 text-sm text-slate-600">{lesson.body}</p>}
+                            {(lesson.contentUrl || lesson.attachmentUrl) && (
+                                <InlineDeckViewer
+                                    url={lesson.contentUrl || lesson.attachmentUrl}
+                                    contentType={lesson.contentType}
+                                    title={lesson.title}
+                                />
+                            )}
                             {lesson.videoUrl && (
                                 <Link href={lesson.videoUrl} className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-[#2B2E83]">
                                     Watch lesson <ArrowUpRight className="h-3 w-3" />
@@ -936,18 +1063,35 @@ export function CourseDetailPanel({
                                     <Lock className="h-3.5 w-3.5" /> Enrolled learners only
                                 </div>
                             ) : (
-                                <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                                    {material.attachmentUrl && (
-                                        <Link href={material.attachmentUrl} target="_blank" className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[#2D8F80]">
-                                            <FileText className="h-3.5 w-3.5" /> Download
-                                        </Link>
-                                    )}
-                                    {material.contentUrl && (
-                                        <Link href={material.contentUrl} target="_blank" className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[#2D8F80]">
-                                            <ArrowUpRight className="h-3.5 w-3.5" /> Open link
-                                        </Link>
-                                    )}
-                                </div>
+                                <>
+                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                        {material.attachmentUrl && (
+                                            <Link
+                                                href={material.attachmentUrl}
+                                                target="_blank"
+                                                className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[#2D8F80]"
+                                            >
+                                                <FileText className="h-3.5 w-3.5" /> Download
+                                            </Link>
+                                        )}
+                                        {material.contentUrl && (
+                                            <Link
+                                                href={material.contentUrl}
+                                                target="_blank"
+                                                className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 text-[#2D8F80]"
+                                            >
+                                                <ArrowUpRight className="h-3.5 w-3.5" /> Open link
+                                            </Link>
+                                        )}
+                                    </div>
+                                    {!material.locked && material.inlineViewer && (material.contentUrl || material.attachmentUrl) ? (
+                                        <InlineDeckViewer
+                                            url={material.contentUrl || material.attachmentUrl}
+                                            contentType={material.contentType}
+                                            title={material.title}
+                                        />
+                                    ) : null}
+                                </>
                             )}
                         </div>
                     ))}
@@ -1230,13 +1374,13 @@ interface ChannelNote {
 function CourseTeamChannel({
     detail,
     viewer,
-    managerEnrollments,
+    pendingEnrollments,
     currentUser,
     userRole,
 }: {
     detail: CourseDetail;
     viewer: ViewerState | null;
-    managerEnrollments: EnrollmentRecord[];
+    pendingEnrollments: EnrollmentRecord[];
     currentUser?: { id: string; name?: string | null; role?: string };
     userRole?: string;
 }) {
@@ -1326,8 +1470,21 @@ function CourseTeamChannel({
             });
         });
 
+        detail.meetingLinks.forEach((link) => {
+            updates.push({
+                id: `meeting-${link.id}`,
+                title: `Meeting • ${link.title}`,
+                description: link.note || link.url,
+                timestamp: link.createdAt,
+                badge: "Meeting",
+                accent: "bg-[#E8F7F4] text-[#1F6C62]",
+                href: link.url,
+                canComplete: Boolean(viewer?.isEnrolled),
+            });
+        });
+
         if (viewer?.canManage) {
-            managerEnrollments.forEach((record) => {
+            pendingEnrollments.forEach((record) => {
                 updates.push({
                     id: `enrollment-${record.id}`,
                     title: `Request • ${record.user?.name || "New learner"}`,
@@ -1361,7 +1518,7 @@ function CourseTeamChannel({
             .map((event) => ({ ...event, timestampMs: event.timestamp ? new Date(event.timestamp).getTime() : 0 }))
             .sort((a, b) => b.timestampMs - a.timestampMs)
             .slice(0, 20);
-    }, [detail.assignments, detail.materials, detail.sessions, notes, viewer?.canManage, viewer?.isEnrolled, managerEnrollments]);
+    }, [detail.assignments, detail.materials, detail.sessions, detail.meetingLinks, notes, viewer?.canManage, viewer?.isEnrolled, pendingEnrollments]);
 
     const canPost = Boolean(viewer?.canManage || viewer?.isEnrolled);
     const displayName = currentUser?.name || (viewer?.canManage ? "Instructor" : "Learner");
@@ -1452,4 +1609,65 @@ function CourseTeamChannel({
             </div>
         </section>
     );
+}
+
+const OFFICE_EXTENSIONS = new Set(["ppt", "pptx", "pps", "ppsx", "doc", "docx", "xls", "xlsx"]);
+const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "svg"]);
+
+function useAssetHost() {
+    const [host, setHost] = useState(
+        () => (typeof window === "undefined" ? process.env.NEXT_PUBLIC_SITE_URL || "" : window.location.origin),
+    );
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        setHost(window.location.origin);
+    }, []);
+    return host;
+}
+
+function resolveAssetUrl(url?: string | null, assetHost?: string) {
+    if (!url) return "";
+    if (/^https?:\/\//i.test(url)) return url;
+    const prefix = assetHost || "";
+    if (!prefix) return url;
+    if (url.startsWith("/")) return `${prefix}${url}`;
+    return `${prefix}/${url}`;
+}
+
+function InlineDeckViewer({ url, contentType, title }: { url?: string | null; contentType?: string | null; title: string }) {
+    const assetHost = useAssetHost();
+    const resolved = useMemo(() => resolveAssetUrl(url, assetHost), [url, assetHost]);
+    if (!url || !resolved) return null;
+    const extension = (contentType || resolved.split("?")[0]?.split(".").pop() || "").toLowerCase();
+    if (IMAGE_EXTENSIONS.has(extension)) {
+        return (
+            <img
+                src={resolved}
+                alt={`${title} preview`}
+                className="mt-3 w-full rounded-2xl border border-slate-100 bg-white object-cover"
+            />
+        );
+    }
+    if (extension === "pdf") {
+        return (
+            <iframe
+                src={`${resolved}#toolbar=0`}
+                title={`${title} document`}
+                className="mt-3 h-64 w-full rounded-2xl border border-slate-100 bg-white"
+            />
+        );
+    }
+    const officeEmbed = OFFICE_EXTENSIONS.has(extension)
+        ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(resolved)}`
+        : null;
+    if (officeEmbed) {
+        return (
+            <iframe
+                src={officeEmbed}
+                title={`${title} slides`}
+                className="mt-3 h-64 w-full rounded-2xl border border-slate-100 bg-white"
+            />
+        );
+    }
+    return null;
 }

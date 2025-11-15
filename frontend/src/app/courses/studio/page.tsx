@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { BookOpenCheck, CalendarDays, ClipboardList, Copy, ShieldCheck, UploadCloud, UsersRound } from "lucide-react";
+import { BookOpenCheck, CalendarDays, ClipboardList, Copy, Link2, ShieldCheck, UploadCloud, UsersRound, Video } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -19,6 +19,7 @@ interface CourseSummary {
     summary?: string | null;
     coverUrl?: string | null;
     isPublished?: boolean;
+    tags?: CourseTag[];
 }
 
 interface CourseSession {
@@ -38,6 +39,27 @@ interface CourseMaterial {
     coverUrl?: string | null;
     visibility: string;
     createdAt: string;
+}
+
+interface CourseLesson {
+    id: string;
+    title: string;
+    type: string;
+    body?: string | null;
+    attachmentUrl?: string | null;
+    contentType?: string | null;
+}
+
+interface CourseMeetingLink {
+    id: string;
+    title: string;
+    url: string;
+    note?: string | null;
+}
+
+interface CourseTag {
+    label: string;
+    slug: string;
 }
 
 interface AssignmentSubmission {
@@ -64,6 +86,8 @@ interface CourseDetail extends CourseSummary {
     sessions: CourseSession[];
     materials: CourseMaterial[];
     assignments: CourseAssignment[];
+    lessons: CourseLesson[];
+    meetingLinks: CourseMeetingLink[];
     joinCode?: string;
 }
 
@@ -87,12 +111,32 @@ export default function CourseStudioPage() {
     const [detail, setDetail] = useState<CourseDetail | null>(null);
     const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
     const [status, setStatus] = useState<string | null>(null);
-    const [busy, setBusy] = useState({ course: false, session: false, assignment: false, material: false, roster: false });
+    const [busy, setBusy] = useState({
+        course: false,
+        session: false,
+        assignment: false,
+        material: false,
+        roster: false,
+        lesson: false,
+        meeting: false,
+        tags: false,
+    });
 
-    const [courseForm, setCourseForm] = useState({ title: "", summary: "", coverUrl: "", isPublished: true });
+    const [courseForm, setCourseForm] = useState({ title: "", summary: "", coverUrl: "", isPublished: true, tags: "" });
     const [sessionForm, setSessionForm] = useState({ startsAt: "", endsAt: "", location: "", mode: "Virtual", note: "" });
     const [assignmentForm, setAssignmentForm] = useState({ title: "", description: "", dueAt: "", resources: "", attachments: [] as string[] });
-    const [materialForm, setMaterialForm] = useState({ title: "", description: "", coverUrl: "", attachmentUrl: "", visibleTo: "ENROLLED" });
+    const [materialForm, setMaterialForm] = useState({
+        title: "",
+        description: "",
+        coverUrl: "",
+        attachmentUrl: "",
+        visibleTo: "ENROLLED",
+        inlineViewer: false,
+    });
+    const [lessonForm, setLessonForm] = useState({ title: "", type: "DECK", body: "", videoUrl: "", attachmentUrl: "", contentType: "" });
+    const [meetingForm, setMeetingForm] = useState({ title: "", url: "", note: "" });
+    const [tagDraft, setTagDraft] = useState("");
+    const [tagList, setTagList] = useState<CourseTag[]>([]);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -128,6 +172,7 @@ export default function CourseStudioPage() {
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to load course");
             setDetail(json.course as CourseDetail);
             setEnrollments(Array.isArray(json.enrollments) ? (json.enrollments as EnrollmentRecord[]) : []);
+            setTagList(Array.isArray(json.course?.tags) ? (json.course.tags as CourseTag[]) : []);
         } catch (err) {
             setDetail(null);
             setStatus(err instanceof Error ? err.message : "Unable to load course detail");
@@ -138,11 +183,17 @@ export default function CourseStudioPage() {
         event.preventDefault();
         setBusy((prev) => ({ ...prev, course: true }));
         try {
-            const res = await api("/courses", { method: "POST", body: JSON.stringify(courseForm) });
+            const tags = courseForm.tags
+                ? courseForm.tags
+                      .split(",")
+                      .map((tag) => tag.trim())
+                      .filter(Boolean)
+                : [];
+            const res = await api("/courses", { method: "POST", body: JSON.stringify({ ...courseForm, tags }) });
             const json = await res.json();
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to create course");
             setStatus("Course created");
-            setCourseForm({ title: "", summary: "", coverUrl: "", isPublished: true });
+            setCourseForm({ title: "", summary: "", coverUrl: "", isPublished: true, tags: "" });
             await refreshCourses(json.course.id);
         } catch (err) {
             setStatus(err instanceof Error ? err.message : "Unable to create course");
@@ -206,6 +257,14 @@ export default function CourseStudioPage() {
         }
     }
 
+    function slugifyLabel(label: string) {
+        return label
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+    }
+
     async function handleAddMaterial(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
         if (!detail) return;
@@ -217,12 +276,116 @@ export default function CourseStudioPage() {
             });
             const json = await res.json();
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to add material");
-            setMaterialForm({ title: "", description: "", coverUrl: "", attachmentUrl: "", visibleTo: "ENROLLED" });
+            setMaterialForm({ title: "", description: "", coverUrl: "", attachmentUrl: "", visibleTo: "ENROLLED", inlineViewer: false });
             await loadDetail(detail.id);
         } catch (err) {
             setStatus(err instanceof Error ? err.message : "Unable to add material");
         } finally {
             setBusy((prev) => ({ ...prev, material: false }));
+        }
+    }
+
+    async function handleAddLesson(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (!detail) return;
+        if (!lessonForm.attachmentUrl && !lessonForm.videoUrl && !lessonForm.body) {
+            setStatus("Upload slides, add a video link, or include notes before saving.");
+            return;
+        }
+        setBusy((prev) => ({ ...prev, lesson: true }));
+        try {
+            const payload = {
+                title: lessonForm.title,
+                type: lessonForm.type || "DECK",
+                body: lessonForm.body,
+                videoUrl: lessonForm.videoUrl,
+                attachmentUrl: lessonForm.attachmentUrl || undefined,
+                contentUrl: lessonForm.attachmentUrl || undefined,
+                contentType: lessonForm.contentType || undefined,
+            };
+            const res = await api(`/courses/${detail.id}/lessons`, { method: "POST", body: JSON.stringify(payload) });
+            const json = await res.json();
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to add lesson");
+            setLessonForm({ title: "", type: "DECK", body: "", videoUrl: "", attachmentUrl: "", contentType: "" });
+            await loadDetail(detail.id);
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to add lesson");
+        } finally {
+            setBusy((prev) => ({ ...prev, lesson: false }));
+        }
+    }
+
+    async function handleLessonFileUpload(fileList: FileList | null) {
+        if (!fileList || fileList.length === 0) return;
+        const file = fileList[0];
+        const url = await uploadAsset(file);
+        setLessonForm((prev) => ({ ...prev, attachmentUrl: url, contentType: file.type }));
+    }
+
+    async function handleAddMeetingLink(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (!detail) return;
+        setBusy((prev) => ({ ...prev, meeting: true }));
+        try {
+            const res = await api(`/courses/${detail.id}/meeting-links`, { method: "POST", body: JSON.stringify(meetingForm) });
+            const json = await res.json();
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to add meeting link");
+            setMeetingForm({ title: "", url: "", note: "" });
+            await loadDetail(detail.id);
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to add meeting link");
+        } finally {
+            setBusy((prev) => ({ ...prev, meeting: false }));
+        }
+    }
+
+    async function handleRemoveMeetingLink(linkId: string) {
+        if (!detail) return;
+        setBusy((prev) => ({ ...prev, meeting: true }));
+        try {
+            const res = await api(`/courses/${detail.id}/meeting-links/${linkId}`, { method: "DELETE" });
+            const json = await res.json();
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to remove meeting link");
+            await loadDetail(detail.id);
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to remove meeting link");
+        } finally {
+            setBusy((prev) => ({ ...prev, meeting: false }));
+        }
+    }
+
+    function handleAddTag() {
+        if (!tagDraft.trim()) return;
+        const label = tagDraft.trim();
+        const slug = slugifyLabel(label);
+        if (tagList.some((tag) => tag.slug === slug)) {
+            setTagDraft("");
+            return;
+        }
+        setTagList((prev) => [...prev, { label, slug }]);
+        setTagDraft("");
+    }
+
+    function handleRemoveTag(slug: string) {
+        setTagList((prev) => prev.filter((tag) => tag.slug !== slug));
+    }
+
+    async function handleSaveTags() {
+        if (!detail) return;
+        setBusy((prev) => ({ ...prev, tags: true }));
+        try {
+            const res = await api(`/courses/${detail.id}`, {
+                method: "PATCH",
+                body: JSON.stringify({ tags: tagList.map((tag) => tag.label) }),
+            });
+            const json = await res.json();
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to update tags");
+            await loadDetail(detail.id);
+            setStatus("Tags saved");
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to update tags");
+        } finally {
+            setBusy((prev) => ({ ...prev, tags: false }));
         }
     }
 
@@ -387,6 +550,13 @@ export default function CourseStudioPage() {
                                     onChange={(e) => setCourseForm({ ...courseForm, summary: e.target.value })}
                                     className="w-full rounded-2xl border border-slate-200 px-3 py-2"
                                     rows={2}
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Tags (comma separated)"
+                                    value={courseForm.tags}
+                                    onChange={(e) => setCourseForm({ ...courseForm, tags: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-3 py-2"
                                 />
                                 <label className="text-xs font-semibold text-slate-500">
                                     Cover image
@@ -691,6 +861,15 @@ export default function CourseStudioPage() {
                                                         <option value="STAFF">Staff only</option>
                                                     </select>
                                                 </label>
+                                                <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={materialForm.inlineViewer}
+                                                        onChange={(e) => setMaterialForm({ ...materialForm, inlineViewer: e.target.checked })}
+                                                        className="h-4 w-4 rounded border-slate-300"
+                                                    />
+                                                    Display inline
+                                                </label>
                                                 <button
                                                     type="submit"
                                                     disabled={busy.material}
@@ -763,6 +942,174 @@ export default function CourseStudioPage() {
                                                         </div>
                                                     ))
                                                 )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-6 lg:grid-cols-2">
+                                        <div className="space-y-6">
+                                            <div className="rounded-3xl border border-slate-100 bg-white p-5">
+                                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                                    <BookOpenCheck className="h-5 w-5 text-[#2B2E83]" /> Lesson decks
+                                                </div>
+                                                <form onSubmit={handleAddLesson} className="mt-4 space-y-3 text-sm">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Lesson title"
+                                                        value={lessonForm.title}
+                                                        onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
+                                                        className="w-full rounded-2xl border border-slate-200 px-3 py-2"
+                                                        required
+                                                    />
+                                                    <textarea
+                                                        placeholder="Notes or summary"
+                                                        value={lessonForm.body}
+                                                        onChange={(e) => setLessonForm({ ...lessonForm, body: e.target.value })}
+                                                        className="w-full rounded-2xl border border-slate-200 px-3 py-2"
+                                                        rows={2}
+                                                    />
+                                                    <input
+                                                        type="url"
+                                                        placeholder="Video link (optional)"
+                                                        value={lessonForm.videoUrl}
+                                                        onChange={(e) => setLessonForm({ ...lessonForm, videoUrl: e.target.value })}
+                                                        className="w-full rounded-2xl border border-slate-200 px-3 py-2"
+                                                    />
+                                                    <label className="text-xs font-semibold text-slate-500">
+                                                        Upload slides (PDF/PPT)
+                                                        <input
+                                                            type="file"
+                                                            accept=".pdf,.ppt,.pptx,.pps,.ppsx"
+                                                            className="mt-1 w-full text-xs"
+                                                            onChange={(event) => {
+                                                                handleLessonFileUpload(event.target.files);
+                                                                if (event.target) event.target.value = "";
+                                                            }}
+                                                        />
+                                                    </label>
+                                                    <button
+                                                        type="submit"
+                                                        disabled={busy.lesson || !lessonForm.title}
+                                                        className="w-full rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                                    >
+                                                        {busy.lesson ? "Uploading…" : "Add lesson"}
+                                                    </button>
+                                                </form>
+                                                <div className="mt-4 space-y-2">
+                                                    {detail.lessons.length === 0 ? (
+                                                        <p className="text-xs text-slate-500">No lessons yet.</p>
+                                                    ) : (
+                                                        detail.lessons.map((lesson) => (
+                                                            <div key={lesson.id} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs">
+                                                                <p className="font-semibold text-slate-700">{lesson.title}</p>
+                                                                {lesson.attachmentUrl && <p className="text-slate-500">Slides uploaded</p>}
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="rounded-3xl border border-slate-100 bg-white p-5">
+                                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                                    <Video className="h-5 w-5 text-[#2D8F80]" /> Meeting links
+                                                </div>
+                                                <form onSubmit={handleAddMeetingLink} className="mt-4 space-y-3 text-sm">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Session title"
+                                                        value={meetingForm.title}
+                                                        onChange={(e) => setMeetingForm({ ...meetingForm, title: e.target.value })}
+                                                        className="w-full rounded-2xl border border-slate-200 px-3 py-2"
+                                                        required
+                                                    />
+                                                    <input
+                                                        type="url"
+                                                        placeholder="https://"
+                                                        value={meetingForm.url}
+                                                        onChange={(e) => setMeetingForm({ ...meetingForm, url: e.target.value })}
+                                                        className="w-full rounded-2xl border border-slate-200 px-3 py-2"
+                                                        required
+                                                    />
+                                                    <textarea
+                                                        placeholder="Notes"
+                                                        value={meetingForm.note}
+                                                        onChange={(e) => setMeetingForm({ ...meetingForm, note: e.target.value })}
+                                                        className="w-full rounded-2xl border border-slate-200 px-3 py-2"
+                                                        rows={2}
+                                                    />
+                                                    <button
+                                                        type="submit"
+                                                        disabled={busy.meeting}
+                                                        className="w-full rounded-full bg-[#2D8F80] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                                    >
+                                                        {busy.meeting ? "Saving…" : "Post link"}
+                                                    </button>
+                                                </form>
+                                                <div className="mt-4 space-y-2">
+                                                    {detail.meetingLinks.length === 0 ? (
+                                                        <p className="text-xs text-slate-500">No links yet.</p>
+                                                    ) : (
+                                                        detail.meetingLinks.map((link) => (
+                                                            <div key={link.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs">
+                                                                <div>
+                                                                    <p className="font-semibold text-slate-700">{link.title}</p>
+                                                                    <p className="text-slate-500">{link.note || link.url}</p>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveMeetingLink(link.id)}
+                                                                    className="rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-500"
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="rounded-3xl border border-slate-100 bg-white p-5">
+                                            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                                <Link2 className="h-5 w-5 text-[#2B2E83]" /> Interest tags
+                                            </div>
+                                            <p className="mt-2 text-xs text-slate-500">Tags power the public “Browse by interest” rail.</p>
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                {tagList.length === 0 && <span className="text-xs text-slate-500">No tags yet.</span>}
+                                                {tagList.map((tag) => (
+                                                    <span key={tag.slug} className="inline-flex items-center gap-1 rounded-full bg-[#EEF0FF] px-3 py-1 text-xs font-semibold text-[#2B2E83]">
+                                                        {tag.label}
+                                                        <button type="button" onClick={() => handleRemoveTag(tag.slug)} className="text-[#2B2E83]">
+                                                            ×
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div className="mt-4 flex flex-col gap-2 text-sm">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Add a tag"
+                                                    value={tagDraft}
+                                                    onChange={(e) => setTagDraft(e.target.value)}
+                                                    className="w-full rounded-2xl border border-slate-200 px-3 py-2"
+                                                />
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleAddTag}
+                                                        className="flex-1 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600"
+                                                    >
+                                                        Add tag
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleSaveTags}
+                                                        disabled={busy.tags}
+                                                        className="flex-1 rounded-full bg-[#2B2E83] px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                                                    >
+                                                        {busy.tags ? "Saving…" : "Save tags"}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

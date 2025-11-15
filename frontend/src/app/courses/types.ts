@@ -1,3 +1,10 @@
+export interface CourseTag {
+    label: string;
+    slug: string;
+    count?: number;
+    description?: string;
+}
+
 export interface CourseSession {
     id: string;
     startsAt: string;
@@ -13,6 +20,7 @@ export interface LiveCourse {
     summary?: string | null;
     coverUrl?: string | null;
     upcomingSessions?: CourseSession[];
+    tags?: CourseTag[];
 }
 
 export interface CourseLesson {
@@ -21,6 +29,9 @@ export interface CourseLesson {
     type: string;
     body?: string | null;
     videoUrl?: string | null;
+    attachmentUrl?: string | null;
+    contentUrl?: string | null;
+    contentType?: string | null;
 }
 
 export interface CourseMaterial {
@@ -31,10 +42,19 @@ export interface CourseMaterial {
     attachmentUrl?: string | null;
     contentUrl?: string | null;
     contentType?: string | null;
+    inlineViewer?: boolean;
     locked: boolean;
     visibility: string;
     createdAt: string;
     uploader?: { id: string; name?: string | null; avatarUrl?: string | null } | null;
+}
+
+export interface CourseMeetingLink {
+    id: string;
+    title: string;
+    url: string;
+    note?: string | null;
+    createdAt: string;
 }
 
 export interface AssignmentSubmission {
@@ -74,6 +94,7 @@ export interface CourseDetail extends LiveCourse {
     enrollQuestions: EnrollQuestion[];
     joinCode?: string;
     calendarDownloadUrl?: string | null;
+    meetingLinks: CourseMeetingLink[];
 }
 
 export interface ViewerState {

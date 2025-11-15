@@ -29,6 +29,7 @@ export default function CourseWorkspacePage() {
     const sectionItems = useMemo(
         () => [
             { id: "overview", label: "Overview" },
+            { id: "meetings", label: "Meetings" },
             { id: "channel", label: "Channel" },
             { id: "schedule", label: "Schedule" },
             { id: "materials", label: "Materials" },

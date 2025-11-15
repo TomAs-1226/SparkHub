@@ -26,13 +26,13 @@ const contactField = z.preprocess((val) => {
 const postJobSchema = z.object({
   body: z.object({
     title: z.string().min(2).max(120),
-    description: z.string().min(10).max(5000),
+    description: z.string().min(5).max(5000),
     skills: flexibleStringArray.optional(),
     startTime: optionalDateInput,
     endTime: optionalDateInput,
     duration: z.preprocess((val) => (typeof val === 'string' && !val.trim() ? undefined : val), z.string().max(120).optional()),
     benefits: z.preprocess((val) => (typeof val === 'string' && !val.trim() ? undefined : val), z.string().max(1000).optional()),
-    photos: z.array(z.string().url()).optional().default([]),
+    photos: z.array(z.string().min(1)).optional().default([]),
     files: z.array(z.string()).optional().default([]),
     contact: contactField
   })

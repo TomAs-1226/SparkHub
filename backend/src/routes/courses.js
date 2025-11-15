@@ -6,6 +6,7 @@ const { requireAuth, requireRole, maybeAuth } = require('../middleware/auth')
 const COURSE_MANAGER_ROLES = ['CREATOR', 'ADMIN', 'TUTOR']
 const MATERIAL_VISIBILITY = new Set(['PUBLIC', 'ENROLLED', 'STAFF'])
 const ENROLLMENT_STATUSES = new Set(['PENDING', 'APPROVED', 'REJECTED'])
+const MAX_TAGS = 8
 const DEFAULT_FORM_QUESTIONS = [
     {
         id: 'intent',
@@ -97,6 +98,60 @@ function normalizeStringList(input) {
     return []
 }
 
+function slugifyTag(value) {
+    return String(value || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 40)
+}
+
+function normalizeTagsInput(input) {
+    let values
+    if (Array.isArray(input)) {
+        values = input.map((item) => {
+            if (typeof item === 'string') return item
+            if (item && typeof item.label === 'string') return item.label
+            return String(item ?? '')
+        })
+    } else {
+        values = normalizeStringList(input)
+    }
+    const map = new Map()
+    values.forEach((label) => {
+        if (!label) return
+        const slug = slugifyTag(label) || `tag-${map.size + 1}`
+        if (map.has(slug)) return
+        map.set(slug, { label, slug })
+    })
+    return Array.from(map.values()).slice(0, MAX_TAGS)
+}
+
+function parseCourseTags(raw) {
+    const parsed = safeJsonParse(raw, [])
+    if (!Array.isArray(parsed)) return []
+    return parsed
+        .map((tag) => {
+            if (!tag) return null
+            if (typeof tag === 'string') {
+                const label = tag.trim()
+                if (!label) return null
+                return { label, slug: slugifyTag(label) || label.toLowerCase() }
+            }
+            const label = typeof tag.label === 'string' ? tag.label : ''
+            if (!label) return null
+            const slug = typeof tag.slug === 'string' && tag.slug.trim() ? tag.slug.trim() : slugifyTag(label)
+            return { label, slug: slug || label.toLowerCase() }
+        })
+        .filter(Boolean)
+}
+
+function serializeTags(tags) {
+    const normalized = normalizeTagsInput(tags)
+    return JSON.stringify(normalized)
+}
+
 function parseJsonArray(raw, fallback = []) {
     try {
         const parsed = JSON.parse(raw || '[]')
@@ -118,6 +173,24 @@ function formatICSDate(input) {
     const date = input instanceof Date ? input : new Date(input)
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return null
     return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+}
+
+function mapMeetingLink(link) {
+    return {
+        id: link.id,
+        title: link.title,
+        url: link.url,
+        note: link.note || null,
+        createdAt: link.createdAt,
+    }
+}
+
+function normalizeMeetingUrl(value) {
+    if (typeof value !== 'string') return ''
+    const trimmed = value.trim()
+    if (!trimmed) return ''
+    if (/^https?:\/\//i.test(trimmed)) return trimmed
+    return `https://${trimmed}`
 }
 
 function buildCourseCalendarICS(course) {
@@ -199,6 +272,7 @@ async function buildCoursePayload(courseId, viewer) {
                 orderBy: { createdAt: 'asc' },
                 include: { uploader: { select: { id: true, name: true, avatarUrl: true } } },
             },
+            meetingLinks: { orderBy: { createdAt: 'desc' } },
             creator: { select: { id: true, name: true } },
         },
     })
@@ -229,6 +303,18 @@ async function buildCoursePayload(courseId, viewer) {
         orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }],
         include: assignmentInclude,
     })
+
+    const lessons = course.lessons.map((lesson) => ({
+        id: lesson.id,
+        title: lesson.title,
+        type: lesson.type,
+        body: lesson.body,
+        videoUrl: lesson.videoUrl,
+        attachmentUrl: lesson.attachmentUrl,
+        contentUrl: lesson.contentUrl,
+        contentType: lesson.contentType,
+        order: lesson.order,
+    }))
 
     const assignments = assignmentsRaw.map((assignment) => {
         const resources = parseJsonArray(assignment.resourcesJson, [])
@@ -294,9 +380,13 @@ async function buildCoursePayload(courseId, viewer) {
             attachmentUrl: visible ? material.attachmentUrl : null,
             contentUrl: visible ? material.contentUrl : null,
             contentType: visible ? material.contentType : null,
+            inlineViewer: material.inlineViewer,
             locked: !visible,
         }
     })
+
+    const tags = parseCourseTags(course.tagsJson)
+    const meetingLinks = (course.meetingLinks || []).map(mapMeetingLink)
 
     let enrollmentRoster
     if (canManage) {
@@ -318,13 +408,15 @@ async function buildCoursePayload(courseId, viewer) {
             isPublished: course.isPublished,
             creatorId: course.creatorId,
             creatorName: course.creator?.name || null,
-            lessons: course.lessons,
+            lessons,
             sessions: course.sessions,
             materials,
             assignments,
             enrollQuestions,
             joinCode: canManage ? course.joinCode : undefined,
             calendarDownloadUrl: canManage || enrollmentApproved ? `/courses/${course.id}/calendar.ics` : null,
+            tags,
+            meetingLinks,
         },
         viewer: {
             canManage,
@@ -348,11 +440,12 @@ async function ensureCourseForManager(courseId, user) {
 
 // 创建课程（创作者、导师、管理员）
 router.post('/', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {
-    const { title, summary, coverUrl, isPublished = false, enrollQuestions } = req.body
+    const { title, summary, coverUrl, isPublished = false, enrollQuestions, tags } = req.body
     if (!title || !summary) {
         return res.status(400).json({ ok: false, msg: 'Title and summary are required' })
     }
     const questions = normalizeQuestions(enrollQuestions)
+    const tagsJson = serializeTags(tags || [])
     const course = await prisma.course.create({
         data: {
             title,
@@ -362,6 +455,7 @@ router.post('/', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res
             creatorId: req.user.id,
             joinCode: generateJoinCode(),
             enrollQuestionsJson: JSON.stringify(questions.length ? questions : DEFAULT_FORM_QUESTIONS),
+            tagsJson,
         },
     })
     res.json({ ok: true, course })
@@ -383,6 +477,7 @@ router.get('/', async (_req, res) => {
             coverUrl: course.coverUrl,
             isPublished: course.isPublished,
             upcomingSessions: course.sessions,
+            tags: parseCourseTags(course.tagsJson),
         })),
     })
 })
@@ -393,7 +488,13 @@ router.get('/mine', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, 
         where: { creatorId: req.user.id },
         orderBy: { createdAt: 'desc' },
     })
-    res.json({ ok: true, list })
+    res.json({
+        ok: true,
+        list: list.map((course) => ({
+            ...course,
+            tags: parseCourseTags(course.tagsJson),
+        })),
+    })
 })
 
 // 我的选课列表
@@ -413,6 +514,25 @@ router.get('/enrollments/mine', requireAuth, async (req, res) => {
             formAnswers: safeJsonParse(row.formAnswersJson, {}),
         })),
     })
+})
+
+router.get('/tags', async (_req, res) => {
+    const rows = await prisma.course.findMany({
+        where: { isPublished: true },
+        select: { tagsJson: true },
+    })
+    const tagMap = new Map()
+    rows.forEach((row) => {
+        parseCourseTags(row.tagsJson).forEach((tag) => {
+            const existing = tagMap.get(tag.slug) || { ...tag, count: 0 }
+            existing.count += 1
+            tagMap.set(tag.slug, existing)
+        })
+    })
+    const tags = Array.from(tagMap.values())
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 24)
+    res.json({ ok: true, tags })
 })
 
 // 通过课程代码报名
@@ -493,6 +613,10 @@ router.patch('/:id', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req,
         data.enrollQuestionsJson = JSON.stringify(normalized.length ? normalized : DEFAULT_FORM_QUESTIONS)
         delete data.enrollQuestions
     }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'tags')) {
+        data.tagsJson = serializeTags(req.body.tags || [])
+        delete data.tags
+    }
     if (req.body.regenerateJoinCode) {
         data.joinCode = generateJoinCode()
         delete data.regenerateJoinCode
@@ -517,10 +641,20 @@ router.delete('/:id', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req
 router.post('/:id/lessons', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {
     const { course, error } = await ensureCourseForManager(req.params.id, req.user)
     if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
-    const { title, type = 'TEXT', videoUrl, body, order = 1 } = req.body
+    const { title, type = 'TEXT', videoUrl, body, order = 1, attachmentUrl, contentUrl, contentType } = req.body
     if (!title) return res.status(400).json({ ok: false, msg: '需要章节标题' })
     const lesson = await prisma.lesson.create({
-        data: { courseId: course.id, title, type, videoUrl, body, order },
+        data: {
+            courseId: course.id,
+            title,
+            type,
+            videoUrl,
+            body,
+            order,
+            attachmentUrl,
+            contentUrl,
+            contentType,
+        },
     })
     res.json({ ok: true, lesson })
 })
@@ -559,7 +693,7 @@ router.delete('/:id/sessions/:sessionId', requireAuth, requireRole(COURSE_MANAGE
 router.post('/:id/materials', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {
     const { course, error } = await ensureCourseForManager(req.params.id, req.user)
     if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
-    const { title, description, attachmentUrl, coverUrl, visibleTo = 'ENROLLED', contentUrl, contentType } = req.body
+    const { title, description, attachmentUrl, coverUrl, visibleTo = 'ENROLLED', contentUrl, contentType, inlineViewer } = req.body
     if (!title) return res.status(400).json({ ok: false, msg: '需要资料标题' })
     if (!MATERIAL_VISIBILITY.has(visibleTo)) {
         return res.status(400).json({ ok: false, msg: '可见范围不合法' })
@@ -575,6 +709,7 @@ router.post('/:id/materials', requireAuth, requireRole(COURSE_MANAGER_ROLES), as
             contentUrl,
             contentType,
             uploaderId: req.user.id,
+            inlineViewer: Boolean(inlineViewer),
         },
     })
     res.json({ ok: true, material })
@@ -589,6 +724,37 @@ router.delete('/:id/materials/:materialId', requireAuth, requireRole(COURSE_MANA
     }
     await prisma.courseMaterial.delete({ where: { id: found.id } })
     res.json({ ok: true })
+})
+
+router.post('/:id/meeting-links', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {
+    const { course, error } = await ensureCourseForManager(req.params.id, req.user)
+    if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
+    const { title, url, note } = req.body || {}
+    if (!title) return res.status(400).json({ ok: false, msg: '需要会议标题' })
+    const normalizedUrl = normalizeMeetingUrl(url)
+    if (!normalizedUrl) return res.status(400).json({ ok: false, msg: '需要有效的会议链接' })
+    const link = await prisma.courseMeetingLink.create({
+        data: {
+            courseId: course.id,
+            title: title.trim(),
+            url: normalizedUrl,
+            note,
+        },
+    })
+    const payload = await buildCoursePayload(course.id, req.user)
+    res.json({ ok: true, link: mapMeetingLink(link), ...payload })
+})
+
+router.delete('/:id/meeting-links/:linkId', requireAuth, requireRole(COURSE_MANAGER_ROLES), async (req, res) => {
+    const { course, error } = await ensureCourseForManager(req.params.id, req.user)
+    if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
+    const link = await prisma.courseMeetingLink.findUnique({ where: { id: req.params.linkId } })
+    if (!link || link.courseId !== course.id) {
+        return res.status(404).json({ ok: false, msg: '会议链接不存在' })
+    }
+    await prisma.courseMeetingLink.delete({ where: { id: link.id } })
+    const payload = await buildCoursePayload(course.id, req.user)
+    res.json({ ok: true, ...payload })
 })
 
 router.get('/:id/materials', requireAuth, async (req, res) => {

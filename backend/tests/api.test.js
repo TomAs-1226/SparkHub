@@ -24,6 +24,7 @@ async function resetDb() {
     await prisma.courseSession.deleteMany()
     await prisma.lesson.deleteMany()
     await prisma.enrollment.deleteMany()
+    await prisma.courseMeetingLink.deleteMany()
     await prisma.quizQuestion.deleteMany()
     await prisma.quizAttempt.deleteMany()
     await prisma.quiz.deleteMany()
@@ -313,4 +314,33 @@ test('course assignments allow creators to collect submissions', async () => {
         .send({ status: 'REVIEWED', grade: 'A', feedback: 'Great work!' })
     assert.equal(gradeRes.status, 200)
     assert.equal(gradeRes.body.submission.grade, 'A')
+})
+
+test('course tags and meeting links round-trip through the API', async () => {
+    const admin = await createUser({ role: 'ADMIN' })
+    const createRes = await request(app)
+        .post('/courses')
+        .set('Authorization', `Bearer ${tokenFor(admin)}`)
+        .send({
+            title: 'LMS Fundamentals',
+            summary: 'Deep dive into course tooling',
+            isPublished: true,
+            tags: ['STEM', 'Robotics'],
+        })
+    assert.equal(createRes.status, 200)
+    const courseId = createRes.body.course.id
+
+    const linkRes = await request(app)
+        .post(`/courses/${courseId}/meeting-links`)
+        .set('Authorization', `Bearer ${tokenFor(admin)}`)
+        .send({ title: 'Kickoff', url: 'meet.google.com/xyz-123', note: 'Weekly sync' })
+    assert.equal(linkRes.status, 200)
+    assert.equal(linkRes.body.course.meetingLinks.length, 1)
+    assert.equal(linkRes.body.course.tags.length, 2)
+
+    const tagsRes = await request(app).get('/courses/tags')
+    assert.equal(tagsRes.status, 200)
+    const tagSlugs = (tagsRes.body.tags || []).map((tag) => tag.slug)
+    assert(tagSlugs.includes('stem'))
+    assert(tagSlugs.includes('robotics'))
 })

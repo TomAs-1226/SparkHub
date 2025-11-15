@@ -45,6 +45,7 @@ model Course {
   isPublished  Boolean         @default(false)
   joinCode     String          @unique
   enrollQuestionsJson String   @default("[]")
+  tagsJson     String          @default("[]")
   creator      User            @relation("CreatorCourses", fields: [creatorId], references: [id])
   creatorId    String
   createdAt    DateTime        @default(now())
@@ -58,6 +59,7 @@ model Course {
   sessions     CourseSession[]
   materials    CourseMaterial[]
   assignments  CourseAssignment[]
+  meetingLinks CourseMeetingLink[]
 }
 
 model Lesson {
@@ -70,6 +72,9 @@ model Lesson {
   body      String?
   order     Int         @default(1)
   createdAt DateTime    @default(now())
+  attachmentUrl String?
+  contentUrl String?
+  contentType String?
 }
 
 model Enrollment {
@@ -110,9 +115,20 @@ model CourseMaterial {
   contentUrl   String?
   contentType  String?
   visibleTo    String   @default("ENROLLED")
+  inlineViewer Boolean  @default(false)
   uploader     User?    @relation("CourseMaterialUploader", fields: [uploaderId], references: [id], onDelete: SetNull)
   uploaderId   String?
   createdAt    DateTime @default(now())
+}
+
+model CourseMeetingLink {
+  id        String   @id @default(cuid())
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
+  title     String
+  url       String
+  note      String?
+  createdAt DateTime @default(now())
 }
 
 model CourseAssignment {
