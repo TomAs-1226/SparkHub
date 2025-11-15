@@ -32,6 +32,9 @@ module.exports = function wireSecurity(app, opts = { frontendOrigins: [] }) {
     const explicitOrigins = normalizeOrigins(opts.frontendOrigins)
     const allowedOrigins = normalizeOrigins([...LOCAL_DEV_ORIGINS, ...explicitOrigins])
 
+    const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production'
+    const enableHsts = process.env.ENABLE_HSTS === 'true' || (isProduction && process.env.ENABLE_HSTS !== 'false')
+
     const connectSrc = normalizeOrigins([
         "'self'",
         ...allowedOrigins,
@@ -59,24 +62,27 @@ module.exports = function wireSecurity(app, opts = { frontendOrigins: [] }) {
     app.use(compression())
 
     // Strict security headers
+    const cspDirectives = {
+        "default-src": ["'self'"],
+        "script-src": ["'self'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "img-src": ["'self'", "data:"],
+        "font-src": ["'self'", "data:"],
+        "connect-src": connectSrc,
+        "frame-ancestors": ["'none'"],
+        "object-src": ["'none'"],
+    }
+
+    cspDirectives['upgrade-insecure-requests'] = enableHsts ? [] : null
+
     app.use(helmet({
         crossOriginOpenerPolicy: { policy: 'same-origin' },
         crossOriginResourcePolicy: { policy: 'same-site' },
         referrerPolicy: { policy: 'no-referrer' },
-        // Start with a conservative CSP; adjust as your frontend grows
+        hsts: enableHsts ? undefined : false,
         contentSecurityPolicy: {
             useDefaults: true,
-            directives: {
-                "default-src": ["'self'"],
-                "script-src": ["'self'"],
-                "style-src": ["'self'", "'unsafe-inline'"], // allow inline style if needed; remove when possible
-                "img-src": ["'self'", "data:"],
-                "font-src": ["'self'", "data:"],
-                "connect-src": connectSrc,
-                "frame-ancestors": ["'none'"],
-                "object-src": ["'none'"],
-                "upgrade-insecure-requests": []
-            }
+            directives: cspDirectives,
         }
     }))
 
