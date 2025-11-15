@@ -8,14 +8,52 @@ const rateLimit = require('express-rate-limit')
 // const { RedisStore } = require('rate-limit-redis')
 // const IORedis = require('ioredis')
 
+const LOCAL_DEV_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://10.0.2.2:5173'
+]
+
+function normalizeOrigins(list = []) {
+    return Array.from(new Set(list.filter(Boolean)))
+}
+
 /**
  * Wire core security middleware.
  * @param {import('express').Express} app
- * @param {{ frontendOrigins: string[] }} opts
+ * @param {{ frontendOrigins?: string[] }} opts
  */
 module.exports = function wireSecurity(app, opts = { frontendOrigins: [] }) {
     app.disable('x-powered-by')
     app.set('trust proxy', 1) // behind nginx/proxy
+
+    const explicitOrigins = normalizeOrigins(opts.frontendOrigins)
+    const allowedOrigins = normalizeOrigins([...LOCAL_DEV_ORIGINS, ...explicitOrigins])
+
+    const connectSrc = normalizeOrigins([
+        "'self'",
+        ...allowedOrigins,
+        ...allowedOrigins.map((origin) => origin.replace(/^http/, 'ws'))
+    ])
+
+    const allowOrigin = (origin, callback) => {
+        if (!origin) {
+            callback(null, true)
+            return
+        }
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true)
+            return
+        }
+        const localMatch = /^https?:\/\/((localhost)|(127\.0\.0\.1))(?:\:\d+)?$/i.test(origin)
+        if (localMatch && process.env.ALLOW_LOCAL_ORIGINS !== 'false') {
+            callback(null, true)
+            return
+        }
+        callback(new Error(`CORS: Origin ${origin} not allowed`))
+    }
 
     // Response compression
     app.use(compression())
@@ -34,7 +72,7 @@ module.exports = function wireSecurity(app, opts = { frontendOrigins: [] }) {
                 "style-src": ["'self'", "'unsafe-inline'"], // allow inline style if needed; remove when possible
                 "img-src": ["'self'", "data:"],
                 "font-src": ["'self'", "data:"],
-                "connect-src": ["'self'", ...opts.frontendOrigins],
+                "connect-src": connectSrc,
                 "frame-ancestors": ["'none'"],
                 "object-src": ["'none'"],
                 "upgrade-insecure-requests": []
@@ -47,7 +85,7 @@ module.exports = function wireSecurity(app, opts = { frontendOrigins: [] }) {
 
     // Strict CORS (default-deny, allow only your frontends)
     app.use(cors({
-        origin: opts.frontendOrigins,
+        origin: allowOrigin,
         methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
         allowedHeaders: ['Content-Type','Authorization'],
         credentials: true

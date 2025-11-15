@@ -27,12 +27,13 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 app.use((req, _res, next) => { console.log(`${req.method} ${req.url}`); next() })
 
 // SECURITY: Helmet, CORS, HPP, compression, rate limits
+const envOrigins = (process.env.FRONTEND_ORIGINS || process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+
 wireSecurity(app, {
-    frontendOrigins: [
-        process.env.FRONTEND_URL,
-        'http://localhost:5173',
-        'http://10.0.2.2:5173' // emulator hitting local dev frontend (optional)
-    ]
+    frontendOrigins: envOrigins
 })
 
 // Static files (if any)
