@@ -171,7 +171,13 @@ model CourseMessage {
   fromUser   User     @relation("UserMessages", fields: [fromUserId], references: [id])
   fromUserId String
   content    String
+  kind       String   @default("CHANNEL")
+  attachmentsJson String @default("[]")
+  visibility String @default("ENROLLED")
+  isSystem   Boolean  @default(false)
   createdAt  DateTime @default(now())
+
+  @@index([courseId, kind])
 }
 
 model Event {

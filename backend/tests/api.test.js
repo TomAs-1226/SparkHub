@@ -266,6 +266,54 @@ test('courses expose join codes, gated materials, and enrollment forms', async (
     assert.equal(codeJoin.body.viewer.isEnrolled, true)
 })
 
+test('course channel and chat persist messages with role-based visibility', async () => {
+    const creator = await createUser({ role: 'CREATOR' })
+    const student = await createUser({ role: 'STUDENT' })
+
+    const createCourse = await request(app)
+        .post('/courses')
+        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+        .send({ title: 'LMS Basics', summary: 'Test course', isPublished: true })
+    assert.equal(createCourse.status, 200)
+    const courseId = createCourse.body.course.id
+
+    await prisma.enrollment.create({
+        data: {
+            courseId,
+            userId: student.id,
+            status: 'APPROVED',
+            formAnswersJson: '{}',
+            joinedViaCode: true,
+        },
+    })
+
+    const noteRes = await request(app)
+        .post(`/courses/${courseId}/messages`)
+        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+        .send({ content: 'Staff planning note', visibility: 'STAFF' })
+    assert.equal(noteRes.status, 200)
+
+    const studentChannel = await request(app)
+        .get(`/courses/${courseId}/messages`)
+        .set('Authorization', `Bearer ${tokenFor(student)}`)
+    assert.equal(studentChannel.status, 200)
+    assert.equal(Array.isArray(studentChannel.body.list), true)
+    assert.equal(studentChannel.body.list.length, 0)
+
+    const chatRes = await request(app)
+        .post(`/courses/${courseId}/chat`)
+        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .send({ content: 'When is the next session?', attachments: [{ url: 'https://example.com/agenda.pdf', name: 'agenda.pdf' }] })
+    assert.equal(chatRes.status, 200)
+
+    const instructorChat = await request(app)
+        .get(`/courses/${courseId}/chat`)
+        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+    assert.equal(instructorChat.status, 200)
+    assert.equal(instructorChat.body.list.length, 1)
+    assert.equal(instructorChat.body.list[0].attachments[0].url, 'https://example.com/agenda.pdf')
+})
+
 test('course assignments allow creators to collect submissions', async () => {
     const tutor = await createUser({ role: 'TUTOR' })
     const student = await createUser({ role: 'STUDENT' })

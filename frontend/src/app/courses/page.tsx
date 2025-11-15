@@ -1,12 +1,29 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUpRight, CalendarDays, ClipboardList, Download, FileText, Link2, Lock, Sparkles, UsersRound, Video } from "lucide-react";
+import {
+    ArrowUpRight,
+    CalendarDays,
+    ClipboardList,
+    Clock,
+    Download,
+    File as FileIcon,
+    FileText,
+    Link2,
+    Lock,
+    MessageSquare,
+    Paperclip,
+    Send,
+    Shield,
+    Sparkles,
+    UsersRound,
+    Video,
+} from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -14,9 +31,12 @@ import { api } from "@/lib/api";
 import { uploadAsset } from "@/lib/upload";
 import { fetchCourseWorkspace } from "./load-course";
 import {
+    type AssignmentReminder,
     type CourseAssignment,
+    type CourseAttachment,
     type CourseDetail,
     type CourseLesson,
+    type CourseMessage,
     type CourseSession,
     type CourseTag,
     type EnrollmentListItem,
@@ -618,7 +638,6 @@ export default function CoursesPage() {
                                         setDrawerOpen(false);
                                         router.push(`/courses/${courseId}`);
                                     }}
-                                    currentUser={user || undefined}
                                 />
                             ) : (
                                 <p className="text-sm text-red-500">{status || "Unable to load course"}</p>
@@ -758,7 +777,6 @@ export function CourseDetailPanel({
     onAssignmentSubmit,
     assignmentBusy,
     onOpenFullPage,
-    currentUser,
     showCloseButton = true,
 }: {
     detail: CourseDetail;
@@ -773,7 +791,6 @@ export function CourseDetailPanel({
     onAssignmentSubmit: (assignmentId: string) => Promise<void>;
     assignmentBusy: string | null;
     onOpenFullPage?: (courseId: string) => void;
-    currentUser?: { id: string; name?: string | null; role?: string };
     showCloseButton?: boolean;
 }) {
     const [answers, setAnswers] = useState<Record<string, string>>(viewer?.formAnswers || {});
@@ -794,6 +811,10 @@ export function CourseDetailPanel({
         [managerEnrollments],
     );
     const pendingCount = pendingEnrollments.length;
+    const pastDueAssignments = useMemo(() => {
+        if (viewer?.canManage) return detail.assignmentSummary?.pastDueCourse ?? [];
+        return detail.assignmentSummary?.pastDueViewer ?? [];
+    }, [detail.assignmentSummary, viewer?.canManage]);
     const approved = viewer?.enrollmentStatus === "APPROVED";
     const enrollmentLabel = useMemo(() => {
         if (!viewer?.enrollmentStatus) return null;
@@ -963,9 +984,9 @@ export function CourseDetailPanel({
                 detail={detail}
                 viewer={viewer}
                 pendingEnrollments={pendingEnrollments}
-                currentUser={currentUser}
-                userRole={userRole}
             />
+
+            <CourseChatBoard detail={detail} viewer={viewer} />
 
             <section id="schedule" className="space-y-3">
                 <h3 className="text-lg font-semibold text-slate-900">Live schedule</h3>
@@ -1134,6 +1155,13 @@ export function CourseDetailPanel({
 
             {lessonPreview && (
                 <LessonPreviewDialog lesson={lessonPreview} onClose={() => setLessonPreview(null)} />
+            )}
+
+            {pastDueAssignments.length > 0 && (
+                <PastDueAssignmentsPanel
+                    assignments={pastDueAssignments}
+                    viewerIsManager={Boolean(viewer?.canManage)}
+                />
             )}
 
             <section className="space-y-3" id="assignments">
@@ -1401,89 +1429,113 @@ function CourseApplicationTimeline({ status }: { status?: string | null }) {
     );
 }
 
-interface ChannelNote {
-    id: string;
-    author: string;
-    body: string;
-    createdAt: string;
-    role: string;
-}
-
 function CourseTeamChannel({
     detail,
     viewer,
     pendingEnrollments,
-    currentUser,
-    userRole,
 }: {
     detail: CourseDetail;
     viewer: ViewerState | null;
     pendingEnrollments: EnrollmentRecord[];
-    currentUser?: { id: string; name?: string | null; role?: string };
-    userRole?: string;
 }) {
-    const storageKey = `sparkhub-course-channel-${detail.id}`;
-    const completeKey = `${storageKey}-done`;
-    const [notes, setNotes] = useState<ChannelNote[]>([]);
+    const storageKey = `sparkhub-course-dismissed-${detail.id}`;
     const [noteDraft, setNoteDraft] = useState("");
-    const [completed, setCompleted] = useState<string[]>([]);
+    const [channelMessages, setChannelMessages] = useState<CourseMessage[]>(detail.channelMessages ?? []);
+    const [channelStatus, setChannelStatus] = useState<string | null>(null);
+    const [channelBusy, setChannelBusy] = useState(false);
+    const [staffOnly, setStaffOnly] = useState(false);
+    const [dismissedIds, setDismissedIds] = useState<string[]>([]);
+    const canViewChannel = Boolean(viewer?.isEnrolled || viewer?.canManage);
+    const canPost = canViewChannel;
+    const canRestrict = Boolean(viewer?.canManage);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
         try {
             const stored = window.localStorage.getItem(storageKey);
-            setNotes(stored ? (JSON.parse(stored) as ChannelNote[]) : []);
+            setDismissedIds(stored ? (JSON.parse(stored) as string[]) : []);
         } catch {
-            setNotes([]);
+            setDismissedIds([]);
         }
     }, [storageKey]);
 
     useEffect(() => {
-        if (typeof window === "undefined") return;
-        window.localStorage.setItem(storageKey, JSON.stringify(notes));
-    }, [storageKey, notes]);
+        setChannelMessages(detail.channelMessages ?? []);
+    }, [detail.channelMessages, detail.id]);
 
-    useEffect(() => {
-        if (typeof window === "undefined") return;
+    const refreshChannel = useCallback(async () => {
+        if (!canViewChannel) return;
         try {
-            const stored = window.localStorage.getItem(completeKey);
-            setCompleted(stored ? (JSON.parse(stored) as string[]) : []);
-        } catch {
-            setCompleted([]);
+            const res = await api(`/courses/${detail.id}/messages`, { method: "GET" });
+            const json = await res.json();
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to load channel");
+            setChannelMessages(Array.isArray(json?.list) ? (json.list as CourseMessage[]) : []);
+        } catch (err) {
+            if (canRestrict) setChannelStatus(err instanceof Error ? err.message : "Unable to load channel");
         }
-    }, [completeKey]);
+    }, [canViewChannel, detail.id, canRestrict]);
 
     useEffect(() => {
+        if (!canViewChannel || typeof window === "undefined") return;
+        const timer = window.setInterval(() => {
+            refreshChannel();
+        }, 45000);
+        return () => window.clearInterval(timer);
+    }, [canViewChannel, refreshChannel]);
+
+    const pending = useMemo(() => pendingEnrollments.filter((row) => row.status === "PENDING"), [pendingEnrollments]);
+
+    function persistDismissed(next: string[]) {
         if (typeof window === "undefined") return;
-        window.localStorage.setItem(completeKey, JSON.stringify(completed));
-    }, [completeKey, completed]);
+        window.localStorage.setItem(storageKey, JSON.stringify(next));
+    }
+
+    function dismissEvent(eventId: string) {
+        setDismissedIds((prev) => {
+            if (prev.includes(eventId)) return prev;
+            const next = [...prev, eventId];
+            persistDismissed(next);
+            return next;
+        });
+    }
+
+    type TimelineEvent = {
+        id: string;
+        title: string;
+        description?: string | null;
+        timestamp?: string | null;
+        badge: string;
+        accent: string;
+        href?: string | null;
+        canDismiss: boolean;
+    };
 
     const events = useMemo(() => {
-        const updates: {
-            id: string;
-            title: string;
-            description?: string | null;
-            timestamp?: string | null;
-            badge: string;
-            accent: string;
-            href?: string | null;
-            canComplete: boolean;
-        }[] = [];
-
+        const updates: TimelineEvent[] = [];
         detail.assignments.forEach((assignment) => {
+            const viewerSubmitted = Boolean(assignment.viewerSubmission);
+            if (!viewer?.canManage && viewerSubmitted) return;
+            let accent = "bg-[#EEF2FF] text-[#2B2E83]";
+            if (assignment.dueStatus === "PAST_DUE") {
+                accent = "bg-[#FDECEC] text-[#B6483D]";
+            } else if (assignment.dueStatus === "DUE_SOON") {
+                accent = "bg-[#FFF4E5] text-[#9C6200]";
+            }
             updates.push({
                 id: `assignment-${assignment.id}`,
                 title: `Assignment • ${assignment.title}`,
-                description: assignment.description || (assignment.dueAt ? `Due ${formatDate(assignment.dueAt)}` : null),
+                description:
+                    assignment.description || (assignment.dueAt ? `Due ${formatDate(assignment.dueAt)}` : "No due date yet"),
                 timestamp: assignment.dueAt || assignment.id,
-                badge: "Assignment",
-                accent: "bg-[#EEF2FF] text-[#2B2E83]",
+                badge: assignment.dueStatus || "Assignment",
+                accent,
                 href: undefined,
-                canComplete: Boolean(viewer?.isEnrolled),
+                canDismiss: Boolean(viewer?.isEnrolled),
             });
         });
 
         detail.materials.forEach((material) => {
+            if (material.locked) return;
             updates.push({
                 id: `material-${material.id}`,
                 title: `Material • ${material.title}`,
@@ -1492,7 +1544,7 @@ function CourseTeamChannel({
                 badge: material.visibility,
                 accent: material.visibility === "PUBLIC" ? "bg-[#E8F7F4] text-[#1F6C62]" : "bg-[#FDF2FA] text-[#A21CAF]",
                 href: material.attachmentUrl || material.contentUrl || undefined,
-                canComplete: !material.locked,
+                canDismiss: Boolean(viewer?.isEnrolled),
             });
         });
 
@@ -1504,7 +1556,7 @@ function CourseTeamChannel({
                 timestamp: session.startsAt,
                 badge: "Session",
                 accent: "bg-[#FFF4E5] text-[#9C6200]",
-                canComplete: false,
+                canDismiss: false,
             });
         });
 
@@ -1517,85 +1569,79 @@ function CourseTeamChannel({
                 badge: "Meeting",
                 accent: "bg-[#E8F7F4] text-[#1F6C62]",
                 href: link.url,
-                canComplete: Boolean(viewer?.isEnrolled),
+                canDismiss: Boolean(viewer?.isEnrolled),
             });
         });
 
         if (viewer?.canManage) {
-            pendingEnrollments.forEach((record) => {
+            pending.forEach((record) => {
                 updates.push({
                     id: `enrollment-${record.id}`,
                     title: `Request • ${record.user?.name || "New learner"}`,
                     description: record.formAnswers?.intent || record.user?.email,
                     timestamp: record.createdAt,
                     badge: record.status,
-                    accent:
-                        record.status === "APPROVED"
-                            ? "bg-[#E8F7F4] text-[#1F6C62]"
-                            : record.status === "REJECTED"
-                            ? "bg-[#FDECEC] text-[#B6483D]"
-                            : "bg-[#FFF4E5] text-[#9C6200]",
-                    canComplete: false,
+                    accent: "bg-[#FFF4E5] text-[#9C6200]",
+                    canDismiss: true,
                 });
             });
         }
 
-        notes.forEach((note) => {
-            updates.push({
-                id: note.id,
-                title: `${note.author} posted`,
-                description: note.body,
-                timestamp: note.createdAt,
-                badge: note.role,
-                accent: note.role === "STUDENT" ? "bg-[#E0F2FE] text-[#0369A1]" : "bg-[#F0F4FF] text-[#2B2E83]",
-                canComplete: note.role === "STUDENT",
-            });
-        });
-
         return updates
             .map((event) => ({ ...event, timestampMs: event.timestamp ? new Date(event.timestamp).getTime() : 0 }))
             .sort((a, b) => b.timestampMs - a.timestampMs)
-            .slice(0, 20);
-    }, [detail.assignments, detail.materials, detail.sessions, detail.meetingLinks, notes, viewer?.canManage, viewer?.isEnrolled, pendingEnrollments]);
+            .slice(0, 24);
+    }, [detail.assignments, detail.materials, detail.sessions, detail.meetingLinks, viewer?.canManage, viewer?.isEnrolled, pending]);
 
-    const canPost = Boolean(viewer?.canManage || viewer?.isEnrolled);
-    const displayName = currentUser?.name || (viewer?.canManage ? "Instructor" : "Learner");
-    const posterRole = currentUser?.role || userRole || (viewer?.canManage ? "STAFF" : "STUDENT");
+    const visibleEvents = useMemo(() => events.filter((event) => !dismissedIds.includes(event.id)), [events, dismissedIds]);
+    const orderedMessages = useMemo(
+        () => [...channelMessages].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+        [channelMessages],
+    );
 
-    function handleAddNote() {
+    async function handleAddNote() {
         if (!noteDraft.trim() || !canPost) return;
-        const entry: ChannelNote = {
-            id: `note-${Date.now()}`,
-            author: displayName,
-            body: noteDraft.trim(),
-            createdAt: new Date().toISOString(),
-            role: posterRole,
-        };
-        setNotes((prev) => [entry, ...prev]);
-        setNoteDraft("");
-    }
-
-    function toggleComplete(eventId: string) {
-        setCompleted((prev) => (prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId]));
+        try {
+            setChannelBusy(true);
+            setChannelStatus(null);
+            const res = await api(`/courses/${detail.id}/messages`, {
+                method: "POST",
+                body: JSON.stringify({
+                    content: noteDraft.trim(),
+                    visibility: staffOnly ? "STAFF" : "ENROLLED",
+                    kind: "CHANNEL",
+                }),
+            });
+            const json = await res.json();
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to post");
+            setNoteDraft("");
+            setChannelStatus("Posted to channel");
+            setTimeout(() => setChannelStatus(null), 2000);
+            await refreshChannel();
+        } catch (err) {
+            setChannelStatus(err instanceof Error ? err.message : "Unable to post to channel");
+        } finally {
+            setChannelBusy(false);
+        }
     }
 
     return (
         <section id="channel" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-lg font-semibold text-slate-900">Team channel</h3>
-                <span className="text-xs text-slate-500">Activity feed + private notes</span>
+                <span className="text-xs text-slate-500">Activity feed + staff updates</span>
             </div>
             <div className="grid gap-4 lg:grid-cols-2">
                 <div className="space-y-2">
-                    {events.length === 0 ? (
+                    {visibleEvents.length === 0 ? (
                         <p className="text-sm text-slate-500">No updates yet. Assignments, resources, and sessions will appear here automatically.</p>
                     ) : (
-                        events.map((event) => (
+                        visibleEvents.map((event) => (
                             <div key={event.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
                                 <div className="flex items-center justify-between gap-3">
                                     <div>
                                         <p className="font-semibold text-slate-900">{event.title}</p>
-                                        <p className="text-xs text-slate-500">{formatDate(event.timestamp)}</p>
+                                        <p className="text-xs text-slate-500">{event.timestamp ? formatDate(event.timestamp) : ""}</p>
                                     </div>
                                     <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${event.accent}`}>{event.badge}</span>
                                 </div>
@@ -1606,17 +1652,13 @@ function CourseTeamChannel({
                                             Open <ArrowUpRight className="h-3 w-3" />
                                         </Link>
                                     )}
-                                    {event.canComplete && viewer?.isEnrolled && (
+                                    {event.canDismiss && (
                                         <button
                                             type="button"
-                                            onClick={() => toggleComplete(event.id)}
-                                            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-semibold ${
-                                                completed.includes(event.id)
-                                                    ? "bg-[#E8F7F4] text-[#1F6C62]"
-                                                    : "border border-slate-200 text-slate-600"
-                                            }`}
+                                            onClick={() => dismissEvent(event.id)}
+                                            className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-600 hover:border-slate-300"
                                         >
-                                            {completed.includes(event.id) ? "Completed" : "Mark done"}
+                                            Mark done
                                         </button>
                                     )}
                                 </div>
@@ -1625,25 +1667,283 @@ function CourseTeamChannel({
                     )}
                 </div>
                 <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                    <p className="text-sm font-semibold text-slate-900">Drop an update</p>
-                    <p className="text-xs text-slate-500">Notes live in your browser so you can track action items without emailing yourself.</p>
-                    <textarea
-                        value={noteDraft}
-                        onChange={(e) => setNoteDraft(e.target.value)}
-                        placeholder={canPost ? "Share a reminder, attach a task, or summarize a session." : "Join the course to post."}
-                        className="mt-3 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
-                        disabled={!canPost}
-                    />
-                    <button
-                        type="button"
-                        onClick={handleAddNote}
-                        disabled={!canPost || !noteDraft.trim()}
-                        className="mt-3 w-full rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                    >
-                        Post to channel
-                    </button>
-                    <p className="mt-2 text-[11px] text-slate-400">Only you can see these notes; admins and tutors get full activity automatically.</p>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-900">Post to channel</p>
+                            <p className="text-xs text-slate-500">Share reminders, meeting recaps, or action items.</p>
+                        </div>
+                        {canRestrict && (
+                            <label className="inline-flex items-center gap-2 text-[11px] text-slate-500">
+                                <input
+                                    type="checkbox"
+                                    checked={staffOnly}
+                                    onChange={(event) => setStaffOnly(event.target.checked)}
+                                />
+                                Staff only
+                            </label>
+                        )}
+                    </div>
+                    {canPost ? (
+                        <>
+                            <textarea
+                                value={noteDraft}
+                                onChange={(e) => setNoteDraft(e.target.value)}
+                                placeholder="Share a reminder or lesson note"
+                                className="mt-3 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                                rows={3}
+                            />
+                            <button
+                                type="button"
+                                onClick={handleAddNote}
+                                disabled={!noteDraft.trim() || channelBusy}
+                                className="mt-3 w-full rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                            >
+                                {channelBusy ? "Posting…" : "Post to channel"}
+                            </button>
+                        </>
+                    ) : (
+                        <p className="mt-3 text-sm text-slate-500">Enroll in this course to see instructor notes.</p>
+                    )}
+                    {channelStatus && <p className="mt-2 text-xs text-[#2D8F80]">{channelStatus}</p>}
+                    <div className="mt-4 space-y-2">
+                        {orderedMessages.length === 0 ? (
+                            <p className="text-xs text-slate-500">No instructor notes yet.</p>
+                        ) : (
+                            orderedMessages.slice(0, 5).map((message) => (
+                                <div key={message.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs text-slate-600">
+                                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                                        <span className="font-semibold text-slate-800">{message.author?.name || "Instructor"}</span>
+                                        <span>•</span>
+                                        <span>{formatDate(message.createdAt)}</span>
+                                        {message.visibility === "STAFF" && (
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-[#EEF2FF] px-2 py-0.5 text-[10px] font-semibold text-[#2B2E83]">
+                                                <Shield className="h-3 w-3" /> Staff
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="mt-1 text-sm text-slate-800">{message.content}</p>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
+            </div>
+        </section>
+    );
+}
+
+function CourseChatBoard({
+    detail,
+    viewer,
+}: {
+    detail: CourseDetail;
+    viewer: ViewerState | null;
+}) {
+    const [messages, setMessages] = useState<CourseMessage[]>(detail.chatMessages ?? []);
+    const [draft, setDraft] = useState("");
+    const [attachments, setAttachments] = useState<CourseAttachment[]>([]);
+    const [chatBusy, setChatBusy] = useState(false);
+    const [status, setStatus] = useState<string | null>(null);
+    const [pickerKey, setPickerKey] = useState(0);
+    const listRef = useRef<HTMLDivElement | null>(null);
+    const canChat = Boolean(viewer?.isEnrolled || viewer?.canManage);
+
+    useEffect(() => {
+        setMessages(detail.chatMessages ?? []);
+    }, [detail.chatMessages, detail.id]);
+
+    useEffect(() => {
+        if (!listRef.current) return;
+        listRef.current.scrollTop = listRef.current.scrollHeight;
+    }, [orderedMessages]);
+
+    const orderedMessages = useMemo(
+        () => [...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+        [messages],
+    );
+
+    const refreshChat = useCallback(async () => {
+        if (!canChat) return;
+        try {
+            const res = await api(`/courses/${detail.id}/chat`, { method: "GET" });
+            const json = await res.json();
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to load chat");
+            setMessages(Array.isArray(json?.list) ? (json.list as CourseMessage[]) : []);
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to load chat");
+        }
+    }, [canChat, detail.id]);
+
+    useEffect(() => {
+        if (!canChat || typeof window === "undefined") return;
+        const timer = window.setInterval(() => {
+            refreshChat();
+        }, 15000);
+        return () => window.clearInterval(timer);
+    }, [canChat, refreshChat]);
+
+    async function handleAttachmentPick(event: ChangeEvent<HTMLInputElement>) {
+        if (!event.target.files || event.target.files.length === 0) return;
+        const remaining = Math.max(0, 3 - attachments.length);
+        if (remaining === 0) {
+            setStatus("You can attach up to 3 files per message.");
+            return;
+        }
+        const files = Array.from(event.target.files).slice(0, remaining);
+        for (const file of files) {
+            try {
+                setChatBusy(true);
+                const url = await uploadAsset(file);
+                setAttachments((prev) => [...prev, { url, name: file.name, type: file.type }]);
+            } catch (err) {
+                setStatus(err instanceof Error ? err.message : "Upload failed");
+            } finally {
+                setChatBusy(false);
+            }
+        }
+        setPickerKey((prev) => prev + 1);
+    }
+
+    function removeAttachment(url: string) {
+        setAttachments((prev) => prev.filter((item) => item.url !== url));
+    }
+
+    async function handleSend() {
+        if (!draft.trim() && attachments.length === 0) {
+            setStatus("Add a question or attach a file first.");
+            return;
+        }
+        try {
+            setChatBusy(true);
+            setStatus(null);
+            const res = await api(`/courses/${detail.id}/chat`, {
+                method: "POST",
+                body: JSON.stringify({ content: draft.trim(), attachments }),
+            });
+            const json = await res.json();
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to send message");
+            setDraft("");
+            setAttachments([]);
+            setPickerKey((prev) => prev + 1);
+            await refreshChat();
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to send message");
+        } finally {
+            setChatBusy(false);
+        }
+    }
+
+    return (
+        <section className="space-y-3" id="course-chat">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-lg font-semibold text-slate-900">Class chat</h3>
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#EEF2FF] px-3 py-1 text-[11px] font-semibold text-[#2B2E83]">
+                    <MessageSquare className="h-3.5 w-3.5" /> Peer Q&A
+                </span>
+            </div>
+            <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
+                {canChat ? (
+                    <>
+                        <div ref={listRef} className="max-h-80 space-y-3 overflow-y-auto pr-1">
+                            {orderedMessages.length === 0 ? (
+                                <p className="text-sm text-slate-500">Be the first to ask a question or share a resource.</p>
+                            ) : (
+                                orderedMessages.map((message) => (
+                                    <div key={message.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-700">
+                                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                                            <span className="font-semibold text-slate-800">{message.author?.name || "Learner"}</span>
+                                            <span>•</span>
+                                            <span>{formatDate(message.createdAt)}</span>
+                                        </div>
+                                        <p className="mt-1 whitespace-pre-wrap text-slate-800">{message.content}</p>
+                                        {message.attachments && message.attachments.length > 0 && (
+                                            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                                {message.attachments.map((file) => (
+                                                    <Link
+                                                        key={`${message.id}-${file.url}`}
+                                                        href={file.url}
+                                                        target="_blank"
+                                                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[#2D8F80]"
+                                                    >
+                                                        <FileIcon className="h-3.5 w-3.5" /> {file.name || "Attachment"}
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        {attachments.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                {attachments.map((file) => (
+                                    <span
+                                        key={file.url}
+                                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-slate-600"
+                                    >
+                                        {file.name || "Attachment"}
+                                        <button type="button" onClick={() => removeAttachment(file.url)} className="text-slate-400">
+                                            ×
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        <textarea
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            placeholder="Ask for help, share progress, or drop meeting links"
+                            className="mt-3 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                            rows={3}
+                        />
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-dashed border-slate-300 px-3 py-1 font-semibold text-slate-600">
+                                <Paperclip className="h-3.5 w-3.5" /> Attach file
+                                <input key={pickerKey} type="file" multiple className="hidden" onChange={handleAttachmentPick} />
+                            </label>
+                            <button
+                                type="button"
+                                onClick={handleSend}
+                                disabled={chatBusy}
+                                className="inline-flex items-center gap-2 rounded-full bg-[#2B2E83] px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                            >
+                                {chatBusy ? "Sending…" : "Send"} <Send className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+                        {status && <p className="mt-2 text-xs text-[#2D8F80]">{status}</p>}
+                    </>
+                ) : (
+                    <p className="text-sm text-slate-500">Enroll in this course to unlock the chat and collaborate with classmates.</p>
+                )}
+            </div>
+        </section>
+    );
+}
+
+function PastDueAssignmentsPanel({ assignments, viewerIsManager }: { assignments: AssignmentReminder[]; viewerIsManager: boolean }) {
+    return (
+        <section className="rounded-3xl border border-[#FECACA] bg-[#FFF5F5] p-4 text-sm text-[#9C1C1C]">
+            <div className="flex items-center gap-2 text-[#B6483D]">
+                <Clock className="h-4 w-4" />
+                <p className="font-semibold">
+                    {viewerIsManager ? "Past due assignments" : "You have past due work"}
+                </p>
+            </div>
+            <p className="mt-1 text-xs text-[#B6483D]/80">
+                {viewerIsManager
+                    ? "Learners are waiting on your review. Use the course workspace to nudge or grade submissions."
+                    : "Submit these assignments or ping your instructor if you need an extension."}
+            </p>
+            <div className="mt-3 space-y-2">
+                {assignments.map((assignment) => (
+                    <div key={assignment.id} className="rounded-2xl border border-[#FECACA] bg-white px-3 py-2">
+                        <p className="font-semibold text-[#9C1C1C]">{assignment.title}</p>
+                        <p className="text-xs text-[#B6483D]">{assignment.dueAt ? `Due ${formatDate(assignment.dueAt)}` : "Due date not set"}</p>
+                        {viewerIsManager && typeof assignment.outstanding === "number" && (
+                            <p className="text-xs text-[#B6483D]/80">{assignment.outstanding} submission(s) pending review</p>
+                        )}
+                    </div>
+                ))}
             </div>
         </section>
     );

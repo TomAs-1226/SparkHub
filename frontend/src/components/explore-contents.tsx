@@ -50,46 +50,75 @@ function pickSummary(obj: ApiContent | null | undefined): string | null {
     );
 }
 
+function normalizeItems(cat: Cat, arrCandidate: ApiContent[]): ContentItem[] {
+    return arrCandidate.slice(0, 10).map((raw, idx) => {
+        const it = raw as ApiContent;
+        const rawId = it.id ?? it._id ?? it.slug ?? it.uuid ?? null;
+        const normalizedId = rawId ?? stableId(cat, it.title ?? it.name ?? "", idx);
+        const href = rawId ? `/${cat}/${encodeURIComponent(String(rawId))}` : it.slug ? `/${cat}/${encodeURIComponent(String(it.slug))}` : `/${cat}`;
+        return {
+            id: normalizedId,
+            title: it.title ?? it.name ?? "Untitled",
+            summary: pickSummary(it),
+            image: it.image ?? it.cover ?? it.thumbnail ?? it.banner ?? null,
+            tag: it.tag ?? it.category ?? it.type ?? null,
+            href,
+        } satisfies ContentItem;
+    });
+}
+
+function firstFulfilled<T>(promises: Promise<T>[]): Promise<T> {
+    return new Promise((resolve, reject) => {
+        if (promises.length === 0) {
+            reject(new Error("No promises provided"));
+            return;
+        }
+        let rejected = 0;
+        promises.forEach((promise) => {
+            promise.then(resolve).catch(() => {
+                rejected += 1;
+                if (rejected === promises.length) {
+                    reject(new Error("All requests failed"));
+                }
+            });
+        });
+    });
+}
+
+async function tryFetchCategory(url: string, cat: Cat, controller: AbortController): Promise<ContentItem[]> {
+    const timer = setTimeout(() => controller.abort(), 4000);
+    try {
+        const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+        if (!res.ok) throw new Error("Network error");
+        const data = (await res.json()) as unknown;
+        const payload = (data as { items?: unknown; data?: unknown; list?: unknown }) ?? {};
+        const arrCandidate = (payload.items ?? payload.data ?? payload.list ?? data) as unknown;
+        if (Array.isArray(arrCandidate) && arrCandidate.length) {
+            return normalizeItems(cat, arrCandidate as ApiContent[]);
+        }
+        throw new Error("Empty payload");
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 async function fetchCategory(cat: Cat): Promise<ContentItem[]> {
     const urls = [`/api/${cat}?limit=10`];
     if (API_BASE) {
         urls.push(`${API_BASE}/${cat}?limit=10`, `${API_BASE}/api/${cat}?limit=10`);
     }
 
-    for (const url of urls) {
-        try {
-            const res = await fetch(url, { cache: "no-store" });
-            if (!res.ok) continue;
-            const data = (await res.json()) as unknown;
-            const payload = (data as { items?: unknown; data?: unknown; list?: unknown }) ?? {};
-            const arrCandidate = (payload.items ?? payload.data ?? payload.list ?? data) as unknown;
-            if (Array.isArray(arrCandidate) && arrCandidate.length) {
-                return arrCandidate.slice(0, 10).map((raw, idx) => {
-                    const it = raw as ApiContent;
-                    const rawId =
-                        it.id ??
-                        it._id ??
-                        it.slug ??
-                        it.uuid ??
-                        null;
-                    const normalizedId = rawId ?? stableId(cat, it.title ?? it.name ?? "", idx);
-                    const href = rawId ? `/${cat}/${encodeURIComponent(String(rawId))}` : `/${cat}`;
-                    return {
-                        id: normalizedId,
-                        title: it.title ?? it.name ?? "Untitled",
-                        summary: pickSummary(it),
-                        image: it.image ?? it.cover ?? it.thumbnail ?? it.banner ?? null,
-                        tag: it.tag ?? it.category ?? it.type ?? null,
-                        href,
-                    } satisfies ContentItem;
-                });
-            }
-        } catch {
-            // ignore and try next url
-        }
+    const controllers = urls.map(() => new AbortController());
+    try {
+        const result = await firstFulfilled(
+            urls.map((url, index) => tryFetchCategory(url, cat, controllers[index])),
+        );
+        controllers.forEach((controller) => controller.abort());
+        return result;
+    } catch {
+        controllers.forEach((controller) => controller.abort());
     }
 
-    // Fallback demo data (stable IDs)
     const make = (titles: string[], tag: string) =>
         titles.map((t, i) => ({
             id: stableId(cat, t, i),

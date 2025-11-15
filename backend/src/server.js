@@ -6,6 +6,14 @@ const { ensurePrismaSync } = require('./utils/prisma-sync')
 
 ensurePrismaSync()
 
+process.on('unhandledRejection', (error) => {
+    console.error('Unhandled rejection:', error)
+})
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught exception:', error)
+})
+
 const app = express()
 
 // Body limits (prevent big JSON bombs)

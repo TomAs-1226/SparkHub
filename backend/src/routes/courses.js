@@ -7,6 +7,10 @@ const COURSE_MANAGER_ROLES = ['CREATOR', 'ADMIN', 'TUTOR']
 const MATERIAL_VISIBILITY = new Set(['PUBLIC', 'ENROLLED', 'STAFF'])
 const ENROLLMENT_STATUSES = new Set(['PENDING', 'APPROVED', 'REJECTED'])
 const MAX_TAGS = 8
+const MESSAGE_KINDS = new Set(['CHANNEL', 'CHAT'])
+const CHANNEL_VISIBILITY = new Set(['ENROLLED', 'STAFF'])
+const MAX_MESSAGE_ATTACHMENTS = 4
+const BAD_WORDS = ['shit', 'fuck', 'bitch', 'damn', 'crap', 'hell']
 const DEFAULT_FORM_QUESTIONS = [
     {
         id: 'intent',
@@ -179,6 +183,80 @@ function parseJsonArray(raw, fallback = []) {
     }
 }
 
+function cleanProfanity(input = '') {
+    if (!input) return ''
+    let output = String(input)
+    BAD_WORDS.forEach((word) => {
+        const pattern = new RegExp(`\\b${word}\\b`, 'gi')
+        output = output.replace(pattern, '*'.repeat(word.length))
+    })
+    return output.trim()
+}
+
+function parseAttachmentsJson(raw) {
+    const list = parseJsonArray(raw, [])
+    if (!Array.isArray(list)) return []
+    return list
+        .map((item) => {
+            if (!item) return null
+            if (typeof item === 'string') {
+                const trimmed = item.trim()
+                return trimmed ? { url: trimmed, name: null, type: null } : null
+            }
+            if (typeof item.url !== 'string' || !item.url.trim()) return null
+            return {
+                url: item.url.trim(),
+                name: typeof item.name === 'string' ? item.name : null,
+                type: typeof item.type === 'string' ? item.type : null,
+            }
+        })
+        .filter(Boolean)
+}
+
+function normalizeAttachmentsInput(raw) {
+    if (!raw) return []
+    const items = Array.isArray(raw) ? raw : [raw]
+    const normalized = []
+    for (const item of items) {
+        if (typeof item === 'string') {
+            const trimmed = item.trim()
+            if (trimmed) normalized.push({ url: trimmed, name: null, type: null })
+            continue
+        }
+        if (item && typeof item.url === 'string') {
+            const url = item.url.trim()
+            if (!url) continue
+            normalized.push({
+                url,
+                name: typeof item.name === 'string' ? item.name : null,
+                type: typeof item.type === 'string' ? item.type : null,
+            })
+        }
+        if (normalized.length >= MAX_MESSAGE_ATTACHMENTS) break
+    }
+    return normalized.slice(0, MAX_MESSAGE_ATTACHMENTS)
+}
+
+function formatMessage(row) {
+    if (!row) return null
+    return {
+        id: row.id,
+        content: row.content,
+        createdAt: row.createdAt,
+        kind: row.kind,
+        visibility: row.visibility,
+        attachments: parseAttachmentsJson(row.attachmentsJson),
+        author: row.fromUser
+            ? {
+                  id: row.fromUser.id,
+                  name: row.fromUser.name,
+                  avatarUrl: row.fromUser.avatarUrl,
+                  role: row.fromUser.role,
+              }
+            : null,
+    }
+}
+
 function icsEscape(value = '') {
     return String(value || '')
         .replace(/\\/g, '\\\\')
@@ -304,6 +382,9 @@ async function buildCoursePayload(courseId, viewer) {
     }
     const canManage = canManageCourse(course, viewer)
     const enrollmentApproved = isApprovedEnrollment(enrollment)
+    const now = Date.now()
+    const viewerPastDue = []
+    const managerPastDue = []
 
     const assignmentInclude = canManage
         ? {
@@ -352,6 +433,7 @@ async function buildCoursePayload(courseId, viewer) {
             createdAt: assignment.createdAt,
             stats: canManage ? { submissions: assignment.submissions ? assignment.submissions.length : 0 } : undefined,
         }
+        let viewerSubmissionRecord = null
         if (canManage && Array.isArray(assignment.submissions)) {
             base.submissions = assignment.submissions.map((submission) => ({
                 id: submission.id,
@@ -371,6 +453,7 @@ async function buildCoursePayload(courseId, viewer) {
             }))
         } else if (Array.isArray(assignment.submissions) && assignment.submissions[0]) {
             const submission = assignment.submissions[0]
+            viewerSubmissionRecord = submission
             base.viewerSubmission = {
                 id: submission.id,
                 status: submission.status,
@@ -381,6 +464,30 @@ async function buildCoursePayload(courseId, viewer) {
                 submittedAt: submission.createdAt,
             }
         }
+
+        const dueAtDate = assignment.dueAt ? new Date(assignment.dueAt) : null
+        let dueStatus = 'OPEN'
+        if (viewerSubmissionRecord && viewerSubmissionRecord.status) {
+            dueStatus = viewerSubmissionRecord.status
+        } else if (dueAtDate instanceof Date && !Number.isNaN(dueAtDate.getTime())) {
+            if (dueAtDate.getTime() < now) {
+                dueStatus = 'PAST_DUE'
+                if (viewer && viewer.role === 'STUDENT' && !viewerSubmissionRecord) {
+                    viewerPastDue.push({ id: assignment.id, title: assignment.title, dueAt: assignment.dueAt })
+                }
+                if (canManage) {
+                    const outstanding = Array.isArray(assignment.submissions)
+                        ? assignment.submissions.filter(
+                              (submission) => submission.status !== 'GRADED' && submission.status !== 'DONE'
+                          ).length
+                        : null
+                    managerPastDue.push({ id: assignment.id, title: assignment.title, dueAt: assignment.dueAt, outstanding })
+                }
+            } else if (dueAtDate.getTime() - now < 72 * 3600 * 1000) {
+                dueStatus = 'DUE_SOON'
+            }
+        }
+        base.dueStatus = dueStatus
         return base
     })
 
@@ -420,6 +527,31 @@ async function buildCoursePayload(courseId, viewer) {
         enrollmentRoster = rows.map(formatEnrollment)
     }
 
+    const assignmentSummary = {
+        pastDueViewer: viewerPastDue,
+        pastDueCourse: managerPastDue,
+        pastDueCount: (canManage ? managerPastDue : viewerPastDue).length,
+    }
+
+    let channelMessages = []
+    let chatMessages = []
+    if (canManage || enrollmentApproved) {
+        const channelRows = await prisma.courseMessage.findMany({
+            where: { courseId, kind: 'CHANNEL', ...(canManage ? {} : { visibility: 'ENROLLED' }) },
+            include: { fromUser: { select: { id: true, name: true, avatarUrl: true, role: true } } },
+            orderBy: { createdAt: 'desc' },
+            take: 40,
+        })
+        channelMessages = channelRows.map(formatMessage).filter(Boolean)
+        const chatRows = await prisma.courseMessage.findMany({
+            where: { courseId, kind: 'CHAT', ...(canManage ? {} : { visibility: 'ENROLLED' }) },
+            include: { fromUser: { select: { id: true, name: true, avatarUrl: true, role: true } } },
+            orderBy: { createdAt: 'desc' },
+            take: 80,
+        })
+        chatMessages = chatRows.map(formatMessage).filter(Boolean).reverse()
+    }
+
     return {
         ok: true,
         course: {
@@ -439,6 +571,9 @@ async function buildCoursePayload(courseId, viewer) {
             calendarDownloadUrl: canManage || enrollmentApproved ? `/courses/${course.id}/calendar.ics` : null,
             tags,
             meetingLinks,
+            assignmentSummary,
+            channelMessages,
+            chatMessages,
         },
         viewer: {
             canManage,
@@ -458,6 +593,82 @@ async function ensureCourseForManager(courseId, user) {
         return { error: { status: 403, msg: '无权限' } }
     }
     return { course }
+}
+
+async function ensureCourseAccess(courseId, user) {
+    const course = await prisma.course.findUnique({ where: { id: courseId } })
+    if (!course) return { error: { status: 404, msg: '课程不存在' } }
+    let enrollment = null
+    if (user) {
+        enrollment = await prisma.enrollment.findUnique({
+            where: { userId_courseId: { userId: user.id, courseId } },
+            include: { user: true },
+        })
+    }
+    const canManage = canManageCourse(course, user)
+    const enrollmentApproved = isApprovedEnrollment(enrollment)
+    return { course, enrollment, canManage, enrollmentApproved }
+}
+
+async function handleMessageList(req, res, forcedKind) {
+    const { course, canManage, enrollmentApproved, error } = await ensureCourseAccess(req.params.id, req.user)
+    if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
+    const rawKind = forcedKind || (typeof req.query.kind === 'string' ? req.query.kind.toUpperCase() : 'CHANNEL')
+    const kind = MESSAGE_KINDS.has(rawKind) ? rawKind : 'CHANNEL'
+    if (!canManage && !enrollmentApproved) {
+        return res.status(403).json({ ok: false, msg: '请先报名课程' })
+    }
+    if (kind === 'CHAT' && !canManage && !enrollmentApproved) {
+        return res.status(403).json({ ok: false, msg: '请先报名课程' })
+    }
+    const where = { courseId: course.id, kind }
+    if (!canManage) where.visibility = 'ENROLLED'
+    const isChat = kind === 'CHAT'
+    const rows = await prisma.courseMessage.findMany({
+        where,
+        include: { fromUser: { select: { id: true, name: true, avatarUrl: true, role: true } } },
+        orderBy: { createdAt: isChat ? 'asc' : 'desc' },
+        take: isChat ? 100 : 60,
+    })
+    res.json({ ok: true, list: rows.map(formatMessage).filter(Boolean) })
+}
+
+async function handleMessageCreate(req, res, forcedKind) {
+    const { course, canManage, enrollmentApproved, error } = await ensureCourseAccess(req.params.id, req.user)
+    if (error) return res.status(error.status).json({ ok: false, msg: error.msg })
+    if (!canManage && !enrollmentApproved) {
+        return res.status(403).json({ ok: false, msg: '请先报名课程' })
+    }
+    const rawKind = forcedKind || (typeof req.body.kind === 'string' ? req.body.kind.toUpperCase() : 'CHANNEL')
+    if (!MESSAGE_KINDS.has(rawKind)) {
+        return res.status(400).json({ ok: false, msg: '无效的留言类型' })
+    }
+    if (rawKind === 'CHAT' && !canManage && !enrollmentApproved) {
+        return res.status(403).json({ ok: false, msg: '请先报名课程' })
+    }
+    const attachments = normalizeAttachmentsInput(req.body.attachments || req.body.attachmentUrls)
+    const content = cleanProfanity(typeof req.body.content === 'string' ? req.body.content : String(req.body.content || ''))
+    if (!content && attachments.length === 0) {
+        return res.status(400).json({ ok: false, msg: '请填写留言内容' })
+    }
+    let visibility = 'ENROLLED'
+    if (rawKind === 'CHANNEL') {
+        const input = typeof req.body.visibility === 'string' ? req.body.visibility.toUpperCase() : 'ENROLLED'
+        if (CHANNEL_VISIBILITY.has(input)) visibility = input
+    }
+    if (visibility === 'STAFF' && !canManage) visibility = 'ENROLLED'
+    const message = await prisma.courseMessage.create({
+        data: {
+            courseId: course.id,
+            fromUserId: req.user.id,
+            content,
+            kind: rawKind,
+            attachmentsJson: JSON.stringify(attachments),
+            visibility: rawKind === 'CHAT' ? 'ENROLLED' : visibility,
+        },
+        include: { fromUser: { select: { id: true, name: true, avatarUrl: true, role: true } } },
+    })
+    res.json({ ok: true, message: formatMessage(message) })
 }
 
 // 创建课程（创作者、导师、管理员）
@@ -1009,29 +1220,21 @@ router.patch('/:id/enrollments/:enrollmentId', requireAuth, requireRole(COURSE_M
 })
 
 // 课程留言（与课程管理者互动）
-router.post('/:id/messages', requireAuth, async (req, res) => {
-    const course = await prisma.course.findUnique({ where: { id: req.params.id } })
-    if (!course) return res.status(404).json({ ok: false, msg: '课程不存在' })
-    const msg = await prisma.courseMessage.create({
-        data: { courseId: course.id, fromUserId: req.user.id, content: req.body.content },
-    })
-    res.json({ ok: true, message: msg })
+router.post('/:id/messages', requireAuth, (req, res) => {
+    handleMessageCreate(req, res)
 })
 
 // 查看留言（作者 / 已选课 / 管理员）
-router.get('/:id/messages', requireAuth, async (req, res) => {
-    const course = await prisma.course.findUnique({ where: { id: req.params.id } })
-    if (!course) return res.status(404).json({ ok: false, msg: '课程不存在' })
-    const isOwner = canManageCourse(course, req.user)
-    const isEnrolled = await prisma.enrollment.findUnique({
-        where: { userId_courseId: { userId: req.user.id, courseId: course.id } },
-    })
-    if (!isOwner && !isEnrolled) return res.status(403).json({ ok: false, msg: '无权限' })
-    const list = await prisma.courseMessage.findMany({
-        where: { courseId: course.id },
-        orderBy: { createdAt: 'asc' },
-    })
-    res.json({ ok: true, list })
+router.get('/:id/messages', requireAuth, (req, res) => {
+    handleMessageList(req, res)
+})
+
+router.get('/:id/chat', requireAuth, (req, res) => {
+    handleMessageList(req, res, 'CHAT')
+})
+
+router.post('/:id/chat', requireAuth, (req, res) => {
+    handleMessageCreate(req, res, 'CHAT')
 })
 
 module.exports = router

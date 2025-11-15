@@ -77,6 +77,7 @@ export interface CourseAssignment {
     stats?: { submissions: number };
     submissions?: AssignmentSubmission[];
     viewerSubmission?: AssignmentSubmission;
+    dueStatus?: string;
 }
 
 export interface EnrollQuestion {
@@ -95,6 +96,9 @@ export interface CourseDetail extends LiveCourse {
     joinCode?: string;
     calendarDownloadUrl?: string | null;
     meetingLinks: CourseMeetingLink[];
+    assignmentSummary?: AssignmentSummary;
+    channelMessages?: CourseMessage[];
+    chatMessages?: CourseMessage[];
 }
 
 export interface ViewerState {
@@ -121,4 +125,33 @@ export interface EnrollmentListItem {
     status: string;
     createdAt: string;
     course?: LiveCourse;
+}
+
+export interface CourseAttachment {
+    url: string;
+    name?: string | null;
+    type?: string | null;
+}
+
+export interface CourseMessage {
+    id: string;
+    content: string;
+    createdAt: string;
+    kind: "CHANNEL" | "CHAT";
+    visibility: string;
+    attachments?: CourseAttachment[];
+    author?: { id: string; name?: string | null; avatarUrl?: string | null; role?: string | null } | null;
+}
+
+export interface AssignmentReminder {
+    id: string;
+    title: string;
+    dueAt?: string | null;
+    outstanding?: number | null;
+}
+
+export interface AssignmentSummary {
+    pastDueViewer: AssignmentReminder[];
+    pastDueCourse: AssignmentReminder[];
+    pastDueCount: number;
 }
