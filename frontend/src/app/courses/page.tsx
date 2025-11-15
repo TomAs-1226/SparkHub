@@ -11,6 +11,17 @@ import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { api } from "@/lib/api";
 import { uploadAsset } from "@/lib/upload";
+import { fetchCourseWorkspace } from "./load-course";
+import {
+    type CourseAssignment,
+    type CourseDetail,
+    type CourseSession,
+    type EnrollmentListItem,
+    type EnrollmentRecord,
+    type LiveCourse,
+    type ViewerState,
+} from "./types";
+import { formatDate, formatTimeRange, groupSessionsByDay } from "./utils";
 
 const heroCourses = [
     {
@@ -37,110 +48,6 @@ const categories = [
     { title: "Leadership", description: "Strategy sprints, DEI, and service projects." },
     { title: "Others", description: "Career readiness, wellness, and life skills." },
 ];
-
-interface CourseSession {
-    id: string;
-    startsAt: string;
-    endsAt?: string | null;
-    location?: string | null;
-    mode?: string | null;
-    note?: string | null;
-}
-
-interface LiveCourse {
-    id: string;
-    title: string;
-    summary?: string | null;
-    coverUrl?: string | null;
-    upcomingSessions?: CourseSession[];
-}
-
-interface CourseLesson {
-    id: string;
-    title: string;
-    type: string;
-    body?: string | null;
-    videoUrl?: string | null;
-}
-
-interface CourseMaterial {
-    id: string;
-    title: string;
-    description?: string | null;
-    coverUrl?: string | null;
-    attachmentUrl?: string | null;
-    contentUrl?: string | null;
-    contentType?: string | null;
-    locked: boolean;
-    visibility: string;
-    createdAt: string;
-    uploader?: { id: string; name?: string | null; avatarUrl?: string | null } | null;
-}
-
-interface AssignmentSubmission {
-    id: string;
-    status: string;
-    grade?: string | null;
-    feedback?: string | null;
-    attachmentUrl?: string | null;
-    content?: string | null;
-    submittedAt?: string | null;
-}
-
-interface CourseAssignment {
-    id: string;
-    title: string;
-    description?: string | null;
-    dueAt?: string | null;
-    resources?: string[];
-    attachments?: string[];
-    stats?: { submissions: number };
-    submissions?: AssignmentSubmission[];
-    viewerSubmission?: AssignmentSubmission;
-}
-
-interface EnrollQuestion {
-    id: string;
-    label: string;
-    placeholder?: string;
-    type?: string;
-}
-
-interface CourseDetail extends LiveCourse {
-    lessons: CourseLesson[];
-    sessions: CourseSession[];
-    materials: CourseMaterial[];
-    assignments: CourseAssignment[];
-    enrollQuestions: EnrollQuestion[];
-    joinCode?: string;
-    calendarDownloadUrl?: string | null;
-}
-
-interface ViewerState {
-    canManage: boolean;
-    isEnrolled: boolean;
-    enrollmentStatus?: string | null;
-    formAnswers?: Record<string, string> | null;
-    calendarUnlocked?: boolean;
-}
-
-interface EnrollmentRecord {
-    id: string;
-    status: string;
-    joinedViaCode: boolean;
-    createdAt: string;
-    adminNote?: string | null;
-    formAnswers: Record<string, string>;
-    user?: { id: string; name?: string | null; email?: string | null; role?: string | null; avatarUrl?: string | null } | null;
-}
-
-interface EnrollmentListItem {
-    id: string;
-    courseId: string;
-    status: string;
-    createdAt: string;
-    course?: LiveCourse;
-}
 
 export default function CoursesPage() {
     const router = useRouter();
@@ -207,6 +114,18 @@ export default function CoursesPage() {
     }, [user]);
 
     const enrolledSet = useMemo(() => new Set(enrolledIds), [enrolledIds]);
+
+    useEffect(() => {
+        if (!detail || !viewer) return;
+        if (viewer.isEnrolled) {
+            setEnrolledIds((prev) => (prev.includes(detail.id) ? prev : [...prev, detail.id]));
+        }
+        if (viewer.enrollmentStatus) {
+            setMyEnrollments((prev) =>
+                prev.map((row) => (row.courseId === detail.id ? { ...row, status: viewer.enrollmentStatus! } : row)),
+            );
+        }
+    }, [detail, viewer]);
 
     const refreshMyEnrollments = useCallback(async () => {
         if (!user) return;
@@ -278,19 +197,21 @@ export default function CoursesPage() {
         }
     }
 
+    async function loadCourseDetail(courseId: string) {
+        const payload = await fetchCourseWorkspace(courseId);
+        setDetail(payload.detail);
+        setViewer(payload.viewer);
+        setManagerEnrollments(payload.enrollments);
+        hydrateAssignmentDrafts(payload.detail?.assignments || []);
+    }
+
     async function openCourseDrawer(courseId: string) {
         setSelectedId(courseId);
         setDrawerOpen(true);
         setDrawerBusy(true);
         setStatus(null);
         try {
-            const res = await api(`/courses/${courseId}`, { method: "GET" });
-            const json = await res.json();
-            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to load course.");
-            setDetail(json.course);
-            setViewer(json.viewer);
-            setManagerEnrollments(Array.isArray(json?.enrollments) ? (json.enrollments as EnrollmentRecord[]) : []);
-            hydrateAssignmentDrafts(Array.isArray(json.course?.assignments) ? (json.course.assignments as CourseAssignment[]) : []);
+            await loadCourseDetail(courseId);
         } catch (err) {
             setStatus(err instanceof Error ? err.message : "Unable to load course");
         } finally {
@@ -300,7 +221,14 @@ export default function CoursesPage() {
 
     async function refreshDetail() {
         if (!selectedId) return;
-        await openCourseDrawer(selectedId);
+        try {
+            setDrawerBusy(true);
+            await loadCourseDetail(selectedId);
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to refresh course");
+        } finally {
+            setDrawerBusy(false);
+        }
     }
 
     async function handleEnrollSubmit(payload: { answers: Record<string, string>; joinCode?: string }) {
@@ -496,13 +424,15 @@ export default function CoursesPage() {
                                             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
                                                 <button
                                                     type="button"
-                                                    onClick={() => openCourseDrawer(enrollment.courseId)}
+                                                    onClick={() => router.push(`/courses/${enrollment.courseId}`)}
                                                     className="rounded-full border border-slate-200 px-4 py-1.5 font-semibold text-slate-800 hover:border-slate-300"
                                                 >
                                                     Open workspace
                                                 </button>
-                                                {!approved && (
+                                                {!approved ? (
                                                     <span className="rounded-full bg-amber-50 px-3 py-1 font-semibold text-amber-700">Waiting for instructor</span>
+                                                ) : (
+                                                    <span className="rounded-full bg-[#E8F7F4] px-3 py-1 font-semibold text-[#1F6C62]">Approved</span>
                                                 )}
                                             </div>
                                         </div>
@@ -577,7 +507,7 @@ export default function CoursesPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm"
+                        className="fixed inset-0 z-[80] bg-slate-900/40 backdrop-blur-sm"
                         onClick={() => setDrawerOpen(false)}
                     >
                         <motion.div
@@ -603,6 +533,11 @@ export default function CoursesPage() {
                                     onAssignmentDraftChange={handleAssignmentDraftChange}
                                     onAssignmentSubmit={handleAssignmentSubmit}
                                     assignmentBusy={assignmentBusy}
+                                    onOpenFullPage={(courseId) => {
+                                        setDrawerOpen(false);
+                                        router.push(`/courses/${courseId}`);
+                                    }}
+                                    currentUser={user || undefined}
                                 />
                             ) : (
                                 <p className="text-sm text-red-500">{status || "Unable to load course"}</p>
@@ -729,7 +664,7 @@ function CourseBuilderCard({ onCreated }: { onCreated: (course: LiveCourse) => v
     );
 }
 
-function CourseDetailPanel({
+export function CourseDetailPanel({
     detail,
     viewer,
     userRole,
@@ -741,6 +676,9 @@ function CourseDetailPanel({
     onAssignmentDraftChange,
     onAssignmentSubmit,
     assignmentBusy,
+    onOpenFullPage,
+    currentUser,
+    showCloseButton = true,
 }: {
     detail: CourseDetail;
     viewer: ViewerState | null;
@@ -753,6 +691,9 @@ function CourseDetailPanel({
     onAssignmentDraftChange: (assignmentId: string, patch: Partial<{ note: string; attachmentUrl?: string }>) => void;
     onAssignmentSubmit: (assignmentId: string) => Promise<void>;
     assignmentBusy: string | null;
+    onOpenFullPage?: (courseId: string) => void;
+    currentUser?: { id: string; name?: string | null; role?: string };
+    showCloseButton?: boolean;
 }) {
     const [answers, setAnswers] = useState<Record<string, string>>(viewer?.formAnswers || {});
     const [joinCodeInput, setJoinCodeInput] = useState("");
@@ -798,66 +739,92 @@ function CourseDetailPanel({
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-start justify-between gap-3">
-                <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-[#5C9E95]">Course workspace</p>
-                    <h2 className="text-3xl font-semibold text-slate-900">{detail.title}</h2>
-                    <p className="mt-2 text-sm text-slate-600">{detail.summary}</p>
-                    {viewer?.enrollmentStatus && (
-                        <span
-                            className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                                approved ? "bg-[#E8F7F4] text-[#1F6C62]" : "bg-[#FFF4E5] text-[#9C6200]"
-                            }`}
-                        >
-                            Status: {viewer.enrollmentStatus}
-                        </span>
-                    )}
-                </div>
-                <button onClick={onClose} className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500">
-                    Close
-                </button>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-4">
-                <StatPill icon={<UsersRound className="h-4 w-4" />} label="Lessons" value={detail.lessons.length.toString()} />
-                <StatPill icon={<CalendarDays className="h-4 w-4" />} label="Sessions" value={detail.sessions.length.toString()} />
-                <StatPill icon={<FileText className="h-4 w-4" />} label="Materials" value={detail.materials.length.toString()} />
-                <StatPill icon={<ClipboardList className="h-4 w-4" />} label="Assignments" value={detail.assignments.length.toString()} />
-            </div>
-            {isStudent && <CourseApplicationTimeline status={viewer?.enrollmentStatus} />}
-            {canManage && (
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Instructor shortcuts</p>
-                    <p className="mt-1 text-slate-900">
-                        {pendingCount === 0 ? "No pending requests." : `${pendingCount} enrollment${pendingCount > 1 ? "s" : ""} awaiting review.`}
-                    </p>
-                    <Link
-                        href="/courses/studio"
-                        className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#2B2E83] px-4 py-1.5 text-xs font-semibold text-white"
-                    >
-                        Open course studio <ArrowUpRight className="h-3.5 w-3.5" />
-                    </Link>
-                </div>
-            )}
-            {canManage && detail.joinCode && (
-                <div className="rounded-2xl border border-[#2B2E83]/20 bg-[#F5F7FF] p-4 text-sm text-slate-700">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">Shareable join code</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-3">
-                        <span className="font-mono text-2xl tracking-[0.3em] text-[#2B2E83]">{detail.joinCode}</span>
-                        <button
-                            type="button"
-                            onClick={handleCopyJoinCode}
-                            className="rounded-full border border-[#2B2E83] px-3 py-1 text-xs font-semibold text-[#2B2E83]"
-                        >
-                            Copy
-                        </button>
+        <div className="space-y-8">
+            <section id="overview" className="space-y-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-[#5C9E95]">Course workspace</p>
+                        <h2 className="text-3xl font-semibold text-slate-900">{detail.title}</h2>
+                        <p className="mt-2 text-sm text-slate-600">{detail.summary}</p>
+                        {viewer?.enrollmentStatus && (
+                            <span
+                                className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                                    approved ? "bg-[#E8F7F4] text-[#1F6C62]" : "bg-[#FFF4E5] text-[#9C6200]"
+                                }`}
+                            >
+                                Status: {viewer.enrollmentStatus}
+                            </span>
+                        )}
                     </div>
-                    <p className="mt-2 text-xs text-slate-500">Learners with this code skip the approval queue; others remain pending until you review them.</p>
-                    {copyStatus && <p className="mt-1 text-xs text-[#2D8F80]">{copyStatus}</p>}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {onOpenFullPage && (
+                            <button
+                                type="button"
+                                onClick={() => onOpenFullPage(detail.id)}
+                                className="rounded-full border border-slate-200 px-4 py-1 text-xs font-semibold text-slate-700 hover:border-slate-300"
+                            >
+                                Launch full page
+                            </button>
+                        )}
+                        {showCloseButton && (
+                            <button
+                                onClick={onClose}
+                                className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500"
+                            >
+                                Close
+                            </button>
+                        )}
+                    </div>
                 </div>
-            )}
+                <div className="grid gap-3 sm:grid-cols-4">
+                    <StatPill icon={<UsersRound className="h-4 w-4" />} label="Lessons" value={detail.lessons.length.toString()} />
+                    <StatPill icon={<CalendarDays className="h-4 w-4" />} label="Sessions" value={detail.sessions.length.toString()} />
+                    <StatPill icon={<FileText className="h-4 w-4" />} label="Materials" value={detail.materials.length.toString()} />
+                    <StatPill icon={<ClipboardList className="h-4 w-4" />} label="Assignments" value={detail.assignments.length.toString()} />
+                </div>
+                {isStudent && <CourseApplicationTimeline status={viewer?.enrollmentStatus} />}
+                {canManage && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Instructor shortcuts</p>
+                        <p className="mt-1 text-slate-900">
+                            {pendingCount === 0 ? "No pending requests." : `${pendingCount} enrollment${pendingCount > 1 ? "s" : ""} awaiting review.`}
+                        </p>
+                        <Link
+                            href="/courses/studio"
+                            className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#2B2E83] px-4 py-1.5 text-xs font-semibold text-white"
+                        >
+                            Open course studio <ArrowUpRight className="h-3.5 w-3.5" />
+                        </Link>
+                    </div>
+                )}
+                {canManage && detail.joinCode && (
+                    <div className="rounded-2xl border border-[#2B2E83]/20 bg-[#F5F7FF] p-4 text-sm text-slate-700">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">Shareable join code</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-3">
+                            <span className="font-mono text-2xl tracking-[0.3em] text-[#2B2E83]">{detail.joinCode}</span>
+                            <button
+                                type="button"
+                                onClick={handleCopyJoinCode}
+                                className="rounded-full border border-[#2B2E83] px-3 py-1 text-xs font-semibold text-[#2B2E83]"
+                            >
+                                Copy
+                            </button>
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500">Learners with this code skip the approval queue; others remain pending until you review them.</p>
+                        {copyStatus && <p className="mt-1 text-xs text-[#2D8F80]">{copyStatus}</p>}
+                    </div>
+                )}
+            </section>
 
-            <section className="space-y-3">
+            <CourseTeamChannel
+                detail={detail}
+                viewer={viewer}
+                managerEnrollments={managerEnrollments}
+                currentUser={currentUser}
+                userRole={userRole}
+            />
+
+            <section id="schedule" className="space-y-3">
                 <h3 className="text-lg font-semibold text-slate-900">Live schedule</h3>
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
                     <div className="space-y-2">
@@ -942,7 +909,7 @@ function CourseDetailPanel({
                 </div>
             </section>
 
-            <section className="space-y-3">
+            <section className="space-y-3" id="materials">
                 <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-slate-900">Materials</h3>
                 </div>
@@ -1070,58 +1037,75 @@ function CourseDetailPanel({
                 </div>
             </section>
 
-            {isStudent && submittedAnswers.length > 0 && (
-                <section className="space-y-3">
-                    <h3 className="text-lg font-semibold text-slate-900">Your submitted answers</h3>
-                    <div className="space-y-2 text-sm">
-                        {submittedAnswers.map((answer) => (
-                            <div key={answer.id} className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{answer.label}</p>
-                                <p className="mt-1 whitespace-pre-wrap text-slate-700">{answer.value}</p>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-            )}
-
-            {isStudent && !approved && (
-                <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            {isStudent && (submittedAnswers.length > 0 || !approved) && (
+                <section id="enrollment" className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                        <ClipboardList className="h-4 w-4 text-[#2D8F80]" /> Enrollment form
+                        <ClipboardList className="h-4 w-4 text-[#2D8F80]" /> Enrollment center
                     </div>
-                    {detail.enrollQuestions.map((question) => (
-                        <label key={question.id} className="block text-sm">
-                            <span className="text-slate-600">{question.label}</span>
-                            <textarea
-                                value={answers[question.id] || ""}
-                                onChange={(e) => setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))}
-                                placeholder={question.placeholder}
-                                className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-[#2D8F80] focus:outline-none"
+                    {submittedAnswers.length > 0 && (
+                        <div className="space-y-2 text-sm">
+                            {submittedAnswers.map((answer) => (
+                                <div key={answer.id} className="rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{answer.label}</p>
+                                    <p className="mt-1 whitespace-pre-wrap text-slate-700">{answer.value}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {!approved && (
+                        <div className="space-y-4">
+                            {detail.enrollQuestions.map((question) => (
+                                <label key={question.id} className="block text-sm">
+                                    <span className="text-slate-600">{question.label}</span>
+                                    <textarea
+                                        value={answers[question.id] || ""}
+                                        onChange={(e) => setAnswers((prev) => ({ ...prev, [question.id]: e.target.value }))}
+                                        placeholder={question.placeholder}
+                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-[#2D8F80] focus:outline-none"
+                                    />
+                                </label>
+                            ))}
+                            <input
+                                value={joinCodeInput}
+                                onChange={(e) => setJoinCodeInput(e.target.value)}
+                                placeholder="Course code (optional)"
+                                className="w-full rounded-2xl border border-dashed border-slate-300 px-3 py-2 text-sm focus:border-[#2D8F80] focus:outline-none"
                             />
-                        </label>
-                    ))}
-                    <input
-                        value={joinCodeInput}
-                        onChange={(e) => setJoinCodeInput(e.target.value)}
-                        placeholder="Course code (optional)"
-                        className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-[#2D8F80] focus:outline-none"
-                    />
-                    <p className="text-xs text-slate-500">Have a fast-track code? Enter it to skip the approval queue.</p>
-                    <button
-                        onClick={() => {
-                            const sanitized = Object.fromEntries(
-                                Object.entries(answers)
-                                    .map(([key, value]) => [key, value?.trim?.() || ""] as const)
-                                    .filter(([, value]) => Boolean(value))
-                            ) as Record<string, string>;
-                            onEnroll({ answers: sanitized, joinCode: joinCodeInput || undefined });
-                        }}
-                        disabled={isBusy}
-                        className="w-full rounded-full bg-[#2D8F80] px-4 py-2 text-sm font-semibold text-white hover:brightness-110 disabled:opacity-60"
-                    >
-                        {isBusy ? "Submitting…" : "Submit enrollment"}
-                    </button>
-                </div>
+                            <p className="text-xs text-slate-500">Have a fast-track code? Enter it to skip the approval queue.</p>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <button
+                                    onClick={() => {
+                                        const sanitized = Object.fromEntries(
+                                            Object.entries(answers)
+                                                .map(([key, value]) => [key, value?.trim?.() || ""] as const)
+                                                .filter(([, value]) => Boolean(value))
+                                        ) as Record<string, string>;
+                                        onEnroll({ answers: sanitized });
+                                    }}
+                                    disabled={isBusy}
+                                    className="rounded-full bg-[#2D8F80] px-4 py-2 text-xs font-semibold text-white hover:brightness-110 disabled:opacity-60"
+                                >
+                                    {isBusy ? "Submitting…" : "Apply"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const sanitized = Object.fromEntries(
+                                            Object.entries(answers)
+                                                .map(([key, value]) => [key, value?.trim?.() || ""] as const)
+                                                .filter(([, value]) => Boolean(value))
+                                        ) as Record<string, string>;
+                                        onEnroll({ answers: sanitized, joinCode: joinCodeInput || undefined });
+                                    }}
+                                    disabled={isBusy || !joinCodeInput.trim()}
+                                    className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                                >
+                                    {isBusy ? "Checking code…" : "Apply with code"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </section>
             )}
 
             {approved && (
@@ -1235,49 +1219,237 @@ function CourseApplicationTimeline({ status }: { status?: string | null }) {
     );
 }
 
-function formatDate(iso?: string | null, options?: Intl.DateTimeFormatOptions) {
-    if (!iso) return "TBA";
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return "TBA";
-    return date.toLocaleDateString(undefined, options ?? { month: "short", day: "numeric", year: "numeric" });
+interface ChannelNote {
+    id: string;
+    author: string;
+    body: string;
+    createdAt: string;
+    role: string;
 }
 
-function formatTimeRange(session: CourseSession) {
-    if (!session.startsAt) return "TBA";
-    const start = new Date(session.startsAt);
-    if (Number.isNaN(start.getTime())) return "TBA";
-    const end = session.endsAt ? new Date(session.endsAt) : null;
-    const formatter = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
-    const startLabel = formatter.format(start);
-    const endLabel = end && !Number.isNaN(end.getTime()) ? formatter.format(end) : null;
-    return endLabel ? `${startLabel} – ${endLabel}` : startLabel;
-}
+function CourseTeamChannel({
+    detail,
+    viewer,
+    managerEnrollments,
+    currentUser,
+    userRole,
+}: {
+    detail: CourseDetail;
+    viewer: ViewerState | null;
+    managerEnrollments: EnrollmentRecord[];
+    currentUser?: { id: string; name?: string | null; role?: string };
+    userRole?: string;
+}) {
+    const storageKey = `sparkhub-course-channel-${detail.id}`;
+    const completeKey = `${storageKey}-done`;
+    const [notes, setNotes] = useState<ChannelNote[]>([]);
+    const [noteDraft, setNoteDraft] = useState("");
+    const [completed, setCompleted] = useState<string[]>([]);
 
-function groupSessionsByDay(sessions: CourseSession[]) {
-    const buckets = new Map<string, CourseSession[]>();
-    sessions.forEach((session) => {
-        if (!session.startsAt) return;
-        const date = new Date(session.startsAt);
-        if (Number.isNaN(date.getTime())) return;
-        const key = date.toISOString().split("T")[0];
-        const bucket = buckets.get(key) || [];
-        bucket.push(session);
-        buckets.set(key, bucket);
-    });
-    return Array.from(buckets.entries())
-        .map(([key, rows]) => ({
-            key,
-            label: formatDate(rows[0]?.startsAt, { weekday: "short", month: "short", day: "numeric" }),
-            sessions: rows.sort((a, b) => {
-                const aTime = a.startsAt ? new Date(a.startsAt).getTime() : 0;
-                const bTime = b.startsAt ? new Date(b.startsAt).getTime() : 0;
-                return aTime - bTime;
-            }),
-        }))
-        .sort((a, b) => {
-            const aTime = a.sessions[0]?.startsAt ? new Date(a.sessions[0].startsAt).getTime() : 0;
-            const bTime = b.sessions[0]?.startsAt ? new Date(b.sessions[0].startsAt).getTime() : 0;
-            return aTime - bTime;
-        })
-        .slice(0, 6);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        try {
+            const stored = window.localStorage.getItem(storageKey);
+            setNotes(stored ? (JSON.parse(stored) as ChannelNote[]) : []);
+        } catch {
+            setNotes([]);
+        }
+    }, [storageKey]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        window.localStorage.setItem(storageKey, JSON.stringify(notes));
+    }, [storageKey, notes]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        try {
+            const stored = window.localStorage.getItem(completeKey);
+            setCompleted(stored ? (JSON.parse(stored) as string[]) : []);
+        } catch {
+            setCompleted([]);
+        }
+    }, [completeKey]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        window.localStorage.setItem(completeKey, JSON.stringify(completed));
+    }, [completeKey, completed]);
+
+    const events = useMemo(() => {
+        const updates: {
+            id: string;
+            title: string;
+            description?: string | null;
+            timestamp?: string | null;
+            badge: string;
+            accent: string;
+            href?: string | null;
+            canComplete: boolean;
+        }[] = [];
+
+        detail.assignments.forEach((assignment) => {
+            updates.push({
+                id: `assignment-${assignment.id}`,
+                title: `Assignment • ${assignment.title}`,
+                description: assignment.description || (assignment.dueAt ? `Due ${formatDate(assignment.dueAt)}` : null),
+                timestamp: assignment.dueAt || assignment.id,
+                badge: "Assignment",
+                accent: "bg-[#EEF2FF] text-[#2B2E83]",
+                href: undefined,
+                canComplete: Boolean(viewer?.isEnrolled),
+            });
+        });
+
+        detail.materials.forEach((material) => {
+            updates.push({
+                id: `material-${material.id}`,
+                title: `Material • ${material.title}`,
+                description: material.description || material.visibility,
+                timestamp: material.createdAt,
+                badge: material.visibility,
+                accent: material.visibility === "PUBLIC" ? "bg-[#E8F7F4] text-[#1F6C62]" : "bg-[#FDF2FA] text-[#A21CAF]",
+                href: material.attachmentUrl || material.contentUrl || undefined,
+                canComplete: !material.locked,
+            });
+        });
+
+        detail.sessions.forEach((session) => {
+            updates.push({
+                id: `session-${session.id}`,
+                title: `Session • ${formatDate(session.startsAt)}`,
+                description: session.location || session.mode || "Virtual",
+                timestamp: session.startsAt,
+                badge: "Session",
+                accent: "bg-[#FFF4E5] text-[#9C6200]",
+                canComplete: false,
+            });
+        });
+
+        if (viewer?.canManage) {
+            managerEnrollments.forEach((record) => {
+                updates.push({
+                    id: `enrollment-${record.id}`,
+                    title: `Request • ${record.user?.name || "New learner"}`,
+                    description: record.formAnswers?.intent || record.user?.email,
+                    timestamp: record.createdAt,
+                    badge: record.status,
+                    accent:
+                        record.status === "APPROVED"
+                            ? "bg-[#E8F7F4] text-[#1F6C62]"
+                            : record.status === "REJECTED"
+                            ? "bg-[#FDECEC] text-[#B6483D]"
+                            : "bg-[#FFF4E5] text-[#9C6200]",
+                    canComplete: false,
+                });
+            });
+        }
+
+        notes.forEach((note) => {
+            updates.push({
+                id: note.id,
+                title: `${note.author} posted`,
+                description: note.body,
+                timestamp: note.createdAt,
+                badge: note.role,
+                accent: note.role === "STUDENT" ? "bg-[#E0F2FE] text-[#0369A1]" : "bg-[#F0F4FF] text-[#2B2E83]",
+                canComplete: note.role === "STUDENT",
+            });
+        });
+
+        return updates
+            .map((event) => ({ ...event, timestampMs: event.timestamp ? new Date(event.timestamp).getTime() : 0 }))
+            .sort((a, b) => b.timestampMs - a.timestampMs)
+            .slice(0, 20);
+    }, [detail.assignments, detail.materials, detail.sessions, notes, viewer?.canManage, viewer?.isEnrolled, managerEnrollments]);
+
+    const canPost = Boolean(viewer?.canManage || viewer?.isEnrolled);
+    const displayName = currentUser?.name || (viewer?.canManage ? "Instructor" : "Learner");
+    const posterRole = currentUser?.role || userRole || (viewer?.canManage ? "STAFF" : "STUDENT");
+
+    function handleAddNote() {
+        if (!noteDraft.trim() || !canPost) return;
+        const entry: ChannelNote = {
+            id: `note-${Date.now()}`,
+            author: displayName,
+            body: noteDraft.trim(),
+            createdAt: new Date().toISOString(),
+            role: posterRole,
+        };
+        setNotes((prev) => [entry, ...prev]);
+        setNoteDraft("");
+    }
+
+    function toggleComplete(eventId: string) {
+        setCompleted((prev) => (prev.includes(eventId) ? prev.filter((id) => id !== eventId) : [...prev, eventId]));
+    }
+
+    return (
+        <section id="channel" className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-lg font-semibold text-slate-900">Team channel</h3>
+                <span className="text-xs text-slate-500">Activity feed + private notes</span>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                    {events.length === 0 ? (
+                        <p className="text-sm text-slate-500">No updates yet. Assignments, resources, and sessions will appear here automatically.</p>
+                    ) : (
+                        events.map((event) => (
+                            <div key={event.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="font-semibold text-slate-900">{event.title}</p>
+                                        <p className="text-xs text-slate-500">{formatDate(event.timestamp)}</p>
+                                    </div>
+                                    <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${event.accent}`}>{event.badge}</span>
+                                </div>
+                                {event.description && <p className="mt-2 text-sm text-slate-600">{event.description}</p>}
+                                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                                    {event.href && (
+                                        <Link href={event.href} target="_blank" className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-[#2B2E83]">
+                                            Open <ArrowUpRight className="h-3 w-3" />
+                                        </Link>
+                                    )}
+                                    {event.canComplete && viewer?.isEnrolled && (
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleComplete(event.id)}
+                                            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 font-semibold ${
+                                                completed.includes(event.id)
+                                                    ? "bg-[#E8F7F4] text-[#1F6C62]"
+                                                    : "border border-slate-200 text-slate-600"
+                                            }`}
+                                        >
+                                            {completed.includes(event.id) ? "Completed" : "Mark done"}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+                <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                    <p className="text-sm font-semibold text-slate-900">Drop an update</p>
+                    <p className="text-xs text-slate-500">Notes live in your browser so you can track action items without emailing yourself.</p>
+                    <textarea
+                        value={noteDraft}
+                        onChange={(e) => setNoteDraft(e.target.value)}
+                        placeholder={canPost ? "Share a reminder, attach a task, or summarize a session." : "Join the course to post."}
+                        className="mt-3 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                        disabled={!canPost}
+                    />
+                    <button
+                        type="button"
+                        onClick={handleAddNote}
+                        disabled={!canPost || !noteDraft.trim()}
+                        className="mt-3 w-full rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                        Post to channel
+                    </button>
+                    <p className="mt-2 text-[11px] text-slate-400">Only you can see these notes; admins and tutors get full activity automatically.</p>
+                </div>
+            </div>
+        </section>
+    );
 }
