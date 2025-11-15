@@ -64,7 +64,8 @@ app.use((err, _req, res, _next) => {
 })
 
 // Start
-const PORT = process.env.PORT || 3000
+const DEFAULT_PORT = Number(process.env.PORT || process.env.API_PORT || 4000)
+const PORT = Number.isFinite(DEFAULT_PORT) ? DEFAULT_PORT : 4000
 const DEFAULT_CLUSTER_FLAG = process.env.NODE_ENV === 'production' ? '1' : '0'
 const CLUSTER_FLAG = (process.env.ENABLE_CLUSTER || DEFAULT_CLUSTER_FLAG || '').toLowerCase()
 const SHOULD_CLUSTER = CLUSTER_FLAG === '1' || CLUSTER_FLAG === 'true'
