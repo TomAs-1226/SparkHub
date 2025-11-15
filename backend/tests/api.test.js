@@ -35,6 +35,7 @@ async function resetDb() {
     await prisma.feedback.deleteMany()
     await prisma.auditLog.deleteMany()
     await prisma.course.deleteMany()
+    await prisma.userSession.deleteMany()
     await prisma.user.deleteMany()
 }
 
@@ -51,8 +52,9 @@ async function createUser(overrides = {}) {
     })
 }
 
-function tokenFor(user) {
-    return signToken(user, process.env.JWT_SECRET)
+async function tokenFor(user) {
+    const session = await prisma.userSession.create({ data: { userId: user.id } })
+    return signToken(user, session.id, process.env.JWT_SECRET)
 }
 
 test.beforeEach(async () => {
@@ -70,7 +72,7 @@ test('events route enforces ownership and exposes attachments', async () => {
 
     const createRes = await request(app)
         .post('/events')
-        .set('Authorization', `Bearer ${tokenFor(tutor)}`)
+        .set('Authorization', `Bearer ${await tokenFor(tutor)}`)
         .send({
             title: 'Deep Dive',
             location: 'Lab',
@@ -92,12 +94,12 @@ test('events route enforces ownership and exposes attachments', async () => {
 
     const forbidden = await request(app)
         .delete(`/events/${eventId}`)
-        .set('Authorization', `Bearer ${tokenFor(otherTutor)}`)
+        .set('Authorization', `Bearer ${await tokenFor(otherTutor)}`)
     assert.equal(forbidden.status, 403)
 
     const adminDelete = await request(app)
         .delete(`/events/${eventId}`)
-        .set('Authorization', `Bearer ${tokenFor(admin)}`)
+        .set('Authorization', `Bearer ${await tokenFor(admin)}`)
     assert.equal(adminDelete.status, 200)
 })
 
@@ -107,7 +109,7 @@ test('resources carry detail content and enforce delete guards', async () => {
 
     const createRes = await request(app)
         .post('/resources')
-        .set('Authorization', `Bearer ${tokenFor(tutor)}`)
+        .set('Authorization', `Bearer ${await tokenFor(tutor)}`)
         .send({
             title: 'Research Kit',
             kind: 'Guide',
@@ -126,7 +128,7 @@ test('resources carry detail content and enforce delete guards', async () => {
 
     const forbidden = await request(app)
         .delete(`/resources/${resourceId}`)
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
     assert.equal(forbidden.status, 403)
 })
 
@@ -149,7 +151,7 @@ test('job postings persist structured fields and restrict deletion', async () =>
 
     const createRes = await request(app)
         .post('/jobs')
-        .set('Authorization', `Bearer ${tokenFor(recruiter)}`)
+        .set('Authorization', `Bearer ${await tokenFor(recruiter)}`)
         .send(payload)
     assert.equal(createRes.status, 200)
     assert.deepEqual(createRes.body.job.skills, payload.skills)
@@ -161,7 +163,7 @@ test('job postings persist structured fields and restrict deletion', async () =>
 
     const forbidden = await request(app)
         .delete(`/jobs/${jobId}`)
-        .set('Authorization', `Bearer ${tokenFor(learner)}`)
+        .set('Authorization', `Bearer ${await tokenFor(learner)}`)
     assert.equal(forbidden.status, 403)
 })
 
@@ -171,19 +173,19 @@ test('admin user management surfaces roster and blocks self-mutation', async () 
 
     const listRes = await request(app)
         .get('/admin/users')
-        .set('Authorization', `Bearer ${tokenFor(admin)}`)
+        .set('Authorization', `Bearer ${await tokenFor(admin)}`)
     assert.equal(listRes.status, 200)
     assert.ok(listRes.body.list.some((user) => user.id === learner.id))
 
     const selfUpdate = await request(app)
         .patch(`/admin/users/${admin.id}`)
-        .set('Authorization', `Bearer ${tokenFor(admin)}`)
+        .set('Authorization', `Bearer ${await tokenFor(admin)}`)
         .send({ role: 'STUDENT' })
     assert.equal(selfUpdate.status, 400)
 
     const promote = await request(app)
         .patch(`/admin/users/${learner.id}`)
-        .set('Authorization', `Bearer ${tokenFor(admin)}`)
+        .set('Authorization', `Bearer ${await tokenFor(admin)}`)
         .send({ role: 'TUTOR' })
     assert.equal(promote.status, 200)
     assert.equal(promote.body.user.role, 'TUTOR')
@@ -195,7 +197,7 @@ test('courses expose join codes, gated materials, and enrollment forms', async (
 
     const createRes = await request(app)
         .post('/courses')
-        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+        .set('Authorization', `Bearer ${await tokenFor(creator)}`)
         .send({ title: 'Studio Lab', summary: 'Build side projects', isPublished: true })
     assert.equal(createRes.status, 200)
     const courseId = createRes.body.course.id
@@ -203,13 +205,13 @@ test('courses expose join codes, gated materials, and enrollment forms', async (
 
     const sessionRes = await request(app)
         .post(`/courses/${courseId}/sessions`)
-        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+        .set('Authorization', `Bearer ${await tokenFor(creator)}`)
         .send({ startsAt: new Date().toISOString(), location: 'Virtual', mode: 'Online' })
     assert.equal(sessionRes.status, 200)
 
     const materialRes = await request(app)
         .post(`/courses/${courseId}/materials`)
-        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+        .set('Authorization', `Bearer ${await tokenFor(creator)}`)
         .send({ title: 'Kickoff Deck', attachmentUrl: 'https://example.com/deck.pdf', visibleTo: 'ENROLLED' })
     assert.equal(materialRes.status, 200)
 
@@ -219,12 +221,12 @@ test('courses expose join codes, gated materials, and enrollment forms', async (
 
     const lockedCalendar = await request(app)
         .get(`/courses/${courseId}/calendar.ics`)
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
     assert.equal(lockedCalendar.status, 403)
 
     const enrollRes = await request(app)
         .post(`/courses/${courseId}/enroll`)
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
         .send({ answers: { intent: 'I love labs' } })
     assert.equal(enrollRes.status, 200)
     assert.equal(enrollRes.body.viewer.isEnrolled, false)
@@ -232,7 +234,7 @@ test('courses expose join codes, gated materials, and enrollment forms', async (
 
     const invalidCodeRes = await request(app)
         .post(`/courses/${courseId}/enroll`)
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
         .send({ answers: { intent: 'Retry' }, joinCode: 'WRONG' })
     assert.equal(invalidCodeRes.status, 200)
     assert.equal(invalidCodeRes.body.codeStatus, 'INVALID')
@@ -241,26 +243,26 @@ test('courses expose join codes, gated materials, and enrollment forms', async (
     const enrollmentId = enrollRes.body.enrollment.id
     const approvalRes = await request(app)
         .patch(`/courses/${courseId}/enrollments/${enrollmentId}`)
-        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+        .set('Authorization', `Bearer ${await tokenFor(creator)}`)
         .send({ status: 'APPROVED', adminNote: 'Welcome aboard' })
     assert.equal(approvalRes.status, 200)
 
     const calendarRes = await request(app)
         .get(`/courses/${courseId}/calendar.ics`)
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
     assert.equal(calendarRes.status, 200)
     assert.ok(/BEGIN:VCALENDAR/.test(calendarRes.text))
 
     const detailPrivate = await request(app)
         .get(`/courses/${courseId}`)
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
     assert.equal(detailPrivate.status, 200)
     assert.equal(detailPrivate.body.course.materials[0].attachmentUrl, 'https://example.com/deck.pdf')
     assert.equal(detailPrivate.body.viewer.enrollmentStatus, 'APPROVED')
 
     const codeJoin = await request(app)
         .post('/courses/join-code')
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
         .send({ code: joinCode })
     assert.equal(codeJoin.status, 200)
     assert.equal(codeJoin.body.viewer.isEnrolled, true)
@@ -272,7 +274,7 @@ test('course channel and chat persist messages with role-based visibility', asyn
 
     const createCourse = await request(app)
         .post('/courses')
-        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+        .set('Authorization', `Bearer ${await tokenFor(creator)}`)
         .send({ title: 'LMS Basics', summary: 'Test course', isPublished: true })
     assert.equal(createCourse.status, 200)
     const courseId = createCourse.body.course.id
@@ -289,26 +291,26 @@ test('course channel and chat persist messages with role-based visibility', asyn
 
     const noteRes = await request(app)
         .post(`/courses/${courseId}/messages`)
-        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+        .set('Authorization', `Bearer ${await tokenFor(creator)}`)
         .send({ content: 'Staff planning note', visibility: 'STAFF' })
     assert.equal(noteRes.status, 200)
 
     const studentChannel = await request(app)
         .get(`/courses/${courseId}/messages`)
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
     assert.equal(studentChannel.status, 200)
     assert.equal(Array.isArray(studentChannel.body.list), true)
     assert.equal(studentChannel.body.list.length, 0)
 
     const chatRes = await request(app)
         .post(`/courses/${courseId}/chat`)
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
         .send({ content: 'When is the next session?', attachments: [{ url: 'https://example.com/agenda.pdf', name: 'agenda.pdf' }] })
     assert.equal(chatRes.status, 200)
 
     const instructorChat = await request(app)
         .get(`/courses/${courseId}/chat`)
-        .set('Authorization', `Bearer ${tokenFor(creator)}`)
+        .set('Authorization', `Bearer ${await tokenFor(creator)}`)
     assert.equal(instructorChat.status, 200)
     assert.equal(instructorChat.body.list.length, 1)
     assert.equal(instructorChat.body.list[0].attachments[0].url, 'https://example.com/agenda.pdf')
@@ -320,7 +322,7 @@ test('course assignments allow creators to collect submissions', async () => {
 
     const createRes = await request(app)
         .post('/courses')
-        .set('Authorization', `Bearer ${tokenFor(tutor)}`)
+        .set('Authorization', `Bearer ${await tokenFor(tutor)}`)
         .send({ title: 'Creative Writing', summary: 'Weekly prompts', isPublished: true })
     assert.equal(createRes.status, 200)
     const courseId = createRes.body.course.id
@@ -328,7 +330,7 @@ test('course assignments allow creators to collect submissions', async () => {
 
     const assignmentRes = await request(app)
         .post(`/courses/${courseId}/assignments`)
-        .set('Authorization', `Bearer ${tokenFor(tutor)}`)
+        .set('Authorization', `Bearer ${await tokenFor(tutor)}`)
         .send({
             title: 'Prompt 1',
             description: 'Write 300 words about your city',
@@ -340,25 +342,25 @@ test('course assignments allow creators to collect submissions', async () => {
 
     await request(app)
         .post(`/courses/${courseId}/enroll`)
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
         .send({ joinCode, answers: { intent: 'Love writing' } })
 
     const submitRes = await request(app)
         .post(`/courses/${courseId}/assignments/${assignmentId}/submissions`)
-        .set('Authorization', `Bearer ${tokenFor(student)}`)
+        .set('Authorization', `Bearer ${await tokenFor(student)}`)
         .send({ content: 'Here is my story', attachmentUrl: 'https://example.com/story.pdf' })
     assert.equal(submitRes.status, 200)
     const submissionId = submitRes.body.submission.id
 
     const listRes = await request(app)
         .get(`/courses/${courseId}/assignments/${assignmentId}/submissions`)
-        .set('Authorization', `Bearer ${tokenFor(tutor)}`)
+        .set('Authorization', `Bearer ${await tokenFor(tutor)}`)
     assert.equal(listRes.status, 200)
     assert.equal(listRes.body.list.length, 1)
 
     const gradeRes = await request(app)
         .patch(`/courses/${courseId}/assignments/${assignmentId}/submissions/${submissionId}`)
-        .set('Authorization', `Bearer ${tokenFor(tutor)}`)
+        .set('Authorization', `Bearer ${await tokenFor(tutor)}`)
         .send({ status: 'REVIEWED', grade: 'A', feedback: 'Great work!' })
     assert.equal(gradeRes.status, 200)
     assert.equal(gradeRes.body.submission.grade, 'A')
@@ -368,7 +370,7 @@ test('course tags and meeting links round-trip through the API', async () => {
     const admin = await createUser({ role: 'ADMIN' })
     const createRes = await request(app)
         .post('/courses')
-        .set('Authorization', `Bearer ${tokenFor(admin)}`)
+        .set('Authorization', `Bearer ${await tokenFor(admin)}`)
         .send({
             title: 'LMS Fundamentals',
             summary: 'Deep dive into course tooling',
@@ -380,7 +382,7 @@ test('course tags and meeting links round-trip through the API', async () => {
 
     const linkRes = await request(app)
         .post(`/courses/${courseId}/meeting-links`)
-        .set('Authorization', `Bearer ${tokenFor(admin)}`)
+        .set('Authorization', `Bearer ${await tokenFor(admin)}`)
         .send({ title: 'Kickoff', url: 'meet.google.com/xyz-123', note: 'Weekly sync' })
     assert.equal(linkRes.status, 200)
     assert.equal(linkRes.body.course.meetingLinks.length, 1)

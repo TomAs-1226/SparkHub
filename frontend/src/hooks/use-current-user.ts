@@ -42,6 +42,13 @@ async function safeJson(res: Response) {
     }
 }
 
+function notifyForcedLogout(message?: string) {
+    if (typeof window === "undefined" || !message) return;
+    window.setTimeout(() => {
+        window.alert(message);
+    }, 0);
+}
+
 function persistUser(next: CurrentUser | null) {
     persistAuthUser(next);
 }
@@ -56,7 +63,12 @@ async function fetchCurrentUser(): Promise<CurrentUser | null> {
     try {
         const res = await api("/auth/me", { method: "GET" });
         if (!res.ok) {
-            if (res.status === 401) clearToken();
+            const json = await safeJson(res);
+            const message = typeof json?.msg === "string" ? json.msg : undefined;
+            if (res.status === 401 || res.status === 440) {
+                clearToken();
+                if (message) notifyForcedLogout(message);
+            }
             persistUser(null);
             setState({ user: null });
             return null;

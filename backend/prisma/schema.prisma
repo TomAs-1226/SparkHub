@@ -35,6 +35,7 @@ model User {
   resetTokens     PasswordResetToken[]
   assignmentsAuthored CourseAssignment[] @relation("AssignmentCreator")
   courseSubmissions  CourseSubmission[]  @relation("SubmissionStudent")
+  sessions        UserSession[]
 }
 
 model Course {
@@ -259,6 +260,21 @@ model JobApplication {
   createdAt DateTime   @default(now())
 
   @@unique([jobId, userId])
+}
+
+model UserSession {
+  id            String   @id @default(cuid())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  userAgent     String?
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastActiveAt  DateTime @default(now())
+  revokedAt     DateTime?
+  revokedReason String?
+
+  @@index([userId])
 }
 
 model Feedback {

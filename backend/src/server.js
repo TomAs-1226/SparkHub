@@ -1,6 +1,9 @@
 require('dotenv').config()
 const express = require('express')
 const path = require('path')
+const http = require('http')
+const os = require('os')
+const cluster = require('cluster')
 const wireSecurity = require('./security')
 const { ensurePrismaSync } = require('./utils/prisma-sync')
 
@@ -62,9 +65,33 @@ app.use((err, _req, res, _next) => {
 
 // Start
 const PORT = process.env.PORT || 3000
+const DEFAULT_CLUSTER_FLAG = process.env.NODE_ENV === 'production' ? '1' : '0'
+const CLUSTER_FLAG = (process.env.ENABLE_CLUSTER || DEFAULT_CLUSTER_FLAG || '').toLowerCase()
+const SHOULD_CLUSTER = CLUSTER_FLAG === '1' || CLUSTER_FLAG === 'true'
+const WORKER_COUNT = Number(process.env.CLUSTER_WORKERS || os.cpus().length || 1)
+
+function startHttpServer() {
+    const server = http.createServer(app)
+    server.keepAliveTimeout = Number(process.env.KEEP_ALIVE_TIMEOUT_MS || 65000)
+    server.headersTimeout = Number(process.env.HEADERS_TIMEOUT_MS || 66000)
+    server.maxConnections = 0 // unlimited
+    server.on('connection', (socket) => socket.setKeepAlive(true, 60000))
+    server.listen(PORT, () => console.log(`API ready: http://localhost:${PORT} (pid ${process.pid})`))
+}
 
 if (require.main === module) {
-    app.listen(PORT, () => console.log(`API ready: http://localhost:${PORT}`))
+    if (SHOULD_CLUSTER && cluster.isPrimary) {
+        console.log(`Starting SparkHub API in cluster mode with ${WORKER_COUNT} workers`)
+        for (let i = 0; i < WORKER_COUNT; i += 1) {
+            cluster.fork()
+        }
+        cluster.on('exit', (worker) => {
+            console.warn(`Worker ${worker.process.pid} exited. Spawning replacement...`)
+            cluster.fork()
+        })
+    } else {
+        startHttpServer()
+    }
 }
 
 module.exports = app

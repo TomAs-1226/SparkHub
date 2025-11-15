@@ -1,11 +1,11 @@
 // backend/src/routes/auth.js
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, signToken } = require("../middleware/auth");
 const { isUnknownFieldError, cloneArgs } = require("../utils/prisma-compat");
 const { prisma } = require("../prisma");
+const { startExclusiveSession } = require("../utils/sessions");
 const baseUserSelect = { id: true, email: true, name: true, role: true, avatarUrl: true };
 const legacyUserSelect = (({ avatarUrl, ...rest }) => rest)(baseUserSelect);
 
@@ -28,12 +28,13 @@ const router = express.Router();
 function normalizeEmail(v) {
     return (v || "").trim().toLowerCase();
 }
-function signToken(user) {
-    return jwt.sign(
-        { id: user.id, role: user.role, name: user.name },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" },
-    );
+async function issueExclusiveSession(user, req) {
+    const session = await startExclusiveSession(user.id, {
+        userAgent: req.get("user-agent"),
+        ipAddress: req.ip,
+    });
+    const token = signToken(user, session.id);
+    return { session, token };
 }
 
 function generateResetToken() {
@@ -83,8 +84,7 @@ router.post("/register", async (req, res) => {
         const hash = await bcrypt.hash(password, 10);
 
         const user = await runUserQuery("create", { data: { email, password: hash, name, role } });
-
-        const token = signToken(user);
+        const { token } = await issueExclusiveSession(user, req);
         return res.json({ ok: true, token, user });
     } catch (err) {
         console.error("REGISTER ERROR:", err);
@@ -130,7 +130,7 @@ router.post("/login", async (req, res) => {
         const ok = await bcrypt.compare(password, user.password);
         if (!ok) return res.status(401).json({ ok: false, msg: "Invalid credentials." });
 
-        const token = signToken(user);
+        const { token } = await issueExclusiveSession(user, req);
         const { id, email, name, role, avatarUrl } = user;
         return res.json({ ok: true, token, user: { id, email, name, role, avatarUrl } });
     } catch (err) {
@@ -187,8 +187,8 @@ router.post("/reset-password", async (req, res) => {
             prisma.passwordResetToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
         ]);
         const user = await runUserQuery("findUnique", { where: { id: record.userId } });
-        const jwtToken = signToken(user);
-        return res.json({ ok: true, token: jwtToken, user });
+        const { token } = await issueExclusiveSession(user, req);
+        return res.json({ ok: true, token, user });
     } catch (err) {
         console.error("RESET PASSWORD ERROR:", err);
         return res.status(500).json({ ok: false, msg: "Server error." });
@@ -196,20 +196,10 @@ router.post("/reset-password", async (req, res) => {
 });
 
 /** GET /auth/me  (Authorization: Bearer <token>) */
-router.get("/me", async (req, res) => {
-    try {
-        const hdr = req.headers.authorization || "";
-        const token = hdr.startsWith("Bearer ") ? hdr.slice(7) : null;
-        if (!token) return res.status(401).json({ ok: false, msg: "No token." });
-
-        const payload = jwt.verify(token, process.env.JWT_SECRET);
-        const user = await runUserQuery("findUnique", { where: { id: payload.id || payload.uid } });
-        if (!user) return res.status(404).json({ ok: false, msg: "User not found." });
-
-        return res.json({ ok: true, user });
-    } catch (err) {
-        return res.status(401).json({ ok: false, msg: "Invalid token." });
-    }
+router.get("/me", requireAuth, async (req, res) => {
+    const user = await runUserQuery("findUnique", { where: { id: req.user.id } });
+    if (!user) return res.status(404).json({ ok: false, msg: "User not found." });
+    return res.json({ ok: true, user });
 });
 
 
