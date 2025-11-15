@@ -4,6 +4,13 @@ const bcrypt = require('bcryptjs');
 const { prisma } = require('../prisma');
 const { SESSION_KICK_REASON } = require('../utils/sessions');
 
+const FALLBACK_DEV_SECRET = 'sparkhub-dev-secret';
+const JWT_SECRET = process.env.JWT_SECRET || FALLBACK_DEV_SECRET;
+
+if (!process.env.JWT_SECRET) {
+    console.warn('[auth] JWT_SECRET is not set, using a fallback development secret.');
+}
+
 const SESSION_CONFLICT_STATUS = 440;
 
 class SessionAuthError extends Error {
@@ -14,7 +21,7 @@ class SessionAuthError extends Error {
     }
 }
 
-function signToken(user, sessionId, secret = process.env.JWT_SECRET) {
+function signToken(user, sessionId, secret = JWT_SECRET) {
     if (!sessionId) {
         throw new Error('Session id is required when issuing tokens.');
     }
@@ -24,7 +31,7 @@ function signToken(user, sessionId, secret = process.env.JWT_SECRET) {
 async function fetchSessionContext(token) {
     let payload;
     try {
-        payload = jwt.verify(token, process.env.JWT_SECRET);
+        payload = jwt.verify(token, JWT_SECRET);
     } catch (err) {
         throw new SessionAuthError('INVALID_TOKEN', 'pass无效');
     }
