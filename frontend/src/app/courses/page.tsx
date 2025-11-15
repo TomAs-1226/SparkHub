@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,7 +16,7 @@ import { fetchCourseWorkspace } from "./load-course";
 import {
     type CourseAssignment,
     type CourseDetail,
-    type CourseMeetingLink,
+    type CourseLesson,
     type CourseSession,
     type CourseTag,
     type EnrollmentListItem,
@@ -172,6 +173,20 @@ export default function CoursesPage() {
             // keep the previous optimistic state; dashboard will retry on navigation
         }
     }, [user]);
+
+    useEffect(() => {
+        if (!detail) return;
+        const record = myEnrollments.find((row) => row.courseId === detail.id);
+        if (!record || !record.status) return;
+        setViewer((prev) => {
+            if (!prev) return prev;
+            const approved = record.status === "APPROVED";
+            if (prev.enrollmentStatus === record.status && prev.isEnrolled === approved) {
+                return prev;
+            }
+            return { ...prev, enrollmentStatus: record.status, isEnrolled: approved };
+        });
+    }, [detail, myEnrollments]);
 
     function hydrateAssignmentDrafts(assignments: CourseAssignment[] = []) {
         const next: Record<string, { note: string; attachmentUrl?: string }> = {};
@@ -764,6 +779,7 @@ export function CourseDetailPanel({
     const [answers, setAnswers] = useState<Record<string, string>>(viewer?.formAnswers || {});
     const [joinCodeInput, setJoinCodeInput] = useState("");
     const [copyStatus, setCopyStatus] = useState<string | null>(null);
+    const [lessonPreview, setLessonPreview] = useState<CourseLesson | null>(null);
 
     useEffect(() => {
         setAnswers(viewer?.formAnswers || {});
@@ -779,6 +795,13 @@ export function CourseDetailPanel({
     );
     const pendingCount = pendingEnrollments.length;
     const approved = viewer?.enrollmentStatus === "APPROVED";
+    const enrollmentLabel = useMemo(() => {
+        if (!viewer?.enrollmentStatus) return null;
+        if (viewer.enrollmentStatus === "APPROVED") return "Enrolled";
+        if (viewer.enrollmentStatus === "PENDING") return "Pending approval";
+        if (viewer.enrollmentStatus === "REJECTED") return "Needs revision";
+        return viewer.enrollmentStatus;
+    }, [viewer?.enrollmentStatus]);
     const questionMap = useMemo(() => {
         const map = new Map<string, string>();
         detail.enrollQuestions.forEach((question) => {
@@ -828,13 +851,13 @@ export function CourseDetailPanel({
                                 ))}
                             </div>
                         )}
-                        {viewer?.enrollmentStatus && (
+                        {enrollmentLabel && (
                             <span
                                 className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
                                     approved ? "bg-[#E8F7F4] text-[#1F6C62]" : "bg-[#FFF4E5] text-[#9C6200]"
                                 }`}
                             >
-                                Status: {viewer.enrollmentStatus}
+                                Status: {enrollmentLabel}
                             </span>
                         )}
                     </div>
@@ -1020,11 +1043,22 @@ export function CourseDetailPanel({
                             <p className="text-xs uppercase tracking-wide text-slate-500">{lesson.type}</p>
                             {lesson.body && <p className="mt-2 text-sm text-slate-600">{lesson.body}</p>}
                             {(lesson.contentUrl || lesson.attachmentUrl) && (
-                                <InlineDeckViewer
-                                    url={lesson.contentUrl || lesson.attachmentUrl}
-                                    contentType={lesson.contentType}
-                                    title={lesson.title}
-                                />
+                                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                                    <button
+                                        type="button"
+                                        onClick={() => setLessonPreview(lesson)}
+                                        className="inline-flex items-center gap-2 rounded-full bg-[#2B2E83] px-3 py-1.5 font-semibold text-white"
+                                    >
+                                        View lesson
+                                    </button>
+                                    <Link
+                                        href={lesson.contentUrl || lesson.attachmentUrl || "#"}
+                                        target="_blank"
+                                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 font-semibold text-slate-700"
+                                    >
+                                        Download deck
+                                    </Link>
+                                </div>
                             )}
                             {lesson.videoUrl && (
                                 <Link href={lesson.videoUrl} className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-[#2B2E83]">
@@ -1097,6 +1131,10 @@ export function CourseDetailPanel({
                     ))}
                 </div>
             </section>
+
+            {lessonPreview && (
+                <LessonPreviewDialog lesson={lessonPreview} onClose={() => setLessonPreview(null)} />
+            )}
 
             <section className="space-y-3" id="assignments">
                 <h3 className="text-lg font-semibold text-slate-900">Assignments</h3>
@@ -1634,17 +1672,29 @@ function resolveAssetUrl(url?: string | null, assetHost?: string) {
     return `${prefix}/${url}`;
 }
 
-function InlineDeckViewer({ url, contentType, title }: { url?: string | null; contentType?: string | null; title: string }) {
+function InlineDeckViewer({
+    url,
+    contentType,
+    title,
+    height = 256,
+}: {
+    url?: string | null;
+    contentType?: string | null;
+    title: string;
+    height?: number;
+}) {
     const assetHost = useAssetHost();
     const resolved = useMemo(() => resolveAssetUrl(url, assetHost), [url, assetHost]);
     if (!url || !resolved) return null;
     const extension = (contentType || resolved.split("?")[0]?.split(".").pop() || "").toLowerCase();
     if (IMAGE_EXTENSIONS.has(extension)) {
         return (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
                 src={resolved}
                 alt={`${title} preview`}
-                className="mt-3 w-full rounded-2xl border border-slate-100 bg-white object-cover"
+                className="mt-3 w-full rounded-2xl border border-slate-100 bg-white object-contain"
+                style={{ maxHeight: height }}
             />
         );
     }
@@ -1653,7 +1703,8 @@ function InlineDeckViewer({ url, contentType, title }: { url?: string | null; co
             <iframe
                 src={`${resolved}#toolbar=0`}
                 title={`${title} document`}
-                className="mt-3 h-64 w-full rounded-2xl border border-slate-100 bg-white"
+                className="mt-3 w-full rounded-2xl border border-slate-100 bg-white"
+                style={{ height }}
             />
         );
     }
@@ -1665,9 +1716,63 @@ function InlineDeckViewer({ url, contentType, title }: { url?: string | null; co
             <iframe
                 src={officeEmbed}
                 title={`${title} slides`}
-                className="mt-3 h-64 w-full rounded-2xl border border-slate-100 bg-white"
+                className="mt-3 w-full rounded-2xl border border-slate-100 bg-white"
+                style={{ height }}
             />
         );
     }
     return null;
+}
+
+function LessonPreviewDialog({ lesson, onClose }: { lesson: CourseLesson; onClose: () => void }) {
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key === "Escape") onClose();
+        };
+        document.addEventListener("keydown", handleKey);
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.removeEventListener("keydown", handleKey);
+            document.body.style.overflow = originalOverflow;
+        };
+    }, [onClose]);
+
+    if (typeof document === "undefined" || !mounted) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 px-4 py-10 backdrop-blur-sm">
+            <div className="relative flex h-full max-h-[720px] w-full max-w-4xl flex-col rounded-3xl bg-white p-6 shadow-2xl">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#5C9E95]">Lesson preview</p>
+                        <p className="text-xl font-semibold text-slate-900">{lesson.title}</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                        Close
+                    </button>
+                </div>
+                <div className="mt-4 flex-1 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 p-2">
+                    {lesson.contentUrl || lesson.attachmentUrl ? (
+                        <InlineDeckViewer
+                            url={lesson.contentUrl || lesson.attachmentUrl}
+                            contentType={lesson.contentType}
+                            title={lesson.title}
+                            height={520}
+                        />
+                    ) : (
+                        <p className="text-sm text-slate-500">This lesson does not have slides attached yet.</p>
+                    )}
+                </div>
+            </div>
+        </div>,
+        document.body,
+    );
 }

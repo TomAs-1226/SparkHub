@@ -19,6 +19,7 @@ export type ContentItem = {
     summary?: string | null;
     image?: string | null;
     tag?: string | null;
+    href?: string | null;
 };
 
 type RowProps = {
@@ -294,6 +295,8 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                             {all.map((it, i) => {
                                 const isExpanded = expandedId === it.id;
                                 const isSelected = i === currentIdx;
+                                const fallbackHref = `/${slug}/${encodeURIComponent(String(it.id))}`;
+                                const detailHref = typeof it.href === "string" && it.href.length > 0 ? it.href : fallbackHref;
 
                                 const w = isExpanded ? expandedW : baseW;
                                 const h = isExpanded ? Math.max(baseH, Math.max(expandedH, MIN_EXPANDED_H)) : baseH;
@@ -456,7 +459,7 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                                                                         onClick={(e) => e.stopPropagation()}
                                                                     >
                                                                         <Link
-                                                                            href={`/${slug}/${it.id}`}
+                                                                            href={detailHref}
                                                                             className="inline-flex items-center justify-center rounded-full bg-[#2FB3A4] px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow hover:brightness-110 transition"
                                                                         >
                                                                             {primaryCtaLabel}

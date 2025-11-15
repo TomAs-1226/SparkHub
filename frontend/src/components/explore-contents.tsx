@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import CoverflowRow, { ContentItem } from "@/components/coverflow-row";
 
 type Cat = "resources" | "opportunities" | "courses";
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 
 type ApiContent = {
     id?: string | number;
@@ -51,7 +51,10 @@ function pickSummary(obj: ApiContent | null | undefined): string | null {
 }
 
 async function fetchCategory(cat: Cat): Promise<ContentItem[]> {
-    const urls = [`${API_BASE}/${cat}?limit=10`, `${API_BASE}/api/${cat}?limit=10`];
+    const urls = [`/api/${cat}?limit=10`];
+    if (API_BASE) {
+        urls.push(`${API_BASE}/${cat}?limit=10`, `${API_BASE}/api/${cat}?limit=10`);
+    }
 
     for (const url of urls) {
         try {
@@ -63,17 +66,21 @@ async function fetchCategory(cat: Cat): Promise<ContentItem[]> {
             if (Array.isArray(arrCandidate) && arrCandidate.length) {
                 return arrCandidate.slice(0, 10).map((raw, idx) => {
                     const it = raw as ApiContent;
+                    const rawId =
+                        it.id ??
+                        it._id ??
+                        it.slug ??
+                        it.uuid ??
+                        null;
+                    const normalizedId = rawId ?? stableId(cat, it.title ?? it.name ?? "", idx);
+                    const href = rawId ? `/${cat}/${encodeURIComponent(String(rawId))}` : `/${cat}`;
                     return {
-                        id:
-                            it.id ??
-                            it._id ??
-                            it.slug ??
-                            it.uuid ??
-                            stableId(cat, it.title ?? it.name ?? "", idx),
+                        id: normalizedId,
                         title: it.title ?? it.name ?? "Untitled",
                         summary: pickSummary(it),
                         image: it.image ?? it.cover ?? it.thumbnail ?? it.banner ?? null,
                         tag: it.tag ?? it.category ?? it.type ?? null,
+                        href,
                     } satisfies ContentItem;
                 });
             }
@@ -90,6 +97,7 @@ async function fetchCategory(cat: Cat): Promise<ContentItem[]> {
             summary: "Curated content to help you move faster.",
             tag,
             image: null,
+            href: `/${cat}`,
         }));
 
     if (cat === "courses")
@@ -147,9 +155,19 @@ export default function ExploreContents() {
     const [courses, setCourses] = useState<ContentItem[] | null>(null);
 
     useEffect(() => {
-        fetchCategory("resources").then(setResources);
-        fetchCategory("opportunities").then(setOpps);
-        fetchCategory("courses").then(setCourses);
+        let cancelled = false;
+        fetchCategory("resources").then((items) => {
+            if (!cancelled) setResources(items);
+        });
+        fetchCategory("opportunities").then((items) => {
+            if (!cancelled) setOpps(items);
+        });
+        fetchCategory("courses").then((items) => {
+            if (!cancelled) setCourses(items);
+        });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return (

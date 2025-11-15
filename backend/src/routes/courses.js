@@ -152,6 +152,24 @@ function serializeTags(tags) {
     return JSON.stringify(normalized)
 }
 
+const EXTENSION_MIME = {
+    pdf: 'application/pdf',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    pps: 'application/vnd.ms-powerpoint',
+    ppsx: 'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+
+function guessContentType(url, fallback) {
+    if (fallback && typeof fallback === 'string' && fallback.includes('/')) return fallback
+    const safeUrl = String(url || '').split('?')[0]
+    const ext = safeUrl.includes('.') ? safeUrl.split('.').pop().toLowerCase() : ''
+    if (ext && EXTENSION_MIME[ext]) return EXTENSION_MIME[ext]
+    return fallback || null
+}
+
 function parseJsonArray(raw, fallback = []) {
     try {
         const parsed = JSON.parse(raw || '[]')
@@ -304,17 +322,21 @@ async function buildCoursePayload(courseId, viewer) {
         include: assignmentInclude,
     })
 
-    const lessons = course.lessons.map((lesson) => ({
-        id: lesson.id,
-        title: lesson.title,
-        type: lesson.type,
-        body: lesson.body,
-        videoUrl: lesson.videoUrl,
-        attachmentUrl: lesson.attachmentUrl,
-        contentUrl: lesson.contentUrl,
-        contentType: lesson.contentType,
-        order: lesson.order,
-    }))
+    const lessons = course.lessons.map((lesson) => {
+        const deckUrl = lesson.contentUrl || lesson.attachmentUrl || null
+        const deckType = guessContentType(deckUrl, lesson.contentType)
+        return {
+            id: lesson.id,
+            title: lesson.title,
+            type: lesson.type,
+            body: lesson.body,
+            videoUrl: lesson.videoUrl,
+            attachmentUrl: lesson.attachmentUrl,
+            contentUrl: deckUrl,
+            contentType: deckType,
+            order: lesson.order,
+        }
+    })
 
     const assignments = assignmentsRaw.map((assignment) => {
         const resources = parseJsonArray(assignment.resourcesJson, [])
@@ -509,8 +531,16 @@ router.get('/enrollments/mine', requireAuth, async (req, res) => {
         list: rows.map((row) => ({
             id: row.id,
             courseId: row.courseId,
+            status: row.status,
             createdAt: row.createdAt,
-            course: row.course,
+            course: row.course
+                ? {
+                      id: row.course.id,
+                      title: row.course.title,
+                      summary: row.course.summary,
+                      coverUrl: row.course.coverUrl,
+                  }
+                : null,
             formAnswers: safeJsonParse(row.formAnswersJson, {}),
         })),
     })

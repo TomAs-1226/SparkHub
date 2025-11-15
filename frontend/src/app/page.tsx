@@ -36,10 +36,10 @@ function pickSummary(obj: Record<string, unknown> | null | undefined): string | 
     return null;
 }
 
-async function fetchEvents(limit = 4): Promise<EventItem[]> {
+async function fetchEvents(limit = 4, signal?: AbortSignal): Promise<EventItem[]> {
     try {
         const query = limit ? `?limit=${limit}` : "";
-        const res = await fetch(`/api/events${query}`, { cache: "no-store" });
+        const res = await fetch(`/api/events${query}`, { cache: "no-store", signal });
         if (!res.ok) return [];
         const json = await res.json();
         const arr = Array.isArray(json?.list) ? json.list : Array.isArray(json) ? json : [];
@@ -53,7 +53,8 @@ async function fetchEvents(limit = 4): Promise<EventItem[]> {
             endsAt: e.endsAt ?? e.endTime ?? null,
             location: e.location ?? null,
         }));
-    } catch {
+    } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return [];
         return [];
     }
 }
@@ -61,7 +62,15 @@ async function fetchEvents(limit = 4): Promise<EventItem[]> {
 export default function HomePage() {
     const [events, setEvents] = useState<EventItem[]>([]);
     useEffect(() => {
-        fetchEvents(4).then(setEvents);
+        const controller = new AbortController();
+        fetchEvents(4, controller.signal)
+            .then((rows) => {
+                if (!controller.signal.aborted) setEvents(rows);
+            })
+            .catch(() => {
+                // ignore network hiccups; hero renders static copy
+            });
+        return () => controller.abort();
     }, []);
     const feature = useMemo(() => events[0], [events]);
     const side = useMemo(() => events.slice(1, 4), [events]);

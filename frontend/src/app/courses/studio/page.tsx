@@ -315,11 +315,27 @@ export default function CourseStudioPage() {
         }
     }
 
+    function detectLessonMime(file: File) {
+        if (file.type) return file.type;
+        const ext = file.name?.split('.').pop()?.toLowerCase();
+        if (!ext) return "";
+        if (ext === "ppt" || ext === "pps") return "application/vnd.ms-powerpoint";
+        if (ext === "pptx" || ext === "ppsx") return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        if (ext === "pdf") return "application/pdf";
+        return "";
+    }
+
     async function handleLessonFileUpload(fileList: FileList | null) {
         if (!fileList || fileList.length === 0) return;
         const file = fileList[0];
-        const url = await uploadAsset(file);
-        setLessonForm((prev) => ({ ...prev, attachmentUrl: url, contentType: file.type }));
+        try {
+            const url = await uploadAsset(file);
+            const detectedType = detectLessonMime(file);
+            setLessonForm((prev) => ({ ...prev, attachmentUrl: url, contentType: detectedType || file.type }));
+            setStatus("Slides uploaded. Don’t forget to save the lesson.");
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to upload slides");
+        }
     }
 
     async function handleAddMeetingLink(event: React.FormEvent<HTMLFormElement>) {
