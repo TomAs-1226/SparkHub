@@ -4,7 +4,31 @@ import { useEffect, useState } from "react";
 import CoverflowRow, { ContentItem } from "@/components/coverflow-row";
 
 type Cat = "resources" | "opportunities" | "courses";
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3001";
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+
+type ApiContent = {
+    id?: string | number;
+    _id?: string;
+    slug?: string;
+    uuid?: string;
+    title?: string | null;
+    name?: string | null;
+    summary?: string | null;
+    description?: string | null;
+    details?: string | null;
+    content?: string | null;
+    overview?: string | null;
+    body?: string | null;
+    eventDescription?: string | null;
+    courseDescription?: string | null;
+    image?: string | null;
+    cover?: string | null;
+    thumbnail?: string | null;
+    banner?: string | null;
+    tag?: string | null;
+    category?: string | null;
+    type?: string | null;
+};
 
 function stableId(cat: Cat, title: string, idx: number) {
     // deterministic slug-ish id: cat-titlehash-idx
@@ -12,7 +36,7 @@ function stableId(cat: Cat, title: string, idx: number) {
     return `${cat}-${base || "item"}-${idx}`;
 }
 
-function pickSummary(obj: any): string | null {
+function pickSummary(obj: ApiContent | null | undefined): string | null {
     return (
         obj?.summary ??
         obj?.description ??
@@ -26,35 +50,75 @@ function pickSummary(obj: any): string | null {
     );
 }
 
-async function fetchCategory(cat: Cat): Promise<ContentItem[]> {
-    const urls = [`${API_BASE}/${cat}?limit=10`, `${API_BASE}/api/${cat}?limit=10`];
+function normalizeItems(cat: Cat, arrCandidate: ApiContent[]): ContentItem[] {
+    return arrCandidate.slice(0, 10).map((raw, idx) => {
+        const it = raw as ApiContent;
+        const rawId = it.id ?? it._id ?? it.slug ?? it.uuid ?? null;
+        const normalizedId = rawId ?? stableId(cat, it.title ?? it.name ?? "", idx);
+        const href = rawId ? `/${cat}/${encodeURIComponent(String(rawId))}` : it.slug ? `/${cat}/${encodeURIComponent(String(it.slug))}` : `/${cat}`;
+        return {
+            id: normalizedId,
+            title: it.title ?? it.name ?? "Untitled",
+            summary: pickSummary(it),
+            image: it.image ?? it.cover ?? it.thumbnail ?? it.banner ?? null,
+            tag: it.tag ?? it.category ?? it.type ?? null,
+            href,
+        } satisfies ContentItem;
+    });
+}
 
-    for (const url of urls) {
-        try {
-            const res = await fetch(url, { cache: "no-store" });
-            if (!res.ok) continue;
-            const data = await res.json();
-            const arr = (data?.items || data?.data || data || []) as any[];
-            if (Array.isArray(arr) && arr.length) {
-                return arr.slice(0, 10).map((it, idx) => ({
-                    id:
-                        it.id ??
-                        it._id ??
-                        it.slug ??
-                        it.uuid ??
-                        stableId(cat, it.title ?? it.name ?? "", idx),
-                    title: it.title ?? it.name ?? "Untitled",
-                    summary: pickSummary(it),
-                    image: it.image ?? it.cover ?? it.thumbnail ?? it.banner ?? null,
-                    tag: it.tag ?? it.category ?? it.type ?? null,
-                }));
-            }
-        } catch {
-            // ignore and try next url
+function firstFulfilled<T>(promises: Promise<T>[]): Promise<T> {
+    return new Promise((resolve, reject) => {
+        if (promises.length === 0) {
+            reject(new Error("No promises provided"));
+            return;
         }
+        let rejected = 0;
+        promises.forEach((promise) => {
+            promise.then(resolve).catch(() => {
+                rejected += 1;
+                if (rejected === promises.length) {
+                    reject(new Error("All requests failed"));
+                }
+            });
+        });
+    });
+}
+
+async function tryFetchCategory(url: string, cat: Cat, controller: AbortController): Promise<ContentItem[]> {
+    const timer = setTimeout(() => controller.abort(), 4000);
+    try {
+        const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+        if (!res.ok) throw new Error("Network error");
+        const data = (await res.json()) as unknown;
+        const payload = (data as { items?: unknown; data?: unknown; list?: unknown }) ?? {};
+        const arrCandidate = (payload.items ?? payload.data ?? payload.list ?? data) as unknown;
+        if (Array.isArray(arrCandidate) && arrCandidate.length) {
+            return normalizeItems(cat, arrCandidate as ApiContent[]);
+        }
+        throw new Error("Empty payload");
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function fetchCategory(cat: Cat): Promise<ContentItem[]> {
+    const urls = [`/api/${cat}?limit=10`];
+    if (API_BASE) {
+        urls.push(`${API_BASE}/${cat}?limit=10`, `${API_BASE}/api/${cat}?limit=10`);
     }
 
-    // Fallback demo data (stable IDs)
+    const controllers = urls.map(() => new AbortController());
+    try {
+        const result = await firstFulfilled(
+            urls.map((url, index) => tryFetchCategory(url, cat, controllers[index])),
+        );
+        controllers.forEach((controller) => controller.abort());
+        return result;
+    } catch {
+        controllers.forEach((controller) => controller.abort());
+    }
+
     const make = (titles: string[], tag: string) =>
         titles.map((t, i) => ({
             id: stableId(cat, t, i),
@@ -62,6 +126,7 @@ async function fetchCategory(cat: Cat): Promise<ContentItem[]> {
             summary: "Curated content to help you move faster.",
             tag,
             image: null,
+            href: `/${cat}`,
         }));
 
     if (cat === "courses")
@@ -119,9 +184,19 @@ export default function ExploreContents() {
     const [courses, setCourses] = useState<ContentItem[] | null>(null);
 
     useEffect(() => {
-        fetchCategory("resources").then(setResources);
-        fetchCategory("opportunities").then(setOpps);
-        fetchCategory("courses").then(setCourses);
+        let cancelled = false;
+        fetchCategory("resources").then((items) => {
+            if (!cancelled) setResources(items);
+        });
+        fetchCategory("opportunities").then((items) => {
+            if (!cancelled) setOpps(items);
+        });
+        fetchCategory("courses").then((items) => {
+            if (!cancelled) setCourses(items);
+        });
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     return (

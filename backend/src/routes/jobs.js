@@ -1,5 +1,3 @@
-
-
 const { z } = require('zod')
 const { validate } = require('../middleware/validate')
 const express = require('express')
@@ -8,63 +6,133 @@ const { prisma } = require('../prisma')
 const { requireAuth, requireRole } = require('../middleware/auth')
 
 // Validate POST /jobs payload
+const flexibleStringArray = z.union([
+  z.array(z.string().min(1).max(120)),
+  z.string().max(500).optional(),
+])
+
+const optionalDateInput = z.preprocess((val) => {
+  if (typeof val !== 'string') return undefined
+  const trimmed = val.trim()
+  return trimmed.length ? trimmed : undefined
+}, z.string().max(120).optional())
+
+const contactField = z.preprocess((val) => {
+  if (typeof val !== 'string') return undefined
+  const trimmed = val.trim()
+  return trimmed.length ? trimmed : undefined
+}, z.string().max(200).optional())
+
 const postJobSchema = z.object({
   body: z.object({
     title: z.string().min(2).max(120),
-    description: z.string().min(10).max(5000),
-    skills: z.array(z.string().min(1)).optional().default([]),
-    startTime: z.string().datetime().optional(),
-    endTime: z.string().datetime().optional(),
-    duration: z.string().max(120).optional(),
-    benefits: z.string().max(1000).optional(),
-    photos: z.array(z.string().url()).optional().default([]),
-    contact: z.string().min(3).max(200)
+    description: z.string().min(5).max(5000),
+    skills: flexibleStringArray.optional(),
+    startTime: optionalDateInput,
+    endTime: optionalDateInput,
+    duration: z.preprocess((val) => (typeof val === 'string' && !val.trim() ? undefined : val), z.string().max(120).optional()),
+    benefits: z.preprocess((val) => (typeof val === 'string' && !val.trim() ? undefined : val), z.string().max(1000).optional()),
+    photos: z.array(z.string().min(1)).optional().default([]),
+    files: z.array(z.string()).optional().default([]),
+    contact: contactField
   })
 })
 
-// 发布职位（招聘者）
-router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN']), validate(postJobSchema), async (req, res) => {
-    const { title, description, skills = [], startTime, endTime, duration, benefits, photos = [], contact } = req.body
-    const skillsCsv = Array.isArray(skills) ? skills.join(',') : (skills || '')
+function parseDateInput(value) {
+  if (!value || typeof value !== 'string') return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date
+}
+
+function csvToArray(value) {
+  if (!value) return []
+  return value.split(',').map((item) => item.trim()).filter(Boolean)
+}
+
+function filesFromJson(raw) {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function filesToJson(files) {
+  if (!Array.isArray(files)) return '[]'
+  return JSON.stringify(files)
+}
+
+function presentJob(row) {
+  if (!row) return null
+  return {
+    ...row,
+    skills: csvToArray(row.skillsCsv),
+    photos: csvToArray(row.photosCsv),
+    files: filesFromJson(row.filesJson),
+  }
+}
+
+// 发布职位（招聘者/管理员/导师）
+router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR', 'CREATOR']), validate(postJobSchema), async (req, res) => {
+    const { title, description, skills = [], startTime, endTime, duration, benefits, photos = [], files = [], contact } = req.body
+    const actor = await prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true } })
+    const normalizedSkills = Array.isArray(skills) ? skills : csvToArray(skills)
+    const skillsCsv = normalizedSkills.join(',')
     const photosCsv = Array.isArray(photos) ? photos.join(',') : (photos || '')
+    const parsedStart = parseDateInput(startTime)
+    const parsedEnd = parseDateInput(endTime)
+    const contactValue = contact || actor?.email || 'info@sparkhub.dev'
     const job = await prisma.jobPosting.create({
         data: {
             recruiterId: req.user.id,
             title,
             description,
             skillsCsv,
-            startTime: startTime ? new Date(startTime) : null,
-            endTime: endTime ? new Date(endTime) : null,
+            startTime: parsedStart,
+            endTime: parsedEnd,
             duration,
             benefits,
             photosCsv,
-            contact
+            filesJson: filesToJson(files),
+            contact: contactValue
         }
     })
-    res.json({ ok: true, job: { ...job, skills, photos } })
+    res.json({ ok: true, job: presentJob(job) })
 })
 
 // 职位列表
 router.get('/', async (_req, res) => {
     const rows = await prisma.jobPosting.findMany({ orderBy: { createdAt: 'desc' } })
-    const list = rows.map(j => ({
-        ...j,
-        skills: j.skillsCsv ? j.skillsCsv.split(',').filter(Boolean) : [],
-        photos: j.photosCsv ? j.photosCsv.split(',').filter(Boolean) : []
-    }))
+    const list = rows.map(presentJob)
     res.json({ ok: true, list })
+})
+
+router.get('/mine', requireAuth, async (req, res) => {
+    const rows = await prisma.jobPosting.findMany({
+        where: { recruiterId: req.user.id },
+        orderBy: { createdAt: 'desc' }
+    })
+    res.json({ ok: true, list: rows.map(presentJob) })
 })
 
 // 职位详情
 router.get('/:id', async (req, res) => {
     const jobRaw = await prisma.jobPosting.findUnique({ where: { id: req.params.id } })
     if (!jobRaw) return res.status(404).json({ ok: false, msg: '职位不存在' })
-    const job = {
-        ...jobRaw,
-        skills: jobRaw.skillsCsv ? jobRaw.skillsCsv.split(',').filter(Boolean) : [],
-        photos: jobRaw.photosCsv ? jobRaw.photosCsv.split(',').filter(Boolean) : []
+    res.json({ ok: true, job: presentJob(jobRaw) })
+})
+
+router.delete('/:id', requireAuth, async (req, res) => {
+    const job = await prisma.jobPosting.findUnique({ where: { id: req.params.id } })
+    if (!job) return res.status(404).json({ ok: false, msg: '职位不存在' })
+    if (req.user.role !== 'ADMIN' && job.recruiterId !== req.user.id) {
+        return res.status(403).json({ ok: false, msg: '无权限' })
     }
-    res.json({ ok: true, job })
+    await prisma.jobPosting.delete({ where: { id: job.id } })
+    res.json({ ok: true })
 })
 
 // 申请职位（学生）

@@ -9,8 +9,16 @@ import { Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 import PasswordStrength from "@/components/password-strength";
+import { refreshCurrentUserStore } from "@/hooks/use-current-user";
 
-type AccountType = "learner" | "creator";
+type AccountType = "learner" | "creator" | "tutor" | "admin";
+
+const ACCOUNT_OPTIONS: { label: string; value: AccountType; helper: string }[] = [
+    { label: "Learner", value: "learner", helper: "Access mentoring, resources, and courses" },
+    { label: "Creator", value: "creator", helper: "Publish learning experiences and content" },
+    { label: "Tutor", value: "tutor", helper: "Host sessions and manage events" },
+    { label: "Admin", value: "admin", helper: "Manage events, resources, and opportunities" },
+];
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -27,23 +35,22 @@ export default function RegisterPage() {
         setErr(null);
         setLoading(true);
         try {
-            let res = await api("/auth/register", {
+            const res = await api("/auth/register", {
                 method: "POST",
                 body: JSON.stringify({ email, name, password, role: accountType }),
             });
-            if (res.status === 400 || res.status === 422) {
-                res = await api("/auth/register", {
-                    method: "POST",
-                    body: JSON.stringify({ email, name, password }),
-                });
-            }
             const data = await safeJson(res);
             if (!res.ok || data?.ok === false) throw new Error(data?.msg || `Register failed (${res.status})`);
 
-            if (data?.token) { setToken(data.token); router.push("/dashboard"); }
+            if (data?.token) {
+                setToken(data.token);
+                await refreshCurrentUserStore();
+                router.push("/dashboard");
+            }
             else { router.push("/login"); }
-        } catch (e: any) {
-            setErr(e.message || "Unable to register.");
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Unable to register.";
+            setErr(message);
         } finally {
             setLoading(false);
         }
@@ -118,24 +125,27 @@ export default function RegisterPage() {
                         </div>
 
                         {/* Account type toggle */}
-                        <div className="mx-auto mt-6 w-[320px] rounded-full bg-[#CBE7E4] p-1 shadow-inner flex">
-                            <button
-                                type="button"
-                                onClick={() => setAccountType("learner")}
-                                className={`flex-1 rounded-full text-[14px] font-semibold py-2 text-center transition
-                  ${accountType === "learner" ? "bg-[#69BFBA] text-white" : "text-[#5D6B6B] hover:text-[#2B2B2B]"}`}
-                            >
-                                Learner
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setAccountType("creator")}
-                                className={`flex-1 rounded-full text-[14px] font-semibold py-2 text-center transition
-                  ${accountType === "creator" ? "bg-[#69BFBA] text-white" : "text-[#5D6B6B] hover:text-[#2B2B2B]"}`}
-                            >
-                                Creator
-                            </button>
+                        <div className="mx-auto mt-6 flex w-full max-w-[520px] flex-wrap gap-2">
+                            {ACCOUNT_OPTIONS.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => setAccountType(option.value)}
+                                    className={`flex-1 min-w-[150px] rounded-full border px-4 py-2 text-center text-[14px] font-semibold transition
+                    ${
+                        accountType === option.value
+                            ? "border-[#69BFBA] bg-[#69BFBA] text-white"
+                            : "border-[#CFE3E0] bg-white text-[#5D6B6B] hover:text-[#2B2B2B]"
+                    }
+                `}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
                         </div>
+                        <p className="mt-2 text-center text-[12px] text-[#6C6C6C]">
+                            {ACCOUNT_OPTIONS.find((opt) => opt.value === accountType)?.helper}
+                        </p>
 
                         <form onSubmit={onSubmit} className="mt-6 space-y-5 max-w-[360px] lg:max-w-none mx-auto">
                             <div>

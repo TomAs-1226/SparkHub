@@ -1,7 +1,10 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import type { CSSProperties, SyntheticEvent } from "react";
 import {
     motion,
     AnimatePresence,
@@ -48,6 +51,7 @@ const gradients = [
 ];
 
 const spring: FMTransition = { type: "spring", mass: 0.6, stiffness: 280, damping: 24 };
+const openBookStyle: CSSProperties = { perspective: 1200, transformStyle: "preserve-3d" };
 
 function dimsFor(viewW: number) {
     if (viewW < 640)   return { baseW: 118, baseH: 186, gap: 8,  maxExpandedCap: Math.floor(viewW * 0.92) };
@@ -73,7 +77,7 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
 
     // lock hover when inside CTAs
     const [hoverLock, setHoverLock] = useState(false);
-    const stopAll = (e: any) => e.stopPropagation();
+    const stopAll = (event: SyntheticEvent) => event.stopPropagation();
 
     // measure container via ResizeObserver (robust after refresh)
     useEffect(() => {
@@ -147,7 +151,6 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
     const leftSpace  = centersX[currentIdx] + railX - EDGE_PAD;
     const rightSpace = containerW - EDGE_PAD - (centersX[currentIdx] + railX);
     const tightnessFactor = Math.max(0.6, Math.min(1, Math.min(leftSpace, rightSpace) / 140));
-    const pushMag = PUSH_MAG_BASE * tightnessFactor;
 
     // nav helpers
     const canPrev = currentIdx > 0;
@@ -161,7 +164,7 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
     }, [currentIdx, canPrev, canNext, isAnyExpanded, all]);
 
     // drag snaps one item
-    const onDragEnd = (_: any, info: PanInfo) => {
+    const onDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         const { offset, velocity } = info;
         if (offset.x < -DRAG_PX || velocity.x < -DRAG_VEL) move(1);
         else if (offset.x > DRAG_PX || velocity.x > DRAG_VEL) move(-1);
@@ -370,7 +373,7 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                                                         animate={{ opacity: 1 }}
                                                         exit={{ opacity: 0 }}
                                                         className="absolute inset-0 z-[1050] rounded-[18px] overflow-hidden"
-                                                        style={{ perspective: 1200, transformStyle: "preserve-3d" as any }}
+                                                        style={openBookStyle}
                                                     >
                                                         <div className="absolute inset-0 rounded-[18px] bg-neutral-50" />
                                                         <div className="pointer-events-none absolute inset-y-2 left-1/2 w-[2px] -translate-x-1/2 rounded-full bg-gradient-to-b from-black/30 via-black/10 to-black/30 opacity-30" />
