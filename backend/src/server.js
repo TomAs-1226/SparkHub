@@ -2,6 +2,18 @@ require('dotenv').config()
 const express = require('express')
 const path = require('path')
 const wireSecurity = require('./security')
+const { ensurePrismaSync } = require('./utils/prisma-sync')
+
+ensurePrismaSync()
+
+process.on('unhandledRejection', (error) => {
+    console.error('Unhandled rejection:', error)
+})
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught exception:', error)
+})
+
 const app = express()
 
 // Body limits (prevent big JSON bombs)
@@ -12,12 +24,13 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 app.use((req, _res, next) => { console.log(`${req.method} ${req.url}`); next() })
 
 // SECURITY: Helmet, CORS, HPP, compression, rate limits
+const envOrigins = (process.env.FRONTEND_ORIGINS || process.env.FRONTEND_URL || '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+
 wireSecurity(app, {
-    frontendOrigins: [
-        process.env.FRONTEND_URL,
-        'http://localhost:5173',
-        'http://10.0.2.2:5173' // emulator hitting local dev frontend (optional)
-    ]
+    frontendOrigins: envOrigins
 })
 
 // Static files (if any)
@@ -35,6 +48,7 @@ app.use('/quizzes', require('./routes/quizzes'))
 app.use('/availability', require('./routes/availability'))
 app.use('/feedback', require('./routes/feedback'))
 app.use('/resources', require('./routes/resources'))
+app.use('/admin', require('./routes/admin'))
 app.use('/upload', require('./routes/upload'))
 
 // Health
@@ -47,6 +61,14 @@ app.use((err, _req, res, _next) => {
     res.status(500).json({ ok: false, msg: err?.message || 'Server error' })
 })
 
-// Start
-const PORT = process.env.PORT || 3000
-app.listen(PORT, () => console.log(`API ready: http://localhost:${PORT}`))
+// Start (single process, basic Node HTTP server)
+const DEFAULT_PORT = Number(process.env.PORT || process.env.API_PORT || 4000)
+const PORT = Number.isFinite(DEFAULT_PORT) ? DEFAULT_PORT : 4000
+
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`API ready: http://localhost:${PORT}`)
+    })
+}
+
+module.exports = app

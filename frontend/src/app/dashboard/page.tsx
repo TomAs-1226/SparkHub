@@ -13,10 +13,12 @@ import {
     Clock,
     ExternalLink,
     Users,
+    ShieldCheck,
 } from "lucide-react";
 
 import { api } from "@/lib/api";
 import DashboardCard from "@/components/DashboardCard";
+import SiteNav from "@/components/site-nav";
 
 // ---------- types that match your backend responses ----------
 type User = {
@@ -24,6 +26,7 @@ type User = {
     email: string;
     name?: string;
     role: string;
+    avatarUrl?: string | null;
 };
 
 type EventRow = {
@@ -81,6 +84,18 @@ type ResourceRow = {
     summary?: string | null;
 };
 
+type EnrollmentRow = {
+    id: string;
+    courseId: string;
+    createdAt?: string;
+    course?: {
+        id: string;
+        title: string;
+        summary?: string | null;
+        coverUrl?: string | null;
+    };
+};
+
 // ---------- utility helpers ----------
 function fmtDateShort(iso: string | undefined) {
     if (!iso) return "";
@@ -115,6 +130,7 @@ export default function DashboardPage() {
     const [sessions, setSessions] = useState<SessionRow[]>([]);
     const [jobs, setJobs] = useState<JobRow[]>([]);
     const [resources, setResources] = useState<ResourceRow[]>([]);
+    const [enrollments, setEnrollments] = useState<EnrollmentRow[]>([]);
 
     const [errMsg, setErrMsg] = useState<string | null>(null);
 
@@ -142,18 +158,20 @@ export default function DashboardPage() {
             if (!cancelled) setMe(user);
 
             // 2. parallel fetch everything else
-            const [evRes, sessRes, jobRes, resRes] = await Promise.all([
+            const [evRes, sessRes, jobRes, resRes, enrollRes] = await Promise.all([
                 api("/events", { method: "GET" }),
                 api("/tutors/sessions/mine", { method: "GET" }),
                 api("/jobs", { method: "GET" }),
                 api("/resources", { method: "GET" }),
+                api("/courses/enrollments/mine", { method: "GET" }),
             ]);
 
-            const [evJson, sessJson, jobJson, resJson] = await Promise.all([
+            const [evJson, sessJson, jobJson, resJson, enrollJson] = await Promise.all([
                 safeJson(evRes),
                 safeJson(sessRes),
                 safeJson(jobRes),
                 safeJson(resRes),
+                safeJson(enrollRes),
             ]);
 
             if (!cancelled) {
@@ -161,9 +179,15 @@ export default function DashboardPage() {
                 setSessions(sessJson?.list || []);
                 setJobs(jobJson?.list || []);
                 setResources(resJson?.list || []);
+                setEnrollments(enrollJson?.list || []);
                 setLoading(false);
+                setErrMsg(null);
             }
-        })();
+        })().catch((error) => {
+            if (cancelled) return;
+            setErrMsg(error instanceof Error ? error.message : "Unable to load dashboard.");
+            setLoading(false);
+        });
 
         return () => {
             cancelled = true;
@@ -173,6 +197,8 @@ export default function DashboardPage() {
     // quick counts for hero badges
     const upcomingEventCount = events.length;
     const activeSessionCount = sessions.length;
+    const isStudent = me?.role === "STUDENT";
+    const latestEnrollments = enrollments.slice(0, 3);
 
     // skeleton shimmer block
     const Skeleton = ({ className = "" }: { className?: string }) => (
@@ -185,8 +211,10 @@ export default function DashboardPage() {
 
     // ---------- RENDER ----------
     return (
-        <main className="min-h-dvh flex justify-center px-4 sm:px-6 lg:px-8 py-8 text-slate-800 bg-white">
-            <div className="w-full max-w-[1280px]">
+        <div className="min-h-dvh bg-white text-slate-800">
+            <SiteNav />
+            <main className="mx-auto flex w-full max-w-[1280px] justify-center px-4 sm:px-6 lg:px-8 py-8">
+                <div className="w-full">
                 {/* HERO / WELCOME PANEL */}
                 <motion.section
                     initial={{ opacity: 0, y: 16 }}
@@ -248,6 +276,20 @@ export default function DashboardPage() {
                                     icon={<BookOpen size={16} />}
                                     label="Resources"
                                 />
+                                {me?.role === "ADMIN" && (
+                                    <QuickAction
+                                        href="/admin"
+                                        icon={<ShieldCheck size={16} />}
+                                        label="Admin panel"
+                                    />
+                                )}
+                                {(me?.role === "TUTOR" || me?.role === "ADMIN") && (
+                                    <QuickAction
+                                        href="/tutors/dashboard"
+                                        icon={<Users size={16} />}
+                                        label="Tutor tools"
+                                    />
+                                )}
                             </div>
                         </div>
 
@@ -288,6 +330,26 @@ export default function DashboardPage() {
 
                 {/* MAIN GRID CONTENT */}
                 <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    {me?.role === "ADMIN" && (
+                        <DashboardCard
+                            title="Admin tools"
+                            icon={<ShieldCheck size={16} />}
+                            className="md:col-span-2 xl:col-span-3"
+                        >
+                            <p>
+                                Publish events, resources, and opportunities using the admin control panel. Any change is
+                                reflected instantly across the site.
+                            </p>
+                            <div className="mt-3">
+                                <Link
+                                    href="/admin"
+                                    className="inline-flex items-center rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white"
+                                >
+                                    Open admin panel
+                                </Link>
+                            </div>
+                        </DashboardCard>
+                    )}
                     {/* Sessions */}
                     <DashboardCard
                         title="Your tutoring sessions"
@@ -400,6 +462,49 @@ export default function DashboardPage() {
                                 className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
                             >
                                 View all events →
+                            </Link>
+                        </div>
+                    </DashboardCard>
+
+                    <DashboardCard title="My courses" icon={<GraduationCap size={16} />}>
+                        {loading ? (
+                            <div className="space-y-3">
+                                <Skeleton className="h-[40px]" />
+                                <Skeleton className="h-[40px]" />
+                            </div>
+                        ) : !isStudent ? (
+                            <p className="text-slate-500 text-[13px]">
+                                Switch to a student account to enroll in SparkHub courses directly from the catalog.
+                            </p>
+                        ) : latestEnrollments.length === 0 ? (
+                            <p className="text-slate-500 text-[13px]">
+                                You have not enrolled in any courses yet. Explore the catalog to get started.
+                            </p>
+                        ) : (
+                            <ul className="space-y-4">
+                                {latestEnrollments.map((enrollment) => {
+                                    const courseTitle = enrollment.course?.title || "Untitled course";
+                                    const summary = enrollment.course?.summary || "No summary yet.";
+                                    const enrolledOn = enrollment.createdAt ? fmtDateShort(enrollment.createdAt) : "Recently";
+                                    return (
+                                        <li
+                                            key={enrollment.id}
+                                            className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
+                                        >
+                                            <div className="font-medium text-slate-800">{courseTitle}</div>
+                                            <div className="text-slate-600 line-clamp-2">{summary}</div>
+                                            <div className="mt-1 text-[11px] text-slate-500">Enrolled {enrolledOn}</div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                        <div className="mt-4 text-right">
+                            <Link
+                                href="/courses#catalog"
+                                className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
+                            >
+                                Go to courses →
                             </Link>
                         </div>
                     </DashboardCard>
@@ -531,6 +636,7 @@ export default function DashboardPage() {
                 </div>
             </div>
         </main>
+        </div>
     );
 }
 

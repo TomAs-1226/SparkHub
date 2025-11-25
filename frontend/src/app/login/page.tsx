@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/api";
 import { setToken } from "@/lib/auth";
+import { refreshCurrentUserStore } from "@/hooks/use-current-user";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -29,9 +30,11 @@ export default function LoginPage() {
             const data = await safeJson(res);
             if (!res.ok || !data?.ok) throw new Error(data?.msg || `Login failed (${res.status})`);
             setToken(data.token);
+            await refreshCurrentUserStore();
             router.push("/dashboard");
-        } catch (e: any) {
-            setErr(e.message || "Unable to login.");
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Unable to login.";
+            setErr(message);
         } finally {
             setLoading(false);
         }

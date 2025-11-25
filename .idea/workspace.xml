@@ -5,31 +5,22 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c7022082-7f8c-45c4-9150-4e47696694c8" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/frontend/postcss.congif.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/public/auth/login-hero.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/public/auth/register-hero.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/public/landing/creator.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/public/landing/hero-student.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/public/landing/learner.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/app/dashboard/page.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/app/login/page.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/app/register/page.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/ClientOnly.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/DashboardCard.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/SparkHubLogo.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/album-flow.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/coverflow-row.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/explore-contents.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/password-strength.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/site-nav.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/lib/api.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/next.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/next.config.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/postcss.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/postcss.config.mjs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/globals.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/globals.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/layout.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/app/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/prisma/dev.db" beforeDir="false" afterPath="$PROJECT_DIR$/backend/prisma/dev.db" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/prisma/schema.prisma" beforeDir="false" afterPath="$PROJECT_DIR$/backend/prisma/schema.prisma" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/middleware/auth.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/middleware/auth.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/auth.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/auth.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/courses.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/courses.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/events.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/events.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/feedback.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/feedback.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/jobs.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/jobs.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/resources.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/resources.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/upload.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/upload.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/security.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/security.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/server.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -54,7 +45,7 @@
     </option>
   </component>
   <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/frontend" />
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="CurrentFile" />
@@ -72,6 +63,7 @@
   </component>
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
+    &quot;JavaScript Debug.localhost:4000.executor&quot;: &quot;Debug&quot;,
     &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
     &quot;Node.js.availability.js.executor&quot;: &quot;Run&quot;,
     &quot;Node.js.server.js.executor&quot;: &quot;Run&quot;,
@@ -98,6 +90,16 @@
       <recent name="$PROJECT_DIR$/src/middleware" />
     </key>
   </component>
+  <component name="RunManager">
+    <configuration name="localhost:4000" type="JavascriptDebugType" temporary="true" nameIsGenerated="true" uri="http://localhost:4000">
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="JavaScript Debug.localhost:4000" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -119,7 +121,11 @@
       <workItem from="1761540114307" duration="338000" />
       <workItem from="1761865912211" duration="521000" />
       <workItem from="1761868528358" duration="1422000" />
-      <workItem from="1762996311711" duration="1451000" />
+      <workItem from="1762996311711" duration="3981000" />
+      <workItem from="1763004455183" duration="843000" />
+      <workItem from="1763005763289" duration="12382000" />
+      <workItem from="1763167314754" duration="12715000" />
+      <workItem from="1763771649284" duration="494000" />
     </task>
     <servers />
   </component>
@@ -131,7 +137,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="javascript">
           <url>file://$PROJECT_DIR$/frontend/src/components/coverflow-row.tsx</url>
-          <line>480</line>
+          <line>489</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
       </breakpoints>
