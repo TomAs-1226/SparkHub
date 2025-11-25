@@ -149,33 +149,6 @@ export default function Navbar() {
                 </div>
 
                 <div className="relative z-10 hidden items-center gap-2 md:flex">
-                    <Link
-                        href="/courses/join"
-                        className="group inline-flex min-h-[42px] min-w-[110px] items-center gap-2 rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm shadow-[var(--sh-card-glow)] backdrop-blur transition hover:translate-y-[-1px] hover:border-[var(--sh-accent-soft)]"
-                    >
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--sh-accent-soft)] text-[color:var(--sh-accent-ink)] shadow-inner">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition group-hover:scale-110">
-                                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                        </span>
-                        Join
-                    </Link>
-                    {showTutorWorkspace && (
-                        <Link
-                            href="/tutors/dashboard"
-                            className="group inline-flex min-h-[42px] min-w-[110px] items-center gap-2 rounded-full bg-[var(--sh-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] ring-1 ring-[color:var(--sh-accent-veil)] transition hover:translate-y-[-1px] hover:brightness-110"
-                        >
-                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-[var(--sh-accent-contrast)] shadow-inner shadow-white/30">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition group-hover:scale-110">
-                                    <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                            </span>
-                            Publish
-                        </Link>
-                    )}
-                </div>
-
-                <div className="relative z-10 hidden items-center gap-2 md:flex">
                     {resolvedUser ? (
                         <ProfileMenu
                             user={resolvedUser}
