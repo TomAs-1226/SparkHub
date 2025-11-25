@@ -56,6 +56,7 @@ export default function Navbar() {
     const [accent, setAccent] = useState<AccentOption | null>(null);
     const [scrolled, setScrolled] = useState(false);
     const [scrollProgress, setScrollProgress] = useState(0);
+    const [atTop, setAtTop] = useState(true);
 
     useEffect(() => {
         setClientReady(true);
@@ -74,6 +75,7 @@ export default function Navbar() {
             const scrollTop = window.scrollY;
             const docHeight = document.documentElement.scrollHeight - window.innerHeight;
             setScrolled(scrollTop > 8);
+            setAtTop(scrollTop < 4);
             setScrollProgress(docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0);
         };
         handleScroll();
@@ -100,21 +102,41 @@ export default function Navbar() {
 
     return (
         <motion.header
-            className="relative sticky top-0 z-50 w-full px-2 pb-2 sm:px-4"
-            animate={{ y: scrolled ? 6 : 0, scale: scrolled ? 0.995 : 1 }}
+            className="relative sticky top-0 z-50 w-full px-2 pb-3 sm:px-4"
+            animate={{ y: scrolled ? 4 : 0, scale: scrolled ? 0.995 : 1, filter: scrolled ? "drop-shadow(0 16px 40px rgba(15,23,42,0.14))" : "drop-shadow(0 12px 32px rgba(15,23,42,0.1))" }}
             transition={{ duration: 0.22, ease: "easeOut" }}
         >
+            <motion.div
+                className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white/70 via-white/40 to-transparent backdrop-blur-xl"
+                aria-hidden
+                animate={{ opacity: scrolled ? 0.95 : 0.7, filter: scrolled ? "blur(6px)" : "blur(4px)" }}
+            />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-2 overflow-hidden" aria-hidden>
                 <motion.div
                     className="h-full rounded-full bg-[var(--sh-accent)]/70 shadow-[0_6px_18px_-10px_rgba(15,23,42,0.55)]"
-                    animate={{ width: `${Math.max(scrollProgress * 100, scrolled ? 18 : 0)}%` }}
+                    animate={{ width: `${Math.max(scrollProgress * 100, scrolled ? 18 : 0)}%`, opacity: scrolled ? 1 : 0.65 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
                 />
             </div>
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-9 bg-gradient-to-b from-white/60 via-white/20 to-transparent backdrop-blur-md" aria-hidden />
-            <div className="pointer-events-none absolute inset-x-2 top-3 h-[62px] rounded-full bg-[var(--sh-glass-edge)] blur-2xl" aria-hidden />
-            <div className="relative mx-auto mt-2 flex max-w-[1200px] items-center gap-3 rounded-full border border-[color:var(--sh-glass-border)] bg-[color:rgba(255,255,255,0.72)] px-3 py-2 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-[color:var(--sh-accent-veil)]">
-                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_15%_30%,var(--sh-accent-soft)_0,transparent_35%),radial-gradient(circle_at_85%_40%,var(--sh-accent-glass)_0,transparent_28%),linear-gradient(120deg,var(--sh-accent-veil),transparent_40%)] pointer-events-none" aria-hidden />
+            <motion.div
+                className="pointer-events-none absolute inset-x-2 top-2 h-[68px] rounded-full bg-[var(--sh-glass-edge)] blur-2xl"
+                aria-hidden
+                animate={{ opacity: atTop ? 0.8 : 1, scaleX: scrolled ? 1.02 : 1 }}
+            />
+            <div className="relative mx-auto mt-2 flex max-w-[1220px] items-center gap-3 rounded-full border border-[color:var(--sh-glass-border)] bg-[color:rgba(255,255,255,0.78)] px-4 py-2.5 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-[color:var(--sh-accent-veil)]">
+                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_12%_26%,var(--sh-accent-soft)_0,transparent_35%),radial-gradient(circle_at_82%_40%,var(--sh-accent-glass)_0,transparent_30%),linear-gradient(120deg,var(--sh-accent-veil),transparent_45%)] pointer-events-none" aria-hidden />
+                <motion.div
+                    className="pointer-events-none absolute inset-1 rounded-full border border-white/40"
+                    aria-hidden
+                    animate={{ opacity: scrolled ? 0.7 : 0.35 }}
+                    transition={{ duration: 0.25 }}
+                />
+                <motion.div
+                    className="pointer-events-none absolute inset-y-1 left-14 w-24 rounded-full bg-[var(--sh-accent-soft)] blur-3xl"
+                    aria-hidden
+                    animate={{ x: scrollProgress * 60, opacity: atTop ? 0.75 : 0.55 }}
+                    transition={{ type: "spring", stiffness: 80, damping: 18 }}
+                />
                 <Link
                     href="/"
                     className="relative z-10 flex items-center gap-2 rounded-full px-2 py-1 text-slate-900 transition hover:bg-white/80 hover:shadow-sm"
@@ -173,7 +195,7 @@ export default function Navbar() {
                 </div>
 
                 <div className="relative z-10 flex flex-1 items-center justify-end gap-2 md:hidden">
-                    <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-xs font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)]">
+                    <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-xs font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur">
                         {desktopLinks.slice(0, 5).map((link) => {
                             const isActive = pathname?.startsWith(link.href);
                             return (
@@ -181,7 +203,9 @@ export default function Navbar() {
                                     key={link.href}
                                     href={link.href}
                                     className={`rounded-full px-2.5 py-1 whitespace-nowrap transition ${
-                                        isActive ? "bg-[var(--sh-accent-soft)] text-slate-900" : "hover:bg-white/70"
+                                        isActive
+                                            ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm shadow-[var(--sh-card-glow)]"
+                                            : "hover:bg-white/70"
                                     }`}
                                 >
                                     {link.label}

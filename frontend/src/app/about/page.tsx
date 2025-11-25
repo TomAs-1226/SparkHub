@@ -8,6 +8,17 @@ import SiteNav from "@/components/site-nav";
 
 const releases = [
     {
+        version: "2.2",
+        codename: "Skyline Drift",
+        date: "February 2025",
+        highlights: [
+            "Pinned glass nav with softened edge blur that reveals the UI beneath without hiding controls",
+            "Navigation pills keep their spacing and single-line join actions while animating smoothly at the top of the page",
+            "Accent-synced chrome, profile access, and quick actions pick up your theme instantly",
+        ],
+        notes: "Primary dev: Baichen Yu — dialing in ergonomics while keeping the glass look lively.",
+    },
+    {
         version: "2.1",
         codename: "Edge Current",
         date: "January 2025",
@@ -91,6 +102,18 @@ const featureCallouts = [
     {
         title: "Live publishing shortcuts",
         copy: "Glass-draped quick actions help tutors jump into studios or share codes without losing context while browsing.",
+    },
+    {
+        title: "Always-visible glass nav",
+        copy: "A frosted pill that follows you with edge blur, progressive glow, and ergonomic spacing so links stay easy to tap.",
+    },
+    {
+        title: "Theme it your way",
+        copy: "Expanded accent palettes and synced chrome let every surface — nav, profile, join flows — mirror your identity.",
+    },
+    {
+        title: "Release storytelling",
+        copy: "Each version ships with a codename, primary developer credit for Baichen Yu, and expandable highlights to explore.",
     },
 ];
 

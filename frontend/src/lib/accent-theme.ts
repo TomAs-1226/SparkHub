@@ -17,6 +17,8 @@ export const ACCENT_OPTIONS: AccentOption[] = [
     { label: 'Tidal', value: '#0ea5e9', glow: '0 12px 40px -18px rgba(14, 165, 233, 0.55)' },
     { label: 'Amberglass', value: '#f59e0b', glow: '0 12px 40px -18px rgba(245, 158, 11, 0.55)' },
     { label: 'Rosewood', value: '#be123c', glow: '0 12px 40px -18px rgba(190, 18, 60, 0.55)' },
+    { label: 'Glacier', value: '#38bdf8', glow: '0 14px 46px -20px rgba(56, 189, 248, 0.55)' },
+    { label: 'Graphite Mist', value: '#334155', glow: '0 14px 46px -20px rgba(51, 65, 85, 0.5)' },
 ]
 
 export function applyAccent(option: AccentOption) {
