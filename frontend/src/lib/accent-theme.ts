@@ -11,6 +11,9 @@ export const ACCENT_OPTIONS: AccentOption[] = [
     { label: 'Seafoam', value: '#2d8f80', glow: '0 12px 40px -18px rgba(45, 143, 128, 0.55)' },
     { label: 'Sunrise', value: '#f97316', glow: '0 12px 40px -18px rgba(249, 115, 22, 0.55)' },
     { label: 'Candy', value: '#ec4899', glow: '0 12px 40px -18px rgba(236, 72, 153, 0.55)' },
+    { label: 'Lagoon', value: '#0891b2', glow: '0 12px 40px -18px rgba(8, 145, 178, 0.55)' },
+    { label: 'Forest', value: '#15803d', glow: '0 12px 40px -18px rgba(21, 128, 61, 0.55)' },
+    { label: 'Velvet', value: '#7c3aed', glow: '0 12px 40px -18px rgba(124, 58, 237, 0.55)' },
 ]
 
 export function applyAccent(option: AccentOption) {

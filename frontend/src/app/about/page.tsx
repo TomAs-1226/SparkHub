@@ -8,6 +8,17 @@ import SiteNav from "@/components/site-nav";
 
 const releases = [
     {
+        version: "1.9",
+        codename: "Mesa Bloom",
+        date: "November 2024",
+        highlights: [
+            "Ergonomic navigation with scrollable quick links on desktop and mobile",
+            "Expanded accent palette with richer customization options",
+            "Smoother animations for menus and interactive elements",
+        ],
+        notes: "Primary dev: You — crafting friendlier journeys without sacrificing speed.",
+    },
+    {
         version: "1.8",
         codename: "Sierra Lantern",
         date: "October 2024",

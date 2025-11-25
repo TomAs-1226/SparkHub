@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useRef, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 import SparkHubLogo from "@/components/SparkHubLogo";
@@ -49,8 +49,8 @@ const ROLE_LINKS: Record<string, RoleAwareLink[]> = {
 
 export default function Navbar() {
     const router = useRouter();
+    const pathname = usePathname();
     const [open, setOpen] = useState(false);
-    const [trayOpen, setTrayOpen] = useState(false);
     const { user, setUser } = useCurrentUser();
     const [clientReady, setClientReady] = useState(false);
     const [accent, setAccent] = useState<AccentOption | null>(null);
@@ -80,34 +80,42 @@ export default function Navbar() {
         return [...base, ...(ROLE_LINKS[role] || [])];
     }, [role]);
 
-    const primaryLinks = desktopLinks.slice(0, 3);
-    const overflowLinks = desktopLinks.slice(3);
+    useEffect(() => {
+        setOpen(false);
+    }, [pathname]);
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/90 backdrop-blur">
-            <div className="mx-auto flex max-w-[1180px] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+            <div className="mx-auto flex max-w-[1180px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
                 <Link href="/" className="flex items-center gap-2">
                     <SparkHubLogo className="h-8 w-auto text-slate-900" />
                 </Link>
 
-                <nav className="hidden items-center gap-4 text-sm font-semibold text-slate-600 md:flex">
-                    {primaryLinks.map((link) => (
-                        <Link key={link.href} href={link.href} className="rounded-full px-3 py-1.5 transition hover:bg-slate-100">
-                            {link.label}
-                        </Link>
-                    ))}
-                    <button
-                        type="button"
-                        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 transition hover:bg-slate-100"
-                        onClick={() => setTrayOpen((v) => !v)}
-                        aria-expanded={trayOpen}
-                    >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-slate-700">
-                            <path d="M4 7h16M4 12h16M10 17h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                        </svg>
-                        Menu
-                    </button>
-                </nav>
+                <div className="hidden flex-1 md:flex">
+                    <div className="relative w-full">
+                        <div className="pointer-events-none absolute left-0 top-0 h-full w-10 bg-gradient-to-r from-white via-white to-transparent" />
+                        <nav className="no-scrollbar relative flex items-center gap-2 overflow-x-auto px-1 py-1 text-sm font-semibold text-slate-600">
+                            {desktopLinks.map((link) => {
+                                const isActive = pathname?.startsWith(link.href);
+                                return (
+                                    <motion.div key={link.href} whileHover={{ y: -1 }} transition={{ duration: 0.15 }}>
+                                        <Link
+                                            href={link.href}
+                                            className={`rounded-full px-3 py-1.5 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--sh-accent)] ${
+                                                isActive
+                                                    ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm"
+                                                    : "hover:bg-slate-100"
+                                            }`}
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    </motion.div>
+                                );
+                            })}
+                        </nav>
+                        <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-white via-white to-transparent" />
+                    </div>
+                </div>
 
                 <div className="hidden items-center gap-2 md:flex">
                     {resolvedUser ? (
@@ -144,64 +152,88 @@ export default function Navbar() {
                 </button>
             </div>
 
-            <AnimatePresence>
-                {trayOpen && (
+            <div className="md:hidden">
+                <div className="no-scrollbar flex items-center gap-2 overflow-x-auto border-t border-slate-200/60 bg-white px-4 py-2 text-sm font-semibold text-slate-700 sm:px-6 lg:px-8">
+                    {desktopLinks.slice(0, 4).map((link) => (
+                        <Link
+                            key={link.href}
+                            href={link.href}
+                            className="rounded-full border border-slate-200 px-3 py-1 transition hover:border-slate-300 hover:text-slate-900"
+                        >
+                            {link.label}
+                        </Link>
+                    ))}
+                </div>
+            </div>
+
+            <AnimatePresence initial={false}>
+                {open && (
                     <motion.div
-                        initial={{ opacity: 0, y: -6 }}
+                        initial={{ opacity: 0, y: -8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        className="border-b border-slate-200/60 bg-white/95 shadow-sm"
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.18 }}
+                        className="border-t border-slate-200/60 bg-white md:hidden"
                     >
-                        <div className="mx-auto flex max-w-[1180px] flex-wrap items-start justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-                            <div className="flex flex-wrap gap-2 text-sm font-semibold text-slate-700">
-                                {overflowLinks.map((link) => (
+                        <div className="mx-auto max-w-[1180px] px-4 py-3 sm:px-6 lg:px-8">
+                            <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                                {desktopLinks.map((link) => (
                                     <Link
                                         key={link.href}
                                         href={link.href}
-                                        className="rounded-full border border-slate-200 px-3 py-1.5 transition hover:border-slate-300 hover:text-slate-900"
+                                        className="hover:text-slate-900"
+                                        onClick={() => setOpen(false)}
                                     >
                                         {link.label}
                                     </Link>
                                 ))}
+                                {resolvedUser ? (
+                                    <>
+                                        <Link href="/dashboard" onClick={() => setOpen(false)}>
+                                            Dashboard
+                                        </Link>
+                                        {resolvedUser.role === "ADMIN" && (
+                                            <Link href="/admin" onClick={() => setOpen(false)}>
+                                                Admin panel
+                                            </Link>
+                                        )}
+                                        {showTutorWorkspace && (
+                                            <Link href="/tutors/dashboard" onClick={() => setOpen(false)}>
+                                                Publishing workspace
+                                            </Link>
+                                        )}
+                                        <Link href="/settings" onClick={() => setOpen(false)}>
+                                            Profile settings
+                                        </Link>
+                                    </>
+                                ) : (
+                                    <Link href="/dashboard" onClick={() => setOpen(false)}>
+                                        Dashboard
+                                    </Link>
+                                )}
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-slate-500">
-                                <span className="rounded-full bg-[var(--sh-accent-soft)] px-3 py-1 font-semibold text-[var(--sh-accent)]">Smarter nav</span>
-                                <span className="hidden sm:inline">Less clutter with a quick menu.</span>
-                            </div>
+                            {!resolvedUser && (
+                                <div className="mt-3 flex gap-2">
+                                    <Link
+                                        href="/register"
+                                        className="rounded-full border px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                        onClick={() => setOpen(false)}
+                                    >
+                                        Sign up
+                                    </Link>
+                                    <Link
+                                        href="/login"
+                                        className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] hover:brightness-110"
+                                        onClick={() => setOpen(false)}
+                                    >
+                                        Log in
+                                    </Link>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
-
-            {open && (
-                <div className="border-t border-slate-200/60 bg-white md:hidden">
-                    <div className="mx-auto max-w-[1180px] px-4 py-3 sm:px-6 lg:px-8">
-                        <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-                            {desktopLinks.map((link) => (
-                                <Link key={link.href} href={link.href} className="hover:text-slate-900">
-                                    {link.label}
-                                </Link>
-                            ))}
-                            {resolvedUser ? (
-                                <>
-                                    <Link href="/dashboard">Dashboard</Link>
-                                    {resolvedUser.role === "ADMIN" && <Link href="/admin">Admin panel</Link>}
-                                    {showTutorWorkspace && <Link href="/tutors/dashboard">Publishing workspace</Link>}
-                                    <Link href="/settings">Profile settings</Link>
-                                </>
-                            ) : (
-                                <Link href="/dashboard">Dashboard</Link>
-                            )}
-                        </div>
-                        {!resolvedUser && (
-                            <div className="mt-3 flex gap-2">
-                                <Link href="/register" className="rounded-full border px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sign up</Link>
-                                <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] hover:brightness-110">Log in</Link>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
         </header>
     );
 }
