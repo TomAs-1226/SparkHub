@@ -39,7 +39,7 @@ export function loadAccent(): AccentOption | null {
     if (!raw) return null
     try {
         return JSON.parse(raw) as AccentOption
-    } catch (_err) {
+    } catch {
         return null
     }
 }
