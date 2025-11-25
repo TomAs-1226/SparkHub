@@ -15,7 +15,7 @@ type RoleAwareLink = { href: string; label: string; roles?: string[] };
 
 const NAV_LINKS: RoleAwareLink[] = [
     { href: "/courses", label: "Courses" },
-    { href: "/courses/join", label: "Join with code" },
+    { href: "/courses/join", label: "Join" },
     { href: "/events", label: "Events" },
     { href: "/tutors", label: "Find a tutor", roles: ["ANON", "STUDENT"] },
     { href: "/resources", label: "Resources" },
@@ -55,6 +55,7 @@ export default function Navbar() {
     const [clientReady, setClientReady] = useState(false);
     const [accent, setAccent] = useState<AccentOption | null>(null);
     const [scrolled, setScrolled] = useState(false);
+    const [scrollProgress, setScrollProgress] = useState(0);
 
     useEffect(() => {
         setClientReady(true);
@@ -70,7 +71,10 @@ export default function Navbar() {
 
     useEffect(() => {
         const handleScroll = () => {
-            setScrolled(window.scrollY > 8);
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            setScrolled(scrollTop > 8);
+            setScrollProgress(docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0);
         };
         handleScroll();
         window.addEventListener("scroll", handleScroll, { passive: true });
@@ -100,6 +104,13 @@ export default function Navbar() {
             animate={{ y: scrolled ? 6 : 0, scale: scrolled ? 0.995 : 1 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
         >
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-2 overflow-hidden" aria-hidden>
+                <motion.div
+                    className="h-full rounded-full bg-[var(--sh-accent)]/70 shadow-[0_6px_18px_-10px_rgba(15,23,42,0.55)]"
+                    animate={{ width: `${Math.max(scrollProgress * 100, scrolled ? 18 : 0)}%` }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                />
+            </div>
             <div className="pointer-events-none absolute inset-x-0 top-0 h-9 bg-gradient-to-b from-white/60 via-white/20 to-transparent backdrop-blur-md" aria-hidden />
             <div className="pointer-events-none absolute inset-x-2 top-3 h-[62px] rounded-full bg-[var(--sh-glass-edge)] blur-2xl" aria-hidden />
             <div className="relative mx-auto mt-2 flex max-w-[1200px] items-center gap-3 rounded-full border border-[color:var(--sh-glass-border)] bg-[color:rgba(255,255,255,0.72)] px-3 py-2 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-[color:var(--sh-accent-veil)]">
@@ -140,21 +151,21 @@ export default function Navbar() {
                 <div className="relative z-10 hidden items-center gap-2 md:flex">
                     <Link
                         href="/courses/join"
-                        className="group inline-flex items-center gap-2 rounded-full bg-[var(--sh-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] ring-1 ring-[color:var(--sh-accent-veil)] transition hover:translate-y-[-1px] hover:brightness-110"
+                        className="group inline-flex min-h-[42px] min-w-[110px] items-center gap-2 rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm shadow-[var(--sh-card-glow)] backdrop-blur transition hover:translate-y-[-1px] hover:border-[var(--sh-accent-soft)]"
                     >
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-[var(--sh-accent-contrast)] shadow-inner shadow-white/30">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--sh-accent-soft)] text-[color:var(--sh-accent-ink)] shadow-inner">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition group-hover:scale-110">
                                 <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                         </span>
-                        Join with code
+                        Join
                     </Link>
                     {showTutorWorkspace && (
                         <Link
                             href="/tutors/dashboard"
-                            className="group inline-flex items-center gap-2 rounded-full border border-[color:var(--sh-glass-border)] bg-white/80 px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm shadow-[var(--sh-card-glow)] backdrop-blur transition hover:translate-y-[-1px] hover:border-[var(--sh-accent-soft)]"
+                            className="group inline-flex min-h-[42px] min-w-[110px] items-center gap-2 rounded-full bg-[var(--sh-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] ring-1 ring-[color:var(--sh-accent-veil)] transition hover:translate-y-[-1px] hover:brightness-110"
                         >
-                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--sh-accent-soft)] text-[color:var(--sh-accent-ink)] shadow-inner">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-[var(--sh-accent-contrast)] shadow-inner shadow-white/30">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition group-hover:scale-110">
                                     <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
@@ -214,6 +225,26 @@ export default function Navbar() {
                             <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                         </svg>
                     </button>
+                    {resolvedUser && (
+                        <button
+                            type="button"
+                            onClick={() => router.push("/dashboard")}
+                            className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/80 text-sm font-semibold text-slate-700 shadow-sm shadow-white/40"
+                            aria-label="Open profile"
+                        >
+                            <Image
+                                src={
+                                    resolvedUser.avatarUrl
+                                        ? `${resolvedUser.avatarUrl}${resolvedUser.avatarUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(resolvedUser.id)}`
+                                        : `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(resolvedUser.name || "SparkHub")}`
+                                }
+                                alt="Profile avatar"
+                                width={40}
+                                height={40}
+                                className="h-full w-full object-cover"
+                            />
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -237,6 +268,15 @@ export default function Navbar() {
                                     {link.label}
                                 </Link>
                             ))}
+                            {showTutorWorkspace && (
+                                <Link
+                                    href="/tutors/dashboard"
+                                    className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)] hover:text-slate-900"
+                                    onClick={() => setOpen(false)}
+                                >
+                                    Publishing workspace
+                                </Link>
+                            )}
                             {resolvedUser ? (
                                 <>
                                     <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
@@ -294,6 +334,32 @@ export default function Navbar() {
                                     Sign out
                                 </button>
                             )}
+                        </div>
+                        <div className="mt-4 space-y-2 rounded-2xl border border-dashed border-[var(--sh-accent-soft)] bg-white/80 px-3 py-3 text-xs text-slate-500 shadow-inner shadow-white/40">
+                            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                <span>Accent</span>
+                                <span className="rounded-full bg-[var(--sh-accent-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--sh-accent)]">Live</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {ACCENT_OPTIONS.map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => {
+                                            applyAccent(option);
+                                            setAccent(option);
+                                        }}
+                                        className={`h-8 w-8 rounded-full border-2 transition shadow-[var(--sh-card-glow)] ${
+                                            accent?.value === option.value
+                                                ? "border-[var(--sh-accent)] ring-2 ring-[var(--sh-accent)] ring-offset-1"
+                                                : "border-transparent"
+                                        }`}
+                                        style={{ backgroundColor: option.value }}
+                                        aria-label={`Use ${option.label}`}
+                                    />
+                                ))}
+                            </div>
+                            <p className="text-[11px] text-slate-500">Pinned glass nav, quick actions, and cards all reflect your selected accent.</p>
                         </div>
                     </motion.div>
                 )}
