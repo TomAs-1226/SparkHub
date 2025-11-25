@@ -9,6 +9,7 @@ import { BookOpenCheck, CalendarDays, ClipboardList, Copy, Link2, ShieldCheck, U
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { api } from "@/lib/api";
+import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { uploadAsset } from "@/lib/upload";
 
 const MANAGER_ROLES = new Set(["ADMIN", "TUTOR", "CREATOR"]);
@@ -442,12 +443,8 @@ export default function CourseStudioPage() {
 
     async function copyJoinCode() {
         if (!detail?.joinCode) return;
-        try {
-            await navigator.clipboard.writeText(detail.joinCode);
-            setStatus("Join code copied to clipboard");
-        } catch {
-            setStatus("Unable to copy join code");
-        }
+        const copied = await copyToClipboard(detail.joinCode);
+        setStatus(copied ? "Join code copied to clipboard" : "Unable to copy join code");
     }
 
     async function handleAttachmentUpload(files: FileList | null, setter: (urls: string[]) => void) {

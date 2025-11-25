@@ -7,72 +7,86 @@ const { requireAuth, requireRole } = require('../middleware/auth')
 
 // Validate POST /jobs payload
 const flexibleStringArray = z.union([
-  z.array(z.string().min(1).max(120)),
-  z.string().max(500).optional(),
+    z.array(z.string().trim().min(1).max(120)),
+    z.string().max(500).optional(),
 ])
 
 const optionalDateInput = z.preprocess((val) => {
-  if (typeof val !== 'string') return undefined
-  const trimmed = val.trim()
-  return trimmed.length ? trimmed : undefined
+    if (typeof val !== 'string') return undefined
+    const trimmed = val.trim()
+    return trimmed.length ? trimmed : undefined
 }, z.string().max(120).optional())
 
-const contactField = z.preprocess((val) => {
-  if (typeof val !== 'string') return undefined
-  const trimmed = val.trim()
-  return trimmed.length ? trimmed : undefined
-}, z.string().max(200).optional())
+const optionalTrimmedField = (max) =>
+    z.preprocess((val) => {
+        if (typeof val !== 'string') return undefined
+        const trimmed = val.trim()
+        return trimmed.length ? trimmed : undefined
+    }, z.string().max(max).optional())
+
+const contactField = optionalTrimmedField(200)
 
 const postJobSchema = z.object({
-  body: z.object({
-    title: z.string().min(2).max(120),
-    description: z.string().min(5).max(5000),
-    skills: flexibleStringArray.optional(),
-    startTime: optionalDateInput,
-    endTime: optionalDateInput,
-    duration: z.preprocess((val) => (typeof val === 'string' && !val.trim() ? undefined : val), z.string().max(120).optional()),
-    benefits: z.preprocess((val) => (typeof val === 'string' && !val.trim() ? undefined : val), z.string().max(1000).optional()),
-    photos: z.array(z.string().min(1)).optional().default([]),
-    files: z.array(z.string()).optional().default([]),
-    contact: contactField
-  })
+    body: z.object({
+        title: z.string().trim().min(2, 'Title is required').max(120),
+        description: z.string().trim().min(10, 'Description is required').max(5000),
+        skills: flexibleStringArray.optional(),
+        startTime: optionalDateInput,
+        endTime: optionalDateInput,
+        duration: optionalTrimmedField(120),
+        benefits: optionalTrimmedField(1000),
+        photos: z.array(z.string().min(1)).optional().default([]),
+        files: z.array(z.string()).optional().default([]),
+        contact: contactField,
+    }),
 })
 
 function parseDateInput(value) {
-  if (!value || typeof value !== 'string') return null
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return date
+    if (!value || typeof value !== 'string') return null
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return null
+    return date
 }
 
 function csvToArray(value) {
-  if (!value) return []
-  return value.split(',').map((item) => item.trim()).filter(Boolean)
+    if (!value) return []
+    return value.split(',').map((item) => item.trim()).filter(Boolean)
 }
 
 function filesFromJson(raw) {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+    if (!raw) return []
+    try {
+        const parsed = JSON.parse(raw)
+        return Array.isArray(parsed) ? parsed : []
+    } catch {
+        return []
+    }
 }
 
 function filesToJson(files) {
-  if (!Array.isArray(files)) return '[]'
-  return JSON.stringify(files)
+    if (!Array.isArray(files)) return '[]'
+    return JSON.stringify(files)
+}
+
+function normalizeUploads(list = []) {
+    if (!Array.isArray(list)) return []
+    return list
+        .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+        .filter(Boolean)
+}
+
+function uniqueSkills(skills = []) {
+    return Array.from(new Set(skills.map((skill) => skill.trim()).filter(Boolean)))
 }
 
 function presentJob(row) {
-  if (!row) return null
-  return {
-    ...row,
-    skills: csvToArray(row.skillsCsv),
-    photos: csvToArray(row.photosCsv),
-    files: filesFromJson(row.filesJson),
-  }
+    if (!row) return null
+    return {
+        ...row,
+        skills: csvToArray(row.skillsCsv),
+        photos: csvToArray(row.photosCsv),
+        files: filesFromJson(row.filesJson),
+    }
 }
 
 // 发布职位（招聘者/管理员/导师）
@@ -80,11 +94,15 @@ router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR', 'CREAT
     const { title, description, skills = [], startTime, endTime, duration, benefits, photos = [], files = [], contact } = req.body
     const actor = await prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true } })
     const normalizedSkills = Array.isArray(skills) ? skills : csvToArray(skills)
-    const skillsCsv = normalizedSkills.join(',')
-    const photosCsv = Array.isArray(photos) ? photos.join(',') : (photos || '')
+    const skillsCsv = uniqueSkills(normalizedSkills).join(',')
+    const photosCsv = normalizeUploads(photos).join(',')
+    const normalizedFiles = normalizeUploads(files)
     const parsedStart = parseDateInput(startTime)
     const parsedEnd = parseDateInput(endTime)
     const contactValue = contact || actor?.email || 'info@sparkhub.dev'
+    if (parsedStart && parsedEnd && parsedEnd < parsedStart) {
+        return res.status(400).json({ ok: false, msg: 'End date must be after the start date' })
+    }
     const job = await prisma.jobPosting.create({
         data: {
             recruiterId: req.user.id,
@@ -96,7 +114,7 @@ router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR', 'CREAT
             duration,
             benefits,
             photosCsv,
-            filesJson: filesToJson(files),
+            filesJson: filesToJson(normalizedFiles),
             contact: contactValue
         }
     })

@@ -1,6 +1,8 @@
 require('dotenv').config()
 const express = require('express')
 const path = require('path')
+const os = require('os')
+const cluster = require('cluster')
 const wireSecurity = require('./security')
 const { ensurePrismaSync } = require('./utils/prisma-sync')
 
@@ -53,6 +55,8 @@ app.use('/upload', require('./routes/upload'))
 
 // Health
 app.get('/', (_req, res) => res.json({ ok: true, name: 'SparkHub API' }))
+app.get('/healthz', (_req, res) => res.json({ ok: true, status: 'healthy' }))
+app.get('/readyz', (_req, res) => res.json({ ok: true, status: 'ready' }))
 
 // JSON 404 + error (keep JSON only)
 app.use((req, res) => res.status(404).json({ ok: false, msg: 'Not found', path: req.originalUrl }))
@@ -61,14 +65,35 @@ app.use((err, _req, res, _next) => {
     res.status(500).json({ ok: false, msg: err?.message || 'Server error' })
 })
 
-// Start (single process, basic Node HTTP server)
+// Start (supports clustered workers for scale-out)
 const DEFAULT_PORT = Number(process.env.PORT || process.env.API_PORT || 4000)
 const PORT = Number.isFinite(DEFAULT_PORT) ? DEFAULT_PORT : 4000
 
-if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`API ready: http://localhost:${PORT}`)
+function startHttpServer() {
+    const server = app.listen(PORT, () => {
+        console.log(`API ready: http://localhost:${PORT} (pid ${process.pid})`)
     })
+    // Keep connections alive but guard against slowloris-style hangs
+    server.keepAliveTimeout = 65000
+    server.headersTimeout = 66000
+}
+
+if (require.main === module) {
+    const enableCluster = process.env.ENABLE_CLUSTER === 'true'
+    const workerTarget = Math.max(1, Number(process.env.WEB_CONCURRENCY) || os.cpus().length)
+
+    if (enableCluster && cluster.isPrimary && workerTarget > 1) {
+        console.log(`Starting SparkHub API with ${workerTarget} workers`)
+        for (let i = 0; i < workerTarget; i += 1) {
+            cluster.fork()
+        }
+        cluster.on('exit', (worker) => {
+            console.warn(`Worker ${worker.process.pid} exited; replacing to maintain capacity`)
+            cluster.fork()
+        })
+    } else {
+        startHttpServer()
+    }
 }
 
 module.exports = app

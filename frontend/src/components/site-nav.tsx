@@ -18,6 +18,7 @@ const NAV_LINKS: RoleAwareLink[] = [
     { href: "/tutors", label: "Find a tutor", roles: ["ANON", "STUDENT"] },
     { href: "/resources", label: "Resources" },
     { href: "/opportunities", label: "Opportunities" },
+    { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
 ];
 
