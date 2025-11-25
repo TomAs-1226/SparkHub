@@ -3,9 +3,10 @@ const express = require('express')
 const path = require('path')
 const os = require('os')
 const cluster = require('cluster')
-const toobusy = require('toobusy-js')
 const wireSecurity = require('./security')
 const { ensurePrismaSync } = require('./utils/prisma-sync')
+
+let toobusyInstance = null
 
 ensurePrismaSync()
 
@@ -26,15 +27,22 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }))
 // Load-shed when the event loop is saturated to stay responsive for normal traffic
 const enableLoadShedding = process.env.ENABLE_LOAD_SHED === 'true'
 if (enableLoadShedding) {
-    toobusy.maxLag(parseInt(process.env.TOOBUSY_MAX_LAG_MS || '120', 10))
-    toobusy.interval(250)
-    app.use((req, res, next) => {
-        if (toobusy()) {
-            res.status(503).json({ ok: false, msg: 'Server is momentarily busy, please retry' })
-            return
-        }
-        next()
-    })
+    try {
+        toobusyInstance = require('toobusy-js')
+        toobusyInstance.maxLag(parseInt(process.env.TOOBUSY_MAX_LAG_MS || '120', 10))
+        toobusyInstance.interval(250)
+        app.use((req, res, next) => {
+            if (toobusyInstance && toobusyInstance()) {
+                res.status(503).json({ ok: false, msg: 'Server is momentarily busy, please retry' })
+                return
+            }
+            next()
+        })
+    } catch (err) {
+        console.warn('Load shedding disabled: install toobusy-js to enable it', err?.message)
+        // Disable load shedding if the optional dependency is unavailable
+        process.env.ENABLE_LOAD_SHED = 'false'
+    }
 }
 
 // Simple request log (optional)
@@ -97,15 +105,15 @@ function startHttpServer() {
     const shutdown = () => {
         console.log('Shutting down HTTP server for maintenance...')
         server.close(() => {
-            if (enableLoadShedding) {
-                toobusy.shutdown()
+            if (enableLoadShedding && toobusyInstance) {
+                toobusyInstance.shutdown()
             }
             process.exit(0)
         })
         setTimeout(() => {
             console.warn('Forcing shutdown after timeout')
-            if (enableLoadShedding) {
-                toobusy.shutdown()
+            if (enableLoadShedding && toobusyInstance) {
+                toobusyInstance.shutdown()
             }
             process.exit(1)
         }, 10000).unref()

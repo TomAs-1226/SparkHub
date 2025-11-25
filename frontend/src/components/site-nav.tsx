@@ -238,7 +238,7 @@ function ProfileMenu({
 
     const avatar = user.avatarUrl
         ? `${user.avatarUrl}${user.avatarUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(user.id)}`
-        : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name || "SparkHub")}`;
+        : `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(user.name || "SparkHub")}`;
     const go = (href: string) => {
         setOpen(false);
         router.push(href);
