@@ -4,10 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
 import SparkHubLogo from "@/components/SparkHubLogo";
 import { clearToken } from "@/lib/auth";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { ACCENT_OPTIONS, AccentOption, applyAccent, loadAccent } from "@/lib/accent-theme";
 
 type RoleAwareLink = { href: string; label: string; roles?: string[] };
 
@@ -48,11 +50,21 @@ const ROLE_LINKS: Record<string, RoleAwareLink[]> = {
 export default function Navbar() {
     const router = useRouter();
     const [open, setOpen] = useState(false);
+    const [trayOpen, setTrayOpen] = useState(false);
     const { user, setUser } = useCurrentUser();
     const [clientReady, setClientReady] = useState(false);
+    const [accent, setAccent] = useState<AccentOption | null>(null);
 
     useEffect(() => {
         setClientReady(true);
+        const saved = loadAccent();
+        if (saved) {
+            applyAccent(saved);
+            setAccent(saved);
+        } else {
+            applyAccent(ACCENT_OPTIONS[0]);
+            setAccent(ACCENT_OPTIONS[0]);
+        }
     }, []);
 
     const resolvedUser = clientReady ? user : null;
@@ -68,6 +80,9 @@ export default function Navbar() {
         return [...base, ...(ROLE_LINKS[role] || [])];
     }, [role]);
 
+    const primaryLinks = desktopLinks.slice(0, 3);
+    const overflowLinks = desktopLinks.slice(3);
+
     return (
         <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/90 backdrop-blur">
             <div className="mx-auto flex max-w-[1180px] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
@@ -75,12 +90,23 @@ export default function Navbar() {
                     <SparkHubLogo className="h-8 w-auto text-slate-900" />
                 </Link>
 
-                <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
-                    {desktopLinks.map((link) => (
-                        <Link key={link.href} href={link.href} className="hover:text-slate-900">
+                <nav className="hidden items-center gap-4 text-sm font-semibold text-slate-600 md:flex">
+                    {primaryLinks.map((link) => (
+                        <Link key={link.href} href={link.href} className="rounded-full px-3 py-1.5 transition hover:bg-slate-100">
                             {link.label}
                         </Link>
                     ))}
+                    <button
+                        type="button"
+                        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 transition hover:bg-slate-100"
+                        onClick={() => setTrayOpen((v) => !v)}
+                        aria-expanded={trayOpen}
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-slate-700">
+                            <path d="M4 7h16M4 12h16M10 17h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                        Menu
+                    </button>
                 </nav>
 
                 <div className="hidden items-center gap-2 md:flex">
@@ -93,11 +119,16 @@ export default function Navbar() {
                                 router.push("/");
                             }}
                             showTutorWorkspace={showTutorWorkspace}
+                            accent={accent}
+                            onAccentChange={(option) => {
+                                applyAccent(option);
+                                setAccent(option);
+                            }}
                         />
                     ) : (
                         <>
                             <Link href="/register" className="rounded-full border px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sign up</Link>
-                            <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-white hover:brightness-110">Log in</Link>
+                            <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] hover:brightness-110">Log in</Link>
                         </>
                     )}
                 </div>
@@ -112,6 +143,35 @@ export default function Navbar() {
                     </svg>
                 </button>
             </div>
+
+            <AnimatePresence>
+                {trayOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        className="border-b border-slate-200/60 bg-white/95 shadow-sm"
+                    >
+                        <div className="mx-auto flex max-w-[1180px] flex-wrap items-start justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+                            <div className="flex flex-wrap gap-2 text-sm font-semibold text-slate-700">
+                                {overflowLinks.map((link) => (
+                                    <Link
+                                        key={link.href}
+                                        href={link.href}
+                                        className="rounded-full border border-slate-200 px-3 py-1.5 transition hover:border-slate-300 hover:text-slate-900"
+                                    >
+                                        {link.label}
+                                    </Link>
+                                ))}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-slate-500">
+                                <span className="rounded-full bg-[var(--sh-accent-soft)] px-3 py-1 font-semibold text-[var(--sh-accent)]">Smarter nav</span>
+                                <span className="hidden sm:inline">Less clutter with a quick menu.</span>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {open && (
                 <div className="border-t border-slate-200/60 bg-white md:hidden">
@@ -136,7 +196,7 @@ export default function Navbar() {
                         {!resolvedUser && (
                             <div className="mt-3 flex gap-2">
                                 <Link href="/register" className="rounded-full border px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sign up</Link>
-                                <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-white hover:brightness-110">Log in</Link>
+                                <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] hover:brightness-110">Log in</Link>
                             </div>
                         )}
                     </div>
@@ -150,10 +210,14 @@ function ProfileMenu({
     user,
     onSignOut,
     showTutorWorkspace,
+    accent,
+    onAccentChange,
 }: {
     user: { id: string; name?: string | null; avatarUrl?: string | null; role: string };
     onSignOut: () => void;
     showTutorWorkspace: boolean;
+    accent: AccentOption | null;
+    onAccentChange: (option: AccentOption) => void;
 }) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -219,9 +283,33 @@ function ProfileMenu({
                             </button>
                         ))}
                     </div>
-                    <div className="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
-                        Signed in as <span className="font-semibold text-slate-800">{user.name || "SparkHub"}</span>
-                        <div className="text-[11px] uppercase tracking-wide text-slate-400">Role: {user.role}</div>
+                    <div className="mt-3 space-y-2 rounded-xl border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
+                        <div>
+                            Signed in as <span className="font-semibold text-slate-800">{user.name || "SparkHub"}</span>
+                            <div className="text-[11px] uppercase tracking-wide text-slate-400">Role: {user.role}</div>
+                        </div>
+                        <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                <span>Accent</span>
+                                <span className="rounded-full bg-[var(--sh-accent-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--sh-accent)]">Live</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {ACCENT_OPTIONS.map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => onAccentChange(option)}
+                                        className={`h-8 w-8 rounded-full border-2 transition shadow-[var(--sh-card-glow)] ${
+                                            accent?.value === option.value
+                                                ? "border-[var(--sh-accent)] ring-2 ring-[var(--sh-accent)] ring-offset-1"
+                                                : "border-transparent"
+                                        }`}
+                                        style={{ backgroundColor: option.value }}
+                                        aria-label={`Use ${option.label}`}
+                                    />
+                                ))}
+                            </div>
+                        </div>
                     </div>
                     <button
                         type="button"
@@ -229,7 +317,7 @@ function ProfileMenu({
                             setOpen(false);
                             onSignOut();
                         }}
-                        className="mt-3 w-full rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
+                        className="mt-3 w-full rounded-full bg-[var(--sh-accent)] px-4 py-2 text-sm font-semibold text-[var(--sh-accent-contrast)] hover:brightness-110"
                     >
                         Sign out
                     </button>

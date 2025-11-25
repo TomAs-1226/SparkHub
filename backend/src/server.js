@@ -3,6 +3,7 @@ const express = require('express')
 const path = require('path')
 const os = require('os')
 const cluster = require('cluster')
+const toobusy = require('toobusy-js')
 const wireSecurity = require('./security')
 const { ensurePrismaSync } = require('./utils/prisma-sync')
 
@@ -21,6 +22,20 @@ const app = express()
 // Body limits (prevent big JSON bombs)
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: true, limit: '1mb' }))
+
+// Load-shed when the event loop is saturated to stay responsive for normal traffic
+const enableLoadShedding = process.env.ENABLE_LOAD_SHED === 'true'
+if (enableLoadShedding) {
+    toobusy.maxLag(parseInt(process.env.TOOBUSY_MAX_LAG_MS || '120', 10))
+    toobusy.interval(250)
+    app.use((req, res, next) => {
+        if (toobusy()) {
+            res.status(503).json({ ok: false, msg: 'Server is momentarily busy, please retry' })
+            return
+        }
+        next()
+    })
+}
 
 // Simple request log (optional)
 app.use((req, _res, next) => { console.log(`${req.method} ${req.url}`); next() })
@@ -76,6 +91,28 @@ function startHttpServer() {
     // Keep connections alive but guard against slowloris-style hangs
     server.keepAliveTimeout = 65000
     server.headersTimeout = 66000
+    server.requestTimeout = 70000
+
+    // Graceful shutdown path so load balancers can drain
+    const shutdown = () => {
+        console.log('Shutting down HTTP server for maintenance...')
+        server.close(() => {
+            if (enableLoadShedding) {
+                toobusy.shutdown()
+            }
+            process.exit(0)
+        })
+        setTimeout(() => {
+            console.warn('Forcing shutdown after timeout')
+            if (enableLoadShedding) {
+                toobusy.shutdown()
+            }
+            process.exit(1)
+        }, 10000).unref()
+    }
+
+    process.once('SIGTERM', shutdown)
+    process.once('SIGINT', shutdown)
 }
 
 if (require.main === module) {

@@ -1,6 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
 import SiteNav from "@/components/site-nav";
@@ -8,22 +9,28 @@ import SiteNav from "@/components/site-nav";
 const releases = [
     {
         version: "1.8",
+        codename: "Sierra Lantern",
         date: "October 2024",
         highlights: [
             "Smarter opportunity publishing with richer validation",
             "Faster API responses with optional clustered workers",
             "Clipboard-safe join codes for every course",
         ],
+        notes: "Primary dev: You — delivering resilient growth for new cohorts.",
     },
     {
         version: "1.7",
+        codename: "Marigold Arc",
         date: "September 2024",
         highlights: ["Improved tutor workspace layouts", "New calendar-ready event exports"],
+        notes: "Primary dev: You — smoothing publishing flows and calendars.",
     },
     {
         version: "1.6",
+        codename: "Cinder Bay",
         date: "August 2024",
         highlights: ["Resource hub redesign", "Streamlined authentication and session recovery"],
+        notes: "Primary dev: You — cleanup with better recovery and discovery.",
     },
 ];
 
@@ -48,6 +55,8 @@ const fadeUp = {
 };
 
 export default function AboutPage() {
+    const [openRelease, setOpenRelease] = useState(releases[0].version);
+
     return (
         <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
             <SiteNav />
@@ -87,6 +96,7 @@ export default function AboutPage() {
                             <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">Latest release</p>
                             <h2 className="mt-2 text-2xl font-semibold text-slate-900">{releases[0].version}</h2>
                             <p className="text-sm text-slate-600">{releases[0].date}</p>
+                            <p className="text-sm font-semibold text-[#2D8F80]">Codename: {releases[0].codename}</p>
                             <ul className="mt-3 space-y-2 text-sm text-slate-700">
                                 {releases[0].highlights.map((item) => (
                                     <li key={item} className="flex items-start gap-2">
@@ -95,6 +105,9 @@ export default function AboutPage() {
                                     </li>
                                 ))}
                             </ul>
+                            <div className="mt-3 rounded-2xl bg-[#F6FBFA] px-3 py-2 text-xs font-semibold text-[#2B2E83] shadow-[var(--sh-card-glow)]">
+                                {releases[0].notes}
+                            </div>
                         </motion.div>
                     </div>
                 </motion.section>
@@ -108,27 +121,54 @@ export default function AboutPage() {
                         <p className="text-xs font-semibold uppercase tracking-wide text-[#2D8F80]">Release notes</p>
                         <h3 className="mt-2 text-xl font-semibold text-slate-900">What changed recently</h3>
                         <div className="mt-4 space-y-4">
-                            {releases.map((release, idx) => (
-                                <motion.div
-                                    key={release.version}
-                                    whileHover={{ y: -2 }}
-                                    className="rounded-2xl border border-[#E6F0EF] bg-[#F9FEFD] p-4 shadow-sm"
-                                    transition={{ duration: 0.2, delay: idx * 0.03 }}
-                                >
-                                    <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
-                                        <span>Version {release.version}</span>
-                                        <span className="text-xs text-slate-500">{release.date}</span>
-                                    </div>
-                                    <ul className="mt-2 space-y-1 text-sm text-slate-700">
-                                        {release.highlights.map((item) => (
-                                            <li key={item} className="flex items-start gap-2">
-                                                <span className="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-[#2B2E83]" />
-                                                <span>{item}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </motion.div>
-                            ))}
+                            {releases.map((release, idx) => {
+                                const isOpen = openRelease === release.version;
+                                return (
+                                    <motion.button
+                                        key={release.version}
+                                        whileHover={{ y: -2 }}
+                                        onClick={() => setOpenRelease(isOpen ? "" : release.version)}
+                                        className={`w-full rounded-2xl border p-4 text-left shadow-sm transition ${
+                                            isOpen
+                                                ? "border-[var(--sh-accent)] bg-[#F9FEFD] shadow-[var(--sh-card-glow)]"
+                                                : "border-[#E6F0EF] bg-[#F9FEFD]"
+                                        }`}
+                                        transition={{ duration: 0.2, delay: idx * 0.03 }}
+                                    >
+                                        <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
+                                            <div className="flex items-center gap-2">
+                                                <span className="rounded-full bg-[var(--sh-accent-soft)] px-3 py-1 text-xs font-bold text-[var(--sh-accent)]">
+                                                    Codename {release.codename}
+                                                </span>
+                                                <span>Version {release.version}</span>
+                                            </div>
+                                            <span className="text-xs text-slate-500">{release.date}</span>
+                                        </div>
+                                        <AnimatePresence initial={false}>
+                                            {isOpen && (
+                                                <motion.div
+                                                    initial={{ height: 0, opacity: 0 }}
+                                                    animate={{ height: "auto", opacity: 1 }}
+                                                    exit={{ height: 0, opacity: 0 }}
+                                                    className="overflow-hidden"
+                                                >
+                                                    <ul className="mt-3 space-y-1 text-sm text-slate-700">
+                                                        {release.highlights.map((item) => (
+                                                            <li key={item} className="flex items-start gap-2">
+                                                                <span className="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-[#2B2E83]" />
+                                                                <span>{item}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                    <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold text-[#2B2E83] shadow-[var(--sh-card-glow)]">
+                                                        {release.notes}
+                                                    </p>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </motion.button>
+                                );
+                            })}
                         </div>
                     </motion.div>
 

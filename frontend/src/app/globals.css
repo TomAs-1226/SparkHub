@@ -7,3 +7,9 @@
 }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+:root {
+    --sh-accent: #2b2e83;
+    --sh-accent-soft: #eef0ff;
+    --sh-accent-contrast: #ffffff;
+    --sh-card-glow: 0 10px 50px -24px rgba(43, 46, 131, 0.55);
+}
