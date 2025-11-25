@@ -85,16 +85,17 @@ export default function Navbar() {
     }, [pathname]);
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/90 backdrop-blur">
-            <div className="mx-auto flex max-w-[1180px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
-                <Link href="/" className="flex items-center gap-2">
+        <header className="sticky top-3 z-50 w-full px-3 sm:px-4">
+            <div className="relative mx-auto flex max-w-[1180px] items-center gap-3 rounded-full border border-white/70 bg-[color:rgba(255,255,255,0.76)] px-3 py-2 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)] backdrop-blur-xl ring-1 ring-[var(--sh-accent-soft)]">
+                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_20%_30%,var(--sh-accent-soft)_0,transparent_38%),radial-gradient(circle_at_80%_40%,var(--sh-accent-glass)_0,transparent_32%)] pointer-events-none" aria-hidden />
+                <Link href="/" className="relative z-10 flex items-center gap-2 rounded-full px-2 py-1 hover:bg-white/70">
                     <SparkHubLogo className="h-8 w-auto text-slate-900" />
                 </Link>
 
-                <div className="hidden flex-1 md:flex">
-                    <div className="relative w-full">
-                        <div className="pointer-events-none absolute left-0 top-0 h-full w-10 bg-gradient-to-r from-white via-white to-transparent" />
-                        <nav className="no-scrollbar relative flex items-center gap-2 overflow-x-auto px-1 py-1 text-sm font-semibold text-slate-600">
+                <div className="relative z-10 hidden flex-1 md:flex">
+                    <div className="relative w-full rounded-full border border-white/60 bg-white/70 px-1 py-1 shadow-inner shadow-white/30 backdrop-blur">
+                        <div className="pointer-events-none absolute left-0 top-0 h-full w-12 rounded-l-full bg-gradient-to-r from-white/90 via-white/60 to-transparent" />
+                        <nav className="no-scrollbar relative flex items-center gap-1.5 overflow-x-auto px-2 text-sm font-semibold text-slate-700">
                             {desktopLinks.map((link) => {
                                 const isActive = pathname?.startsWith(link.href);
                                 return (
@@ -103,8 +104,8 @@ export default function Navbar() {
                                             href={link.href}
                                             className={`rounded-full px-3 py-1.5 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--sh-accent)] ${
                                                 isActive
-                                                    ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm"
-                                                    : "hover:bg-slate-100"
+                                                    ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm shadow-[var(--sh-card-glow)]"
+                                                    : "hover:bg-white/80"
                                             }`}
                                         >
                                             {link.label}
@@ -113,11 +114,11 @@ export default function Navbar() {
                                 );
                             })}
                         </nav>
-                        <div className="pointer-events-none absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-white via-white to-transparent" />
+                        <div className="pointer-events-none absolute right-0 top-0 h-full w-12 rounded-r-full bg-gradient-to-l from-white/90 via-white/60 to-transparent" />
                     </div>
                 </div>
 
-                <div className="hidden items-center gap-2 md:flex">
+                <div className="relative z-10 hidden items-center gap-2 md:flex">
                     {resolvedUser ? (
                         <ProfileMenu
                             user={resolvedUser}
@@ -135,100 +136,117 @@ export default function Navbar() {
                         />
                     ) : (
                         <>
-                            <Link href="/register" className="rounded-full border px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sign up</Link>
-                            <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] hover:brightness-110">Log in</Link>
+                            <Link href="/register" className="rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-[var(--sh-accent-soft)] hover:text-slate-900">Sign up</Link>
+                            <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] hover:brightness-110">Log in</Link>
                         </>
                     )}
                 </div>
 
-                <button
-                    className="inline-flex items-center justify-center rounded-md p-2 text-slate-700 md:hidden"
-                    onClick={() => setOpen((v) => !v)}
-                    aria-label="Toggle menu"
-                >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                        <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                </button>
-            </div>
-
-            <div className="md:hidden">
-                <div className="no-scrollbar flex items-center gap-2 overflow-x-auto border-t border-slate-200/60 bg-white px-4 py-2 text-sm font-semibold text-slate-700 sm:px-6 lg:px-8">
-                    {desktopLinks.slice(0, 4).map((link) => (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            className="rounded-full border border-slate-200 px-3 py-1 transition hover:border-slate-300 hover:text-slate-900"
-                        >
-                            {link.label}
-                        </Link>
-                    ))}
+                <div className="relative z-10 flex flex-1 items-center justify-end gap-2 md:hidden">
+                    <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto rounded-full border border-white/70 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700 shadow-inner shadow-white/40">
+                        {desktopLinks.slice(0, 5).map((link) => {
+                            const isActive = pathname?.startsWith(link.href);
+                            return (
+                                <Link
+                                    key={link.href}
+                                    href={link.href}
+                                    className={`rounded-full px-2.5 py-1 transition ${
+                                        isActive ? "bg-[var(--sh-accent-soft)] text-slate-900" : "hover:bg-white/70"
+                                    }`}
+                                >
+                                    {link.label}
+                                </Link>
+                            );
+                        })}
+                    </div>
+                    <button
+                        className="inline-flex items-center justify-center rounded-full border border-white/70 bg-white/80 p-2 text-slate-700 shadow-sm shadow-white/40"
+                        onClick={() => setOpen((v) => !v)}
+                        aria-label="Toggle menu"
+                    >
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
             <AnimatePresence initial={false}>
                 {open && (
                     <motion.div
-                        initial={{ opacity: 0, y: -8 }}
+                        initial={{ opacity: 0, y: -6 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -8 }}
+                        exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.18 }}
-                        className="border-t border-slate-200/60 bg-white md:hidden"
+                        className="mx-auto mt-2 max-w-[1180px] rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_22px_60px_-30px_rgba(15,23,42,0.4)] backdrop-blur md:hidden"
                     >
-                        <div className="mx-auto max-w-[1180px] px-4 py-3 sm:px-6 lg:px-8">
-                            <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
-                                {desktopLinks.map((link) => (
-                                    <Link
-                                        key={link.href}
-                                        href={link.href}
-                                        className="hover:text-slate-900"
-                                        onClick={() => setOpen(false)}
-                                    >
-                                        {link.label}
-                                    </Link>
-                                ))}
-                                {resolvedUser ? (
-                                    <>
-                                        <Link href="/dashboard" onClick={() => setOpen(false)}>
-                                            Dashboard
-                                        </Link>
-                                        {resolvedUser.role === "ADMIN" && (
-                                            <Link href="/admin" onClick={() => setOpen(false)}>
-                                                Admin panel
-                                            </Link>
-                                        )}
-                                        {showTutorWorkspace && (
-                                            <Link href="/tutors/dashboard" onClick={() => setOpen(false)}>
-                                                Publishing workspace
-                                            </Link>
-                                        )}
-                                        <Link href="/settings" onClick={() => setOpen(false)}>
-                                            Profile settings
-                                        </Link>
-                                    </>
-                                ) : (
-                                    <Link href="/dashboard" onClick={() => setOpen(false)}>
+                        <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                            {desktopLinks.map((link) => (
+                                <Link
+                                    key={link.href}
+                                    href={link.href}
+                                    className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)] hover:text-slate-900"
+                                    onClick={() => setOpen(false)}
+                                >
+                                    {link.label}
+                                </Link>
+                            ))}
+                            {resolvedUser ? (
+                                <>
+                                    <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
                                         Dashboard
                                     </Link>
-                                )}
-                            </div>
-                            {!resolvedUser && (
-                                <div className="mt-3 flex gap-2">
+                                    {resolvedUser.role === "ADMIN" && (
+                                        <Link href="/admin" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
+                                            Admin panel
+                                        </Link>
+                                    )}
+                                    {showTutorWorkspace && (
+                                        <Link href="/tutors/dashboard" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
+                                            Publishing workspace
+                                        </Link>
+                                    )}
+                                    <Link href="/settings" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
+                                        Profile settings
+                                    </Link>
+                                </>
+                            ) : (
+                                <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
+                                    Dashboard
+                                </Link>
+                            )}
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {!resolvedUser ? (
+                                <>
                                     <Link
                                         href="/register"
-                                        className="rounded-full border px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                        className="rounded-full border border-white/60 bg-white/80 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-[var(--sh-accent-soft)]"
                                         onClick={() => setOpen(false)}
                                     >
                                         Sign up
                                     </Link>
                                     <Link
                                         href="/login"
-                                        className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] hover:brightness-110"
+                                        className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] hover:brightness-110"
                                         onClick={() => setOpen(false)}
                                     >
                                         Log in
                                     </Link>
-                                </div>
+                                </>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setOpen(false);
+                                        clearToken();
+                                        setUser(null);
+                                        router.push("/");
+                                    }}
+                                    className="flex-1 rounded-full bg-[var(--sh-accent)] px-4 py-2 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] hover:brightness-110"
+                                >
+                                    Sign out
+                                </button>
                             )}
                         </div>
                     </motion.div>
@@ -289,7 +307,7 @@ function ProfileMenu({
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1 text-left shadow-sm hover:border-slate-300"
+                className="flex items-center gap-2 rounded-full border border-white/70 bg-white/80 px-2 py-1 text-left shadow-sm shadow-[var(--sh-card-glow)] backdrop-blur hover:border-[var(--sh-accent-soft)]"
             >
                 <span className="hidden text-sm font-semibold text-slate-700 lg:inline">{user.name || "Account"}</span>
                 <span
@@ -301,7 +319,7 @@ function ProfileMenu({
                 </span>
             </button>
             {open && (
-                <div className="absolute right-0 mt-3 w-56 rounded-2xl border border-slate-100 bg-white/95 p-3 text-sm shadow-2xl">
+                <div className="absolute right-0 mt-3 w-60 rounded-2xl border border-white/70 bg-white/90 p-3 text-sm shadow-2xl ring-1 ring-[var(--sh-accent-soft)] backdrop-blur">
                     <p className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Quick access</p>
                     <div className="mt-2 flex flex-col gap-1">
                         {menuItems.map((item) => (
@@ -309,16 +327,16 @@ function ProfileMenu({
                                 key={item.href}
                                 type="button"
                                 onClick={() => go(item.href)}
-                                className="rounded-xl px-3 py-2 text-left font-semibold text-slate-700 hover:bg-slate-50"
+                                className="rounded-xl px-3 py-2 text-left font-semibold text-slate-700 transition hover:bg-[var(--sh-accent-soft)] hover:text-slate-900"
                             >
                                 {item.label}
                             </button>
                         ))}
                     </div>
-                    <div className="mt-3 space-y-2 rounded-xl border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
+                    <div className="mt-3 space-y-2 rounded-xl border border-dashed border-[var(--sh-accent-soft)] bg-white/70 px-3 py-2 text-xs text-slate-500 shadow-inner shadow-white/40">
                         <div>
                             Signed in as <span className="font-semibold text-slate-800">{user.name || "SparkHub"}</span>
-                            <div className="text-[11px] uppercase tracking-wide text-slate-400">Role: {user.role}</div>
+                            <div className="text-[11px] uppercase tracking-wide text-[color:var(--sh-accent-ink)]">Role: {user.role}</div>
                         </div>
                         <div className="space-y-1">
                             <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -341,6 +359,7 @@ function ProfileMenu({
                                     />
                                 ))}
                             </div>
+                            <p className="text-[11px] text-slate-500">Glass pill nav and action buttons will instantly pick up your accent.</p>
                         </div>
                     </div>
                     <button
@@ -349,7 +368,7 @@ function ProfileMenu({
                             setOpen(false);
                             onSignOut();
                         }}
-                        className="mt-3 w-full rounded-full bg-[var(--sh-accent)] px-4 py-2 text-sm font-semibold text-[var(--sh-accent-contrast)] hover:brightness-110"
+                        className="mt-3 w-full rounded-full bg-[var(--sh-accent)] px-4 py-2 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] hover:brightness-110"
                     >
                         Sign out
                     </button>

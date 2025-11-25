@@ -14,12 +14,17 @@ export const ACCENT_OPTIONS: AccentOption[] = [
     { label: 'Lagoon', value: '#0891b2', glow: '0 12px 40px -18px rgba(8, 145, 178, 0.55)' },
     { label: 'Forest', value: '#15803d', glow: '0 12px 40px -18px rgba(21, 128, 61, 0.55)' },
     { label: 'Velvet', value: '#7c3aed', glow: '0 12px 40px -18px rgba(124, 58, 237, 0.55)' },
+    { label: 'Tidal', value: '#0ea5e9', glow: '0 12px 40px -18px rgba(14, 165, 233, 0.55)' },
+    { label: 'Amberglass', value: '#f59e0b', glow: '0 12px 40px -18px rgba(245, 158, 11, 0.55)' },
+    { label: 'Rosewood', value: '#be123c', glow: '0 12px 40px -18px rgba(190, 18, 60, 0.55)' },
 ]
 
 export function applyAccent(option: AccentOption) {
     if (typeof document === 'undefined') return
     document.documentElement.style.setProperty('--sh-accent', option.value)
     document.documentElement.style.setProperty('--sh-accent-soft', `${option.value}1a`)
+    document.documentElement.style.setProperty('--sh-accent-glass', `${option.value}14`)
+    document.documentElement.style.setProperty('--sh-accent-ink', `${option.value}cc`)
     document.documentElement.style.setProperty('--sh-accent-contrast', '#ffffff')
     document.documentElement.style.setProperty('--sh-card-glow', option.glow || '0 10px 50px -24px rgba(0,0,0,0.3)')
     localStorage.setItem(STORAGE_KEY, JSON.stringify(option))

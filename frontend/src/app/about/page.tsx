@@ -8,6 +8,17 @@ import SiteNav from "@/components/site-nav";
 
 const releases = [
     {
+        version: "2.0",
+        codename: "Glass Harbor",
+        date: "December 2024",
+        highlights: [
+            "Frosted pill navigation with accent-driven gradients and quicker tap targets",
+            "Expanded accent palette plus richer theming touches across controls",
+            "Higher polish on release notes, profile settings, and interactive affordances",
+        ],
+        notes: "Primary dev: Baichen Yu — shipping ergonomic glassmorphism and deeper customization.",
+    },
+    {
         version: "1.9",
         codename: "Mesa Bloom",
         date: "November 2024",
@@ -16,7 +27,7 @@ const releases = [
             "Expanded accent palette with richer customization options",
             "Smoother animations for menus and interactive elements",
         ],
-        notes: "Primary dev: You — crafting friendlier journeys without sacrificing speed.",
+        notes: "Primary dev: Baichen Yu — crafting friendlier journeys without sacrificing speed.",
     },
     {
         version: "1.8",
@@ -27,21 +38,21 @@ const releases = [
             "Faster API responses with optional clustered workers",
             "Clipboard-safe join codes for every course",
         ],
-        notes: "Primary dev: You — delivering resilient growth for new cohorts.",
+        notes: "Primary dev: Baichen Yu — delivering resilient growth for new cohorts.",
     },
     {
         version: "1.7",
         codename: "Marigold Arc",
         date: "September 2024",
         highlights: ["Improved tutor workspace layouts", "New calendar-ready event exports"],
-        notes: "Primary dev: You — smoothing publishing flows and calendars.",
+        notes: "Primary dev: Baichen Yu — smoothing publishing flows and calendars.",
     },
     {
         version: "1.6",
         codename: "Cinder Bay",
         date: "August 2024",
         highlights: ["Resource hub redesign", "Streamlined authentication and session recovery"],
-        notes: "Primary dev: You — cleanup with better recovery and discovery.",
+        notes: "Primary dev: Baichen Yu — cleanup with better recovery and discovery.",
     },
 ];
 
@@ -57,6 +68,10 @@ const featureCallouts = [
     {
         title: "Security-first platform",
         copy: "Layered rate limiting, hardened headers, and health checks keep normal traffic flowing while rejecting noisy attacks.",
+    },
+    {
+        title: "Feature suites that stay fresh",
+        copy: "Release cards now carry codenames, primary dev credit, and expandable highlights so every iteration is easy to track.",
     },
 ];
 
