@@ -54,6 +54,7 @@ export default function Navbar() {
     const { user, setUser } = useCurrentUser();
     const [clientReady, setClientReady] = useState(false);
     const [accent, setAccent] = useState<AccentOption | null>(null);
+    const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
         setClientReady(true);
@@ -65,6 +66,15 @@ export default function Navbar() {
             applyAccent(ACCENT_OPTIONS[0]);
             setAccent(ACCENT_OPTIONS[0]);
         }
+    }, []);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 8);
+        };
+        handleScroll();
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
     const resolvedUser = clientReady ? user : null;
@@ -85,10 +95,19 @@ export default function Navbar() {
     }, [pathname]);
 
     return (
-        <header className="sticky top-3 z-50 w-full px-3 sm:px-4">
-            <div className="relative mx-auto flex max-w-[1180px] items-center gap-3 rounded-full border border-white/70 bg-[color:rgba(255,255,255,0.76)] px-3 py-2 shadow-[0_24px_70px_-28px_rgba(15,23,42,0.35)] backdrop-blur-xl ring-1 ring-[var(--sh-accent-soft)]">
-                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_20%_30%,var(--sh-accent-soft)_0,transparent_38%),radial-gradient(circle_at_80%_40%,var(--sh-accent-glass)_0,transparent_32%)] pointer-events-none" aria-hidden />
-                <Link href="/" className="relative z-10 flex items-center gap-2 rounded-full px-2 py-1 hover:bg-white/70">
+        <motion.header
+            className="relative sticky top-0 z-50 w-full px-2 pb-2 sm:px-4"
+            animate={{ y: scrolled ? 6 : 0, scale: scrolled ? 0.995 : 1 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+        >
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-9 bg-gradient-to-b from-white/60 via-white/20 to-transparent backdrop-blur-md" aria-hidden />
+            <div className="pointer-events-none absolute inset-x-2 top-3 h-[62px] rounded-full bg-[var(--sh-glass-edge)] blur-2xl" aria-hidden />
+            <div className="relative mx-auto mt-2 flex max-w-[1200px] items-center gap-3 rounded-full border border-[color:var(--sh-glass-border)] bg-[color:rgba(255,255,255,0.72)] px-3 py-2 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-[color:var(--sh-accent-veil)]">
+                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_15%_30%,var(--sh-accent-soft)_0,transparent_35%),radial-gradient(circle_at_85%_40%,var(--sh-accent-glass)_0,transparent_28%),linear-gradient(120deg,var(--sh-accent-veil),transparent_40%)] pointer-events-none" aria-hidden />
+                <Link
+                    href="/"
+                    className="relative z-10 flex items-center gap-2 rounded-full px-2 py-1 text-slate-900 transition hover:bg-white/80 hover:shadow-sm"
+                >
                     <SparkHubLogo className="h-8 w-auto text-slate-900" />
                 </Link>
 
@@ -102,7 +121,7 @@ export default function Navbar() {
                                     <motion.div key={link.href} whileHover={{ y: -1 }} transition={{ duration: 0.15 }}>
                                         <Link
                                             href={link.href}
-                                            className={`rounded-full px-3 py-1.5 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--sh-accent)] ${
+                                            className={`rounded-full px-3 py-1.5 whitespace-nowrap transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--sh-accent)] ${
                                                 isActive
                                                     ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm shadow-[var(--sh-card-glow)]"
                                                     : "hover:bg-white/80"
@@ -116,6 +135,33 @@ export default function Navbar() {
                         </nav>
                         <div className="pointer-events-none absolute right-0 top-0 h-full w-12 rounded-r-full bg-gradient-to-l from-white/90 via-white/60 to-transparent" />
                     </div>
+                </div>
+
+                <div className="relative z-10 hidden items-center gap-2 md:flex">
+                    <Link
+                        href="/courses/join"
+                        className="group inline-flex items-center gap-2 rounded-full bg-[var(--sh-accent)] px-3 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] ring-1 ring-[color:var(--sh-accent-veil)] transition hover:translate-y-[-1px] hover:brightness-110"
+                    >
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-[var(--sh-accent-contrast)] shadow-inner shadow-white/30">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition group-hover:scale-110">
+                                <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        </span>
+                        Join with code
+                    </Link>
+                    {showTutorWorkspace && (
+                        <Link
+                            href="/tutors/dashboard"
+                            className="group inline-flex items-center gap-2 rounded-full border border-[color:var(--sh-glass-border)] bg-white/80 px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm shadow-[var(--sh-card-glow)] backdrop-blur transition hover:translate-y-[-1px] hover:border-[var(--sh-accent-soft)]"
+                        >
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--sh-accent-soft)] text-[color:var(--sh-accent-ink)] shadow-inner">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="transition group-hover:scale-110">
+                                    <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </span>
+                            Publish
+                        </Link>
+                    )}
                 </div>
 
                 <div className="relative z-10 hidden items-center gap-2 md:flex">
@@ -143,14 +189,14 @@ export default function Navbar() {
                 </div>
 
                 <div className="relative z-10 flex flex-1 items-center justify-end gap-2 md:hidden">
-                    <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto rounded-full border border-white/70 bg-white/80 px-2 py-1 text-xs font-semibold text-slate-700 shadow-inner shadow-white/40">
+                    <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-xs font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)]">
                         {desktopLinks.slice(0, 5).map((link) => {
                             const isActive = pathname?.startsWith(link.href);
                             return (
                                 <Link
                                     key={link.href}
                                     href={link.href}
-                                    className={`rounded-full px-2.5 py-1 transition ${
+                                    className={`rounded-full px-2.5 py-1 whitespace-nowrap transition ${
                                         isActive ? "bg-[var(--sh-accent-soft)] text-slate-900" : "hover:bg-white/70"
                                     }`}
                                 >
@@ -178,7 +224,7 @@ export default function Navbar() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.18 }}
-                        className="mx-auto mt-2 max-w-[1180px] rounded-3xl border border-white/70 bg-white/90 p-4 shadow-[0_22px_60px_-30px_rgba(15,23,42,0.4)] backdrop-blur md:hidden"
+                        className="mx-auto mt-2 max-w-[1180px] rounded-3xl border border-[color:var(--sh-glass-border)] bg-white/90 p-4 shadow-[0_22px_60px_-30px_rgba(15,23,42,0.45)] ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur-2xl md:hidden"
                     >
                         <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
                             {desktopLinks.map((link) => (

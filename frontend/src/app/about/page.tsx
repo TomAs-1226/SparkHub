@@ -8,6 +8,17 @@ import SiteNav from "@/components/site-nav";
 
 const releases = [
     {
+        version: "2.1",
+        codename: "Edge Current",
+        date: "January 2025",
+        highlights: [
+            "Glass-pill navigation that stays pinned with edge blur while you scroll",
+            "Accent-aware chrome that shows through underlying UI with softer gradients",
+            "More animated affordances for feature suites, join codes, and publishing flows",
+        ],
+        notes: "Primary dev: Baichen Yu — carrying the glass aesthetic forward with better ergonomics.",
+    },
+    {
         version: "2.0",
         codename: "Glass Harbor",
         date: "December 2024",
@@ -72,6 +83,14 @@ const featureCallouts = [
     {
         title: "Feature suites that stay fresh",
         copy: "Release cards now carry codenames, primary dev credit, and expandable highlights so every iteration is easy to track.",
+    },
+    {
+        title: "Custom accents everywhere",
+        copy: "Pill navs, profile menus, and quick actions now inherit your chosen accent for a consistent identity across pages.",
+    },
+    {
+        title: "Live publishing shortcuts",
+        copy: "Glass-draped quick actions help tutors jump into studios or share codes without losing context while browsing.",
     },
 ];
 

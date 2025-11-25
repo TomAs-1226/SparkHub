@@ -26,6 +26,9 @@ export function applyAccent(option: AccentOption) {
     document.documentElement.style.setProperty('--sh-accent-glass', `${option.value}14`)
     document.documentElement.style.setProperty('--sh-accent-ink', `${option.value}cc`)
     document.documentElement.style.setProperty('--sh-accent-contrast', '#ffffff')
+    document.documentElement.style.setProperty('--sh-accent-veil', `${option.value}12`)
+    document.documentElement.style.setProperty('--sh-glass-border', `${option.value}2b`)
+    document.documentElement.style.setProperty('--sh-glass-edge', `${option.value}0f`)
     document.documentElement.style.setProperty('--sh-card-glow', option.glow || '0 10px 50px -24px rgba(0,0,0,0.3)')
     localStorage.setItem(STORAGE_KEY, JSON.stringify(option))
 }
