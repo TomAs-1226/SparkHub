@@ -19,7 +19,8 @@ function validate(schema) {
             return next()
         } catch (err) {
             if (err instanceof ZodError) {
-                return res.status(400).json({ ok: false, msg: 'Bad Request', errors: err.errors })
+                const friendlyMessage = err.errors?.[0]?.message || 'Bad Request'
+                return res.status(400).json({ ok: false, msg: friendlyMessage, errors: err.errors })
             }
             return next(err)
         }

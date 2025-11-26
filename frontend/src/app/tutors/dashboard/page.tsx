@@ -17,6 +17,10 @@ const createJobFormState = () => ({
     description: "",
     skills: "",
     contact: "",
+    startTime: "",
+    endTime: "",
+    duration: "",
+    benefits: "",
     photos: [] as string[],
     files: [] as string[],
 });
@@ -150,6 +154,9 @@ export default function TutorWorkspacePage() {
         setSaving((s) => ({ ...s, job: true }));
         setStatus(null);
         try {
+            if (jobForm.title.trim().length < 2 || jobForm.description.trim().length < 10) {
+                throw new Error("Add a short title and at least two sentences of description before publishing.");
+            }
             const res = await api("/jobs", {
                 method: "POST",
                 body: JSON.stringify({
@@ -157,6 +164,10 @@ export default function TutorWorkspacePage() {
                     description: jobForm.description,
                     skills: parseSkillsInput(jobForm.skills),
                     contact: jobForm.contact,
+                    startTime: jobForm.startTime,
+                    endTime: jobForm.endTime,
+                    duration: jobForm.duration,
+                    benefits: jobForm.benefits,
                     photos: jobForm.photos,
                     files: jobForm.files,
                 }),
@@ -213,9 +224,13 @@ export default function TutorWorkspacePage() {
                     </div>
 
                     {status && (
-                        <div className="mt-4 rounded-2xl border border-[#CFE3E0] bg-[#E9F7F5] px-4 py-3 text-sm text-slate-700">
+                        <motion.div
+                            initial={{ opacity: 0, y: -6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-4 rounded-2xl border border-[#CFE3E0] bg-[#E9F7F5] px-4 py-3 text-sm text-slate-700"
+                        >
                             {status}
-                        </div>
+                        </motion.div>
                     )}
 
                     <div className="mt-8 grid gap-6 md:grid-cols-2">
@@ -418,6 +433,42 @@ export default function TutorWorkspacePage() {
                                     rows={2}
                                     required
                                 />
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <label className="text-xs font-semibold text-slate-500">
+                                        Starts
+                                        <input
+                                            type="date"
+                                            value={jobForm.startTime}
+                                            onChange={(e) => setJobForm({ ...jobForm, startTime: e.target.value })}
+                                            className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                        />
+                                    </label>
+                                    <label className="text-xs font-semibold text-slate-500">
+                                        Ends
+                                        <input
+                                            type="date"
+                                            value={jobForm.endTime}
+                                            onChange={(e) => setJobForm({ ...jobForm, endTime: e.target.value })}
+                                            className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                        />
+                                    </label>
+                                </div>
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Duration (e.g., 10 weeks, 3 months)"
+                                        value={jobForm.duration}
+                                        onChange={(e) => setJobForm({ ...jobForm, duration: e.target.value })}
+                                        className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Perks or benefits (optional)"
+                                        value={jobForm.benefits}
+                                        onChange={(e) => setJobForm({ ...jobForm, benefits: e.target.value })}
+                                        className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    />
+                                </div>
                                 <label className="text-xs font-semibold text-slate-500">
                                     Skills
                                     <input

@@ -124,9 +124,11 @@ module.exports = function wireSecurity(app, opts = { frontendOrigins: [] }) {
     // Global rate limit (memory store is fine for dev)
     const globalLimiter = rateLimit({
         windowMs: 15 * 60 * 1000,
-        max: Number(process.env.RATE_LIMIT_MAX_REQUESTS || 1200),
+        max: Number(process.env.RATE_LIMIT_MAX_REQUESTS || 1800),
         standardHeaders: true,
         legacyHeaders: false,
+        message: { ok: false, msg: 'Too many requests. Please try again shortly.' },
+        skip: (req) => ['/healthz', '/readyz'].includes(req.path),
         // For production at scale, prefer Redis:
         // store: new RedisStore({
         //   sendCommand: (...args) => new IORedis(process.env.REDIS_URL).call(...args),

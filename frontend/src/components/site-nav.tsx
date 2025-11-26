@@ -3,21 +3,24 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useRef, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
 import SparkHubLogo from "@/components/SparkHubLogo";
 import { clearToken } from "@/lib/auth";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { ACCENT_OPTIONS, AccentOption, applyAccent, loadAccent } from "@/lib/accent-theme";
 
 type RoleAwareLink = { href: string; label: string; roles?: string[] };
 
 const NAV_LINKS: RoleAwareLink[] = [
     { href: "/courses", label: "Courses" },
-    { href: "/courses/join", label: "Join with code" },
+    { href: "/courses/join", label: "Join" },
     { href: "/events", label: "Events" },
     { href: "/tutors", label: "Find a tutor", roles: ["ANON", "STUDENT"] },
     { href: "/resources", label: "Resources" },
     { href: "/opportunities", label: "Opportunities" },
+    { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
 ];
 
@@ -46,12 +49,38 @@ const ROLE_LINKS: Record<string, RoleAwareLink[]> = {
 
 export default function Navbar() {
     const router = useRouter();
+    const pathname = usePathname();
     const [open, setOpen] = useState(false);
     const { user, setUser } = useCurrentUser();
     const [clientReady, setClientReady] = useState(false);
+    const [accent, setAccent] = useState<AccentOption | null>(null);
+    const [scrolled, setScrolled] = useState(false);
+    const [scrollProgress, setScrollProgress] = useState(0);
+    const [atTop, setAtTop] = useState(true);
 
     useEffect(() => {
         setClientReady(true);
+        const saved = loadAccent();
+        if (saved) {
+            applyAccent(saved);
+            setAccent(saved);
+        } else {
+            applyAccent(ACCENT_OPTIONS[0]);
+            setAccent(ACCENT_OPTIONS[0]);
+        }
+    }, []);
+
+    useEffect(() => {
+        const handleScroll = () => {
+            const scrollTop = window.scrollY;
+            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+            setScrolled(scrollTop > 8);
+            setAtTop(scrollTop < 4);
+            setScrollProgress(docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0);
+        };
+        handleScroll();
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
     const resolvedUser = clientReady ? user : null;
@@ -67,22 +96,81 @@ export default function Navbar() {
         return [...base, ...(ROLE_LINKS[role] || [])];
     }, [role]);
 
+    useEffect(() => {
+        setOpen(false);
+    }, [pathname]);
+
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-slate-200/60 bg-white/90 backdrop-blur">
-            <div className="mx-auto flex max-w-[1180px] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-                <Link href="/" className="flex items-center gap-2">
+        <motion.header
+            className="relative sticky top-0 z-50 w-full px-2 pb-3 sm:px-4"
+            animate={{ y: scrolled ? 4 : 0, scale: scrolled ? 0.995 : 1, filter: scrolled ? "drop-shadow(0 16px 40px rgba(15,23,42,0.14))" : "drop-shadow(0 12px 32px rgba(15,23,42,0.1))" }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+        >
+            <motion.div
+                className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white/70 via-white/40 to-transparent backdrop-blur-xl"
+                aria-hidden
+                animate={{ opacity: scrolled ? 0.95 : 0.7, filter: scrolled ? "blur(6px)" : "blur(4px)" }}
+            />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-2 overflow-hidden" aria-hidden>
+                <motion.div
+                    className="h-full rounded-full bg-[var(--sh-accent)]/70 shadow-[0_6px_18px_-10px_rgba(15,23,42,0.55)]"
+                    animate={{ width: `${Math.max(scrollProgress * 100, scrolled ? 18 : 0)}%`, opacity: scrolled ? 1 : 0.65 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                />
+            </div>
+            <motion.div
+                className="pointer-events-none absolute inset-x-2 top-2 h-[68px] rounded-full bg-[var(--sh-glass-edge)] blur-2xl"
+                aria-hidden
+                animate={{ opacity: atTop ? 0.8 : 1, scaleX: scrolled ? 1.02 : 1 }}
+            />
+            <div className="relative mx-auto mt-2 flex max-w-[1220px] items-center gap-3 rounded-full border border-[color:var(--sh-glass-border)] bg-[color:rgba(255,255,255,0.78)] px-4 py-2.5 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-[color:var(--sh-accent-veil)]">
+                <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_12%_26%,var(--sh-accent-soft)_0,transparent_35%),radial-gradient(circle_at_82%_40%,var(--sh-accent-glass)_0,transparent_30%),linear-gradient(120deg,var(--sh-accent-veil),transparent_45%)] pointer-events-none" aria-hidden />
+                <motion.div
+                    className="pointer-events-none absolute inset-1 rounded-full border border-white/40"
+                    aria-hidden
+                    animate={{ opacity: scrolled ? 0.7 : 0.35 }}
+                    transition={{ duration: 0.25 }}
+                />
+                <motion.div
+                    className="pointer-events-none absolute inset-y-1 left-14 w-24 rounded-full bg-[var(--sh-accent-soft)] blur-3xl"
+                    aria-hidden
+                    animate={{ x: scrollProgress * 60, opacity: atTop ? 0.75 : 0.55 }}
+                    transition={{ type: "spring", stiffness: 80, damping: 18 }}
+                />
+                <Link
+                    href="/"
+                    className="relative z-10 flex items-center gap-2 rounded-full px-2 py-1 text-slate-900 transition hover:bg-white/80 hover:shadow-sm"
+                >
                     <SparkHubLogo className="h-8 w-auto text-slate-900" />
                 </Link>
 
-                <nav className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex">
-                    {desktopLinks.map((link) => (
-                        <Link key={link.href} href={link.href} className="hover:text-slate-900">
-                            {link.label}
-                        </Link>
-                    ))}
-                </nav>
+                <div className="relative z-10 hidden flex-1 md:flex">
+                    <div className="relative w-full rounded-full border border-white/60 bg-white/70 px-1 py-1 shadow-inner shadow-white/30 backdrop-blur">
+                        <div className="pointer-events-none absolute left-0 top-0 h-full w-12 rounded-l-full bg-gradient-to-r from-white/90 via-white/60 to-transparent" />
+                        <nav className="no-scrollbar relative flex items-center gap-1.5 overflow-x-auto px-2 text-sm font-semibold text-slate-700">
+                            {desktopLinks.map((link) => {
+                                const isActive = pathname?.startsWith(link.href);
+                                return (
+                                    <motion.div key={link.href} whileHover={{ y: -1 }} transition={{ duration: 0.15 }}>
+                                        <Link
+                                            href={link.href}
+                                            className={`rounded-full px-3 py-1.5 whitespace-nowrap transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--sh-accent)] ${
+                                                isActive
+                                                    ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm shadow-[var(--sh-card-glow)]"
+                                                    : "hover:bg-white/80"
+                                            }`}
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    </motion.div>
+                                );
+                            })}
+                        </nav>
+                        <div className="pointer-events-none absolute right-0 top-0 h-full w-12 rounded-r-full bg-gradient-to-l from-white/90 via-white/60 to-transparent" />
+                    </div>
+                </div>
 
-                <div className="hidden items-center gap-2 md:flex">
+                <div className="relative z-10 hidden items-center gap-2 md:flex">
                     {resolvedUser ? (
                         <ProfileMenu
                             user={resolvedUser}
@@ -92,56 +180,188 @@ export default function Navbar() {
                                 router.push("/");
                             }}
                             showTutorWorkspace={showTutorWorkspace}
+                            accent={accent}
+                            onAccentChange={(option) => {
+                                applyAccent(option);
+                                setAccent(option);
+                            }}
                         />
                     ) : (
                         <>
-                            <Link href="/register" className="rounded-full border px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sign up</Link>
-                            <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-white hover:brightness-110">Log in</Link>
+                            <Link href="/register" className="rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-[var(--sh-accent-soft)] hover:text-slate-900">Sign up</Link>
+                            <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] hover:brightness-110">Log in</Link>
                         </>
                     )}
                 </div>
 
-                <button
-                    className="inline-flex items-center justify-center rounded-md p-2 text-slate-700 md:hidden"
-                    onClick={() => setOpen((v) => !v)}
-                    aria-label="Toggle menu"
-                >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                        <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                </button>
+                <div className="relative z-10 flex flex-1 items-center justify-end gap-2 md:hidden">
+                    <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-xs font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur">
+                        {desktopLinks.slice(0, 5).map((link) => {
+                            const isActive = pathname?.startsWith(link.href);
+                            return (
+                                <Link
+                                    key={link.href}
+                                    href={link.href}
+                                    className={`rounded-full px-2.5 py-1 whitespace-nowrap transition ${
+                                        isActive
+                                            ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm shadow-[var(--sh-card-glow)]"
+                                            : "hover:bg-white/70"
+                                    }`}
+                                >
+                                    {link.label}
+                                </Link>
+                            );
+                        })}
+                    </div>
+                    <button
+                        className="inline-flex items-center justify-center rounded-full border border-white/70 bg-white/80 p-2 text-slate-700 shadow-sm shadow-white/40"
+                        onClick={() => setOpen((v) => !v)}
+                        aria-label="Toggle menu"
+                    >
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                    </button>
+                    {resolvedUser && (
+                        <button
+                            type="button"
+                            onClick={() => router.push("/dashboard")}
+                            className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/80 text-sm font-semibold text-slate-700 shadow-sm shadow-white/40"
+                            aria-label="Open profile"
+                        >
+                            <Image
+                                src={
+                                    resolvedUser.avatarUrl
+                                        ? `${resolvedUser.avatarUrl}${resolvedUser.avatarUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(resolvedUser.id)}`
+                                        : `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(resolvedUser.name || "SparkHub")}`
+                                }
+                                alt="Profile avatar"
+                                width={40}
+                                height={40}
+                                className="h-full w-full object-cover"
+                            />
+                        </button>
+                    )}
+                </div>
             </div>
 
-            {open && (
-                <div className="border-t border-slate-200/60 bg-white md:hidden">
-                    <div className="mx-auto max-w-[1180px] px-4 py-3 sm:px-6 lg:px-8">
+            <AnimatePresence initial={false}>
+                {open && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.18 }}
+                        className="mx-auto mt-2 max-w-[1180px] rounded-3xl border border-[color:var(--sh-glass-border)] bg-white/90 p-4 shadow-[0_22px_60px_-30px_rgba(15,23,42,0.45)] ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur-2xl md:hidden"
+                    >
                         <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
                             {desktopLinks.map((link) => (
-                                <Link key={link.href} href={link.href} className="hover:text-slate-900">
+                                <Link
+                                    key={link.href}
+                                    href={link.href}
+                                    className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)] hover:text-slate-900"
+                                    onClick={() => setOpen(false)}
+                                >
                                     {link.label}
                                 </Link>
                             ))}
+                            {showTutorWorkspace && (
+                                <Link
+                                    href="/tutors/dashboard"
+                                    className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)] hover:text-slate-900"
+                                    onClick={() => setOpen(false)}
+                                >
+                                    Publishing workspace
+                                </Link>
+                            )}
                             {resolvedUser ? (
                                 <>
-                                    <Link href="/dashboard">Dashboard</Link>
-                                    {resolvedUser.role === "ADMIN" && <Link href="/admin">Admin panel</Link>}
-                                    {showTutorWorkspace && <Link href="/tutors/dashboard">Publishing workspace</Link>}
-                                    <Link href="/settings">Profile settings</Link>
+                                    <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
+                                        Dashboard
+                                    </Link>
+                                    {resolvedUser.role === "ADMIN" && (
+                                        <Link href="/admin" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
+                                            Admin panel
+                                        </Link>
+                                    )}
+                                    {showTutorWorkspace && (
+                                        <Link href="/tutors/dashboard" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
+                                            Publishing workspace
+                                        </Link>
+                                    )}
+                                    <Link href="/settings" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
+                                        Profile settings
+                                    </Link>
                                 </>
                             ) : (
-                                <Link href="/dashboard">Dashboard</Link>
+                                <Link href="/dashboard" onClick={() => setOpen(false)} className="rounded-xl px-3 py-2 hover:bg-[var(--sh-accent-soft)]">
+                                    Dashboard
+                                </Link>
                             )}
                         </div>
-                        {!resolvedUser && (
-                            <div className="mt-3 flex gap-2">
-                                <Link href="/register" className="rounded-full border px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Sign up</Link>
-                                <Link href="/login" className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-white hover:brightness-110">Log in</Link>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                            {!resolvedUser ? (
+                                <>
+                                    <Link
+                                        href="/register"
+                                        className="rounded-full border border-white/60 bg-white/80 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm hover:border-[var(--sh-accent-soft)]"
+                                        onClick={() => setOpen(false)}
+                                    >
+                                        Sign up
+                                    </Link>
+                                    <Link
+                                        href="/login"
+                                        className="rounded-full bg-[var(--sh-accent)] px-4 py-1.5 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] hover:brightness-110"
+                                        onClick={() => setOpen(false)}
+                                    >
+                                        Log in
+                                    </Link>
+                                </>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setOpen(false);
+                                        clearToken();
+                                        setUser(null);
+                                        router.push("/");
+                                    }}
+                                    className="flex-1 rounded-full bg-[var(--sh-accent)] px-4 py-2 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] hover:brightness-110"
+                                >
+                                    Sign out
+                                </button>
+                            )}
+                        </div>
+                        <div className="mt-4 space-y-2 rounded-2xl border border-dashed border-[var(--sh-accent-soft)] bg-white/80 px-3 py-3 text-xs text-slate-500 shadow-inner shadow-white/40">
+                            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                <span>Accent</span>
+                                <span className="rounded-full bg-[var(--sh-accent-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--sh-accent)]">Live</span>
                             </div>
-                        )}
-                    </div>
-                </div>
-            )}
-        </header>
+                            <div className="flex flex-wrap gap-2">
+                                {ACCENT_OPTIONS.map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => {
+                                            applyAccent(option);
+                                            setAccent(option);
+                                        }}
+                                        className={`h-8 w-8 rounded-full border-2 transition shadow-[var(--sh-card-glow)] ${
+                                            accent?.value === option.value
+                                                ? "border-[var(--sh-accent)] ring-2 ring-[var(--sh-accent)] ring-offset-1"
+                                                : "border-transparent"
+                                        }`}
+                                        style={{ backgroundColor: option.value }}
+                                        aria-label={`Use ${option.label}`}
+                                    />
+                                ))}
+                            </div>
+                            <p className="text-[11px] text-slate-500">Pinned glass nav, quick actions, and cards all reflect your selected accent.</p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.header>
     );
 }
 
@@ -149,10 +369,14 @@ function ProfileMenu({
     user,
     onSignOut,
     showTutorWorkspace,
+    accent,
+    onAccentChange,
 }: {
     user: { id: string; name?: string | null; avatarUrl?: string | null; role: string };
     onSignOut: () => void;
     showTutorWorkspace: boolean;
+    accent: AccentOption | null;
+    onAccentChange: (option: AccentOption) => void;
 }) {
     const router = useRouter();
     const [open, setOpen] = useState(false);
@@ -173,7 +397,7 @@ function ProfileMenu({
 
     const avatar = user.avatarUrl
         ? `${user.avatarUrl}${user.avatarUrl.includes("?") ? "&" : "?"}v=${encodeURIComponent(user.id)}`
-        : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name || "SparkHub")}`;
+        : `https://api.dicebear.com/7.x/initials/png?seed=${encodeURIComponent(user.name || "SparkHub")}`;
     const go = (href: string) => {
         setOpen(false);
         router.push(href);
@@ -192,7 +416,7 @@ function ProfileMenu({
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1 text-left shadow-sm hover:border-slate-300"
+                className="flex items-center gap-2 rounded-full border border-white/70 bg-white/80 px-2 py-1 text-left shadow-sm shadow-[var(--sh-card-glow)] backdrop-blur hover:border-[var(--sh-accent-soft)]"
             >
                 <span className="hidden text-sm font-semibold text-slate-700 lg:inline">{user.name || "Account"}</span>
                 <span
@@ -204,7 +428,7 @@ function ProfileMenu({
                 </span>
             </button>
             {open && (
-                <div className="absolute right-0 mt-3 w-56 rounded-2xl border border-slate-100 bg-white/95 p-3 text-sm shadow-2xl">
+                <div className="absolute right-0 mt-3 w-60 rounded-2xl border border-white/70 bg-white/90 p-3 text-sm shadow-2xl ring-1 ring-[var(--sh-accent-soft)] backdrop-blur">
                     <p className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Quick access</p>
                     <div className="mt-2 flex flex-col gap-1">
                         {menuItems.map((item) => (
@@ -212,15 +436,40 @@ function ProfileMenu({
                                 key={item.href}
                                 type="button"
                                 onClick={() => go(item.href)}
-                                className="rounded-xl px-3 py-2 text-left font-semibold text-slate-700 hover:bg-slate-50"
+                                className="rounded-xl px-3 py-2 text-left font-semibold text-slate-700 transition hover:bg-[var(--sh-accent-soft)] hover:text-slate-900"
                             >
                                 {item.label}
                             </button>
                         ))}
                     </div>
-                    <div className="mt-3 rounded-xl border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500">
-                        Signed in as <span className="font-semibold text-slate-800">{user.name || "SparkHub"}</span>
-                        <div className="text-[11px] uppercase tracking-wide text-slate-400">Role: {user.role}</div>
+                    <div className="mt-3 space-y-2 rounded-xl border border-dashed border-[var(--sh-accent-soft)] bg-white/70 px-3 py-2 text-xs text-slate-500 shadow-inner shadow-white/40">
+                        <div>
+                            Signed in as <span className="font-semibold text-slate-800">{user.name || "SparkHub"}</span>
+                            <div className="text-[11px] uppercase tracking-wide text-[color:var(--sh-accent-ink)]">Role: {user.role}</div>
+                        </div>
+                        <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                <span>Accent</span>
+                                <span className="rounded-full bg-[var(--sh-accent-soft)] px-2 py-0.5 text-[10px] font-bold text-[var(--sh-accent)]">Live</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {ACCENT_OPTIONS.map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => onAccentChange(option)}
+                                        className={`h-8 w-8 rounded-full border-2 transition shadow-[var(--sh-card-glow)] ${
+                                            accent?.value === option.value
+                                                ? "border-[var(--sh-accent)] ring-2 ring-[var(--sh-accent)] ring-offset-1"
+                                                : "border-transparent"
+                                        }`}
+                                        style={{ backgroundColor: option.value }}
+                                        aria-label={`Use ${option.label}`}
+                                    />
+                                ))}
+                            </div>
+                            <p className="text-[11px] text-slate-500">Glass pill nav and action buttons will instantly pick up your accent.</p>
+                        </div>
                     </div>
                     <button
                         type="button"
@@ -228,7 +477,7 @@ function ProfileMenu({
                             setOpen(false);
                             onSignOut();
                         }}
-                        className="mt-3 w-full rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
+                        className="mt-3 w-full rounded-full bg-[var(--sh-accent)] px-4 py-2 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] hover:brightness-110"
                     >
                         Sign out
                     </button>
