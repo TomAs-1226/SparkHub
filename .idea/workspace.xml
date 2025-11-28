@@ -5,22 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c7022082-7f8c-45c4-9150-4e47696694c8" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/prisma/dev.db" beforeDir="false" afterPath="$PROJECT_DIR$/backend/prisma/dev.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/prisma/schema.prisma" beforeDir="false" afterPath="$PROJECT_DIR$/backend/prisma/schema.prisma" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/middleware/auth.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/middleware/auth.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/routes/auth.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/auth.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/routes/courses.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/courses.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/routes/events.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/events.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/routes/feedback.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/feedback.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/routes/jobs.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/jobs.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/routes/resources.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/resources.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/routes/upload.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/upload.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/security.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/security.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/server.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -126,6 +112,7 @@
       <workItem from="1763005763289" duration="12382000" />
       <workItem from="1763167314754" duration="12715000" />
       <workItem from="1763771649284" duration="494000" />
+      <workItem from="1764091321121" duration="1066000" />
     </task>
     <servers />
   </component>

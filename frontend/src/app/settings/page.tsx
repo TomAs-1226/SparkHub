@@ -112,7 +112,7 @@ export default function SettingsPage() {
                             <div className="mt-3 flex items-center gap-4">
                                 <div
                                     className="h-16 w-16 rounded-full border border-slate-200 bg-slate-100"
-                                    style={{ backgroundImage: `url(${avatarUrl || "https://api.dicebear.com/7.x/initials/svg?seed=" + encodeURIComponent(name || "SparkHub")})`, backgroundSize: "cover" }}
+                                    style={{ backgroundImage: `url(${avatarUrl || "https://api.dicebear.com/7.x/initials/png?seed=" + encodeURIComponent(name || "SparkHub")})`, backgroundSize: "cover" }}
                                 />
                                 <div className="flex flex-col gap-2 text-xs text-slate-500">
                                     <button

@@ -28,6 +28,7 @@ import {
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { api } from "@/lib/api";
+import { copyToClipboard } from "@/lib/copy-to-clipboard";
 import { uploadAsset } from "@/lib/upload";
 import { fetchCourseWorkspace } from "./load-course";
 import {
@@ -843,12 +844,10 @@ export function CourseDetailPanel({
 
     async function handleCopyJoinCode() {
         if (!detail.joinCode) return;
-        try {
-            await navigator.clipboard.writeText(detail.joinCode);
-            setCopyStatus("Join code copied");
+        const copied = await copyToClipboard(detail.joinCode);
+        setCopyStatus(copied ? "Join code copied" : "Unable to copy code");
+        if (copied) {
             window.setTimeout(() => setCopyStatus(null), 2200);
-        } catch {
-            setCopyStatus("Unable to copy code");
         }
     }
 

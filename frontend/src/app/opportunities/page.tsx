@@ -128,9 +128,13 @@ export default function OpportunitiesPage() {
                                 There are currently no job or opportunity postings.
                             </div>
                         ) : (
-                            jobs.map((job) => (
-                                <article
+                            jobs.map((job, idx) => (
+                                <motion.article
                                     key={job.id}
+                                    initial={{ opacity: 0, y: 12 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.25, delay: idx * 0.04 }}
+                                    whileHover={{ y: -4, scale: 1.01 }}
                                     className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white to-[#F4F8FF] p-6 shadow-xl"
                                 >
                                     <div className="flex items-start justify-between gap-3">
@@ -195,7 +199,7 @@ export default function OpportunitiesPage() {
                                             </div>
                                         )}
                                     </div>
-                                </article>
+                                </motion.article>
                             ))
                         )}
                     </div>
