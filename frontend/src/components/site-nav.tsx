@@ -196,14 +196,14 @@ export default function Navbar() {
                 </div>
 
                 <div className="relative z-10 flex flex-1 items-center justify-end gap-2 md:hidden">
-                    <div className="no-scrollbar hidden flex-1 items-center gap-1 overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-xs font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur min-[430px]:flex">
-                        {desktopLinks.slice(0, 4).map((link) => {
+                    <div className="no-scrollbar hidden flex-1 flex-wrap items-center justify-end gap-1 overflow-visible rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-[13px] font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur min-[360px]:flex">
+                        {desktopLinks.map((link) => {
                             const isActive = pathname?.startsWith(link.href);
                             return (
                                 <Link
                                     key={link.href}
                                     href={link.href}
-                                    className={`rounded-full px-2.5 py-1 whitespace-nowrap transition ${
+                                    className={`rounded-full px-2.5 py-1 transition ${
                                         isActive
                                             ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm shadow-[var(--sh-card-glow)]"
                                             : "hover:bg-white/70"

@@ -9,6 +9,17 @@ import { EASE, FADES } from "@/lib/motion-presets";
 
 const releases = [
     {
+        version: "2.6",
+        codename: "Ribbon Drift",
+        date: "June 2025",
+        highlights: [
+            "Mobile glass nav now wraps pills instead of overflowing so every page stays reachable on tight screens",
+            "Shared non-linear motion presets animate drawers, cards, and menus for a consistent Apple-like feel",
+            "Accent-aware chrome spreads across quick links, drawers, and profile touchpoints with clearer spacing",
+        ],
+        notes: "Primary dev: Baichen Yu — expanding pocket access, accent coverage, and immersive motion across the site.",
+    },
+    {
         version: "2.5",
         codename: "Pocket Glass",
         date: "May 2025",
@@ -114,6 +125,10 @@ const releases = [
 
 const featureCallouts = [
     {
+        title: "Reach every page anywhere",
+        copy: "Mobile glass pills now wrap gracefully so all destinations remain tap-friendly without overflowing the screen.",
+    },
+    {
         title: "Pocket-ready glass nav",
         copy: "On narrow screens the frosted pills gracefully collapse into the menu while desktop spacing stays untouched.",
     },
@@ -123,7 +138,7 @@ const featureCallouts = [
     },
     {
         title: "Apple-inspired motion",
-        copy: "Non-linear easing, subtle parallax veils, and springy controls now power drawers, menus, and release cards alike.",
+        copy: "Non-linear easing, subtle parallax veils, and springy controls now power drawers, menus, release cards, and quick links alike.",
     },
     {
         title: "Opportunities built to grow",
@@ -276,11 +291,13 @@ function ReleaseCard({ release, isOpen, index, onToggle }: { release: Release; i
         <motion.button
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.995 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             onClick={onToggle}
             className={`w-full rounded-2xl border p-4 text-left shadow-sm transition ${
                 isOpen ? "border-[var(--sh-accent)] bg-[#F9FEFD] shadow-[var(--sh-card-glow)]" : "border-[#E6F0EF] bg-[#F9FEFD]"
             }`}
-            transition={{ duration: 0.3, ease: EASE.emphasized, delay: index * 0.035 }}
+            transition={{ duration: 0.32, ease: EASE.emphasized, delay: index * 0.045 }}
         >
             <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
                 <div className="flex items-center gap-2">
@@ -322,7 +339,9 @@ function FeatureCard({ feature, index }: { feature: { title: string; copy: strin
     return (
         <motion.div
             whileHover={{ scale: 1.015, y: -1 }}
-            transition={{ duration: 0.3, ease: EASE.swift, delay: index * 0.025 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: EASE.lift, delay: index * 0.04 }}
             className="rounded-2xl border border-[#E6EAF5] bg-[#F8FAFF] p-4 shadow-sm"
         >
             <p className="text-sm font-semibold text-slate-900">{feature.title}</p>
