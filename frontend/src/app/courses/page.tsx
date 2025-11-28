@@ -548,7 +548,7 @@ export default function CoursesPage() {
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <h2 className="text-2xl font-semibold text-slate-900">Live catalog</h2>
-                            <p className="text-sm text-slate-600">Pulled directly from the SparkHub courses API.</p>
+                            <p className="text-sm text-slate-600">Always up to date with the live SparkHub course catalog.</p>
                         </div>
                         {status && <p className="text-sm text-[#2D8F80]">{status}</p>}
                     </div>

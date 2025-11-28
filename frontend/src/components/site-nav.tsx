@@ -122,7 +122,7 @@ export default function Navbar() {
     return (
         <>
             <motion.header
-                className="relative sticky top-0 z-50 w-full px-2 pb-2 sm:px-4"
+                className="relative sticky top-1.5 z-50 w-full px-2 pb-2 pt-1 sm:px-4"
                 animate={{
                     y: scrolled ? 2 : 0,
                     scale: scrolled ? 0.996 : 1,

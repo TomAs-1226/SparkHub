@@ -814,7 +814,7 @@ export default function AdminPage() {
                                 )}
                             </div>
                             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
-                                <p>Every submission is stored via the /feedback API.</p>
+                                <p>Every submission lands in the shared feedback inbox for review.</p>
                                 <Link href="/contact" className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-700 hover:bg-white">
                                     Contact page
                                 </Link>

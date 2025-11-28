@@ -148,7 +148,7 @@ const releases = [
         image: "/releases/sierra-lantern.svg",
         highlights: [
             "Smarter opportunity publishing with richer validation",
-            "Faster API responses with optional clustered workers",
+            "Snappier responses powered by optional clustered workers",
             "Clipboard-safe join codes for every course",
         ],
         notes: "Primary dev: Baichen Yu — delivering resilient growth for new cohorts.",

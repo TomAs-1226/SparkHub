@@ -61,20 +61,30 @@ export default function EventsPage() {
                     transition={{ ease: EASE.lift }}
                     className="rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-10"
                 >
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">SparkHub events</p>
-                            <h1 className="mt-2 text-2xl font-semibold">Upcoming events</h1>
-                            <p className="mt-1 text-sm text-slate-500">
-                                Every event below is fetched from the real-time SparkHub API. Tap one to see full details.
-                            </p>
+                    <div className="relative overflow-hidden rounded-2xl border border-[#E8F2F1] bg-[#FDFEFE] p-4">
+                        <motion.div
+                            className="pointer-events-none absolute -inset-8 rounded-[32px] bg-[radial-gradient(circle_at_15%_20%,rgba(99,192,185,0.18),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(45,46,131,0.16),transparent_35%)] blur-3xl"
+                            aria-hidden
+                            animate={{ rotate: [0, 2, -2, 0], scale: [1, 1.02, 1.01, 1] }}
+                            transition={{ duration: 14, ease: EASE.emphasized, repeat: Infinity, repeatType: "mirror" }}
+                        />
+                        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+                            <div>
+                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">SparkHub events</p>
+                                <h1 className="mt-2 text-2xl font-semibold">Upcoming events</h1>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Every event updates in real time so you can tap in for fresh details without reloading.
+                                </p>
+                            </div>
+                            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                                <Link
+                                    href="/dashboard"
+                                    className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                >
+                                    Back to dashboard
+                                </Link>
+                            </motion.div>
                         </div>
-                        <Link
-                            href="/dashboard"
-                            className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
-                        >
-                            Back to dashboard
-                        </Link>
                     </div>
 
                     <div className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">

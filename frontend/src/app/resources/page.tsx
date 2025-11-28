@@ -54,38 +54,52 @@ export default function ResourcesPage() {
                     transition={{ ease: EASE.lift }}
                     className="rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-10"
                 >
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">SparkHub resources</p>
-                            <h1 className="mt-2 text-2xl font-semibold">Resources curated by admins</h1>
-                            <p className="mt-1 text-sm text-slate-500">
-                                Everything you see is sourced directly from the backend resources API.
-                            </p>
-                        </div>
-                        {user ? (
-                            user.role === "ADMIN" ? (
-                                <Link
-                                    href="/admin"
-                                    className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
-                                >
-                                    Admin panel
-                                </Link>
+                    <div className="relative overflow-hidden rounded-2xl border border-[#E8F2F1] bg-[#FDFEFE] p-4">
+                        <motion.div
+                            className="pointer-events-none absolute -inset-8 rounded-[32px] bg-[radial-gradient(circle_at_18%_22%,rgba(99,192,185,0.16),transparent_34%),radial-gradient(circle_at_82%_8%,rgba(45,46,131,0.14),transparent_36%)] blur-3xl"
+                            aria-hidden
+                            animate={{ opacity: [0.8, 1, 0.85], scale: [1, 1.03, 1] }}
+                            transition={{ duration: 16, ease: EASE.emphasized, repeat: Infinity, repeatType: "mirror" }}
+                        />
+                        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+                            <div>
+                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">SparkHub resources</p>
+                                <h1 className="mt-2 text-2xl font-semibold">Resources curated by admins</h1>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Every guide and toolkit here is curated by admins and refreshed automatically.
+                                </p>
+                            </div>
+                            {user ? (
+                                user.role === "ADMIN" ? (
+                                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                                        <Link
+                                            href="/admin"
+                                            className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                        >
+                                            Admin panel
+                                        </Link>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                                        <Link
+                                            href="/tutors/dashboard"
+                                            className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                        >
+                                            Share a resource
+                                        </Link>
+                                    </motion.div>
+                                )
                             ) : (
-                                <Link
-                                    href="/tutors/dashboard"
-                                    className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
-                                >
-                                    Share a resource
-                                </Link>
-                            )
-                        ) : (
-                            <Link
-                                href="/login?from=/admin"
-                                className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
-                            >
-                                Sign in for tools
-                            </Link>
-                        )}
+                                <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                                    <Link
+                                        href="/login?from=/admin"
+                                        className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                    >
+                                        Sign in for tools
+                                    </Link>
+                                </motion.div>
+                            )}
+                        </div>
                     </div>
 
                     <motion.div

@@ -61,38 +61,52 @@ export default function OpportunitiesPage() {
                     animate="animate"
                     className="rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-10"
                 >
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">Opportunities</p>
-                            <h1 className="mt-2 text-2xl font-semibold">Real postings from SparkHub recruiters</h1>
-                            <p className="mt-1 text-sm text-slate-500">
-                                Every card below is rendered directly from the backend jobs API.
-                            </p>
-                        </div>
-                        {user ? (
-                            user.role === "ADMIN" ? (
-                                <Link
-                                    href="/admin"
-                                    className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
-                                >
-                                    Admin tools
-                                </Link>
+                    <div className="relative overflow-hidden rounded-2xl border border-[#E8F2F1] bg-[#FDFEFE] p-4">
+                        <motion.div
+                            className="pointer-events-none absolute -inset-8 rounded-[32px] bg-[radial-gradient(circle_at_20%_22%,rgba(99,192,185,0.17),transparent_34%),radial-gradient(circle_at_78%_6%,rgba(45,46,131,0.14),transparent_36%)] blur-3xl"
+                            aria-hidden
+                            animate={{ rotate: [0, -2, 3, 0], scale: [1, 1.025, 1.01, 1] }}
+                            transition={{ duration: 15, ease: EASE.emphasized, repeat: Infinity, repeatType: "mirror" }}
+                        />
+                        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+                            <div>
+                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">Opportunities</p>
+                                <h1 className="mt-2 text-2xl font-semibold">Real postings from SparkHub recruiters</h1>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Every listing is live from our hiring partners so you can act the moment roles open.
+                                </p>
+                            </div>
+                            {user ? (
+                                user.role === "ADMIN" ? (
+                                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                                        <Link
+                                            href="/admin"
+                                            className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                        >
+                                            Admin tools
+                                        </Link>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                                        <Link
+                                            href="/tutors/dashboard"
+                                            className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                        >
+                                            Post an opportunity
+                                        </Link>
+                                    </motion.div>
+                                )
                             ) : (
-                                <Link
-                                    href="/tutors/dashboard"
-                                    className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
-                                >
-                                    Post an opportunity
-                                </Link>
-                            )
-                        ) : (
-                            <Link
-                                href="/login?from=/admin"
-                                className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
-                            >
-                                Sign in for tools
-                            </Link>
-                        )}
+                                <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                                    <Link
+                                        href="/login?from=/admin"
+                                        className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                    >
+                                        Sign in for tools
+                                    </Link>
+                                </motion.div>
+                            )}
+                        </div>
                     </div>
 
                     {(() => {
