@@ -9,6 +9,17 @@ import { EASE, FADES } from "@/lib/motion-presets";
 
 const releases = [
     {
+        version: "2.5",
+        codename: "Pocket Glass",
+        date: "May 2025",
+        highlights: [
+            "Responsive nav that tucks quick links into the menu on tight screens while keeping desktop pills unchanged",
+            "Compact profile access and glass chrome that stay readable on phones without losing the frosted effect",
+            "Non-linear motion presets applied to drawers, menus, and cards for a cohesive feel everywhere",
+        ],
+        notes: "Primary dev: Baichen Yu — championing pocket-friendly glass navigation and unified motion polish.",
+    },
+    {
         version: "2.4",
         codename: "Velvet Pulse",
         date: "April 2025",
@@ -102,6 +113,10 @@ const releases = [
 ];
 
 const featureCallouts = [
+    {
+        title: "Pocket-ready glass nav",
+        copy: "On narrow screens the frosted pills gracefully collapse into the menu while desktop spacing stays untouched.",
+    },
     {
         title: "Glide across the page",
         copy: "Pinned frosted nav with edge blur, breathing space, and a floating return-to-top keeps you oriented without clutter.",

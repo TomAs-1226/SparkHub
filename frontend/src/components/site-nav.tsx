@@ -196,8 +196,8 @@ export default function Navbar() {
                 </div>
 
                 <div className="relative z-10 flex flex-1 items-center justify-end gap-2 md:hidden">
-                    <div className="no-scrollbar flex flex-1 items-center gap-1 overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-xs font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur">
-                        {desktopLinks.slice(0, 5).map((link) => {
+                    <div className="no-scrollbar hidden flex-1 items-center gap-1 overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-xs font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur min-[430px]:flex">
+                        {desktopLinks.slice(0, 4).map((link) => {
                             const isActive = pathname?.startsWith(link.href);
                             return (
                                 <Link
@@ -227,7 +227,7 @@ export default function Navbar() {
                         <button
                             type="button"
                             onClick={() => router.push("/dashboard")}
-                            className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/80 text-sm font-semibold text-slate-700 shadow-sm shadow-white/40"
+                            className="hidden h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/80 text-sm font-semibold text-slate-700 shadow-sm shadow-white/40 min-[380px]:inline-flex"
                             aria-label="Open profile"
                         >
                             <Image
