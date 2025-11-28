@@ -8,6 +8,7 @@ import { CalendarDays, Clock4, MapPin, NotebookPen } from "lucide-react";
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { api } from "@/lib/api";
+import { EASE, FADES, STAGGER, SURFACES } from "@/lib/motion-presets";
 
 interface EventRow {
     id: string;
@@ -54,31 +55,48 @@ export default function EventsPage() {
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
                 <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    variants={FADES.floatUp}
+                    initial="initial"
+                    animate="animate"
+                    transition={{ ease: EASE.lift }}
                     className="rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-10"
                 >
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">SparkHub events</p>
-                            <h1 className="mt-2 text-2xl font-semibold">Upcoming events</h1>
-                            <p className="mt-1 text-sm text-slate-500">
-                                Every event below is fetched from the real-time SparkHub API. Tap one to see full details.
-                            </p>
+                    <div className="relative overflow-hidden rounded-2xl border border-[#E8F2F1] bg-[#FDFEFE] p-4">
+                        <motion.div
+                            className="pointer-events-none absolute -inset-8 rounded-[32px] bg-[radial-gradient(circle_at_15%_20%,rgba(99,192,185,0.18),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(45,46,131,0.16),transparent_35%)] blur-3xl"
+                            aria-hidden
+                            animate={{ rotate: [0, 2, -2, 0], scale: [1, 1.02, 1.01, 1] }}
+                            transition={{ duration: 14, ease: EASE.emphasized, repeat: Infinity, repeatType: "mirror" }}
+                        />
+                        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+                            <div>
+                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">SparkHub events</p>
+                                <h1 className="mt-2 text-2xl font-semibold">Upcoming events</h1>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Every event updates in real time so you can tap in for fresh details without reloading.
+                                </p>
+                            </div>
+                            <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
+                                <Link
+                                    href="/dashboard"
+                                    className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                >
+                                    Back to dashboard
+                                </Link>
+                            </motion.div>
                         </div>
-                        <Link
-                            href="/dashboard"
-                            className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
-                        >
-                            Back to dashboard
-                        </Link>
                     </div>
 
                     <div className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
                         <div>
                             <h2 className="text-sm font-semibold text-slate-600">All events</h2>
-                            <div className="mt-4 space-y-3">
+                            <motion.div
+                                className="mt-4 space-y-3"
+                                variants={{ hidden: {}, visible: { transition: STAGGER.base } }}
+                                initial="hidden"
+                                animate="visible"
+                                viewport={{ once: true, amount: 0.35 }}
+                            >
                                 {loading ? (
                                     Array.from({ length: 4 }).map((_, idx) => (
                                         <div key={idx} className="h-[72px] animate-pulse rounded-2xl bg-slate-100" />
@@ -88,10 +106,10 @@ export default function EventsPage() {
                                         There are currently no events in the database.
                                     </div>
                                 ) : (
-                                    events.map((event) => {
+                                    events.map((event, idx) => {
                                         const isActive = selectedId === event.id;
                                         return (
-                                            <button
+                                            <motion.button
                                                 key={event.id}
                                                 type="button"
                                                 onClick={() => setSelectedId(event.id)}
@@ -102,19 +120,29 @@ export default function EventsPage() {
                                     : "border-slate-200 bg-white hover:border-[#CFE3E0]"
                             }
                         `}
+                                                initial={SURFACES.lift.initial}
+                                                whileInView={SURFACES.lift.animate(idx * 0.04)}
+                                                viewport={{ once: true, amount: 0.5 }}
+                                                whileHover={SURFACES.lift.whileHover}
+                                                transition={{ duration: 0.4, ease: EASE.lift }}
                                             >
                                                 <div className="text-sm font-semibold text-slate-800">{event.title}</div>
                                                 <div className="mt-1 text-xs text-slate-500">
                                                     {formatEventDate(event.startsAt)} · {event.location || "Location TBD"}
                                                 </div>
-                                            </button>
+                                            </motion.button>
                                         );
                                     })
                                 )}
-                            </div>
+                            </motion.div>
                         </div>
 
-                        <div className="rounded-3xl border border-slate-100 bg-[#F9FBFF] p-6">
+                        <motion.div
+                            className="rounded-3xl border border-slate-100 bg-[#F9FBFF] p-6"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, ease: EASE.emphasized, delay: 0.05 }}
+                        >
                             {selected ? (
                                 <div className="space-y-4">
                                     <div>
@@ -167,7 +195,7 @@ export default function EventsPage() {
                             ) : (
                                 <div className="text-sm text-slate-600">Select an event to view its information.</div>
                             )}
-                        </div>
+                        </motion.div>
                     </div>
                 </motion.section>
             </main>

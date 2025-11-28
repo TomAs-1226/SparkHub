@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { uploadAsset } from "@/lib/upload";
 import { parseSkillsInput } from "@/lib/skills";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { EASE, SURFACES } from "@/lib/motion-presets";
 
 interface EventRow {
     id: string;
@@ -383,7 +384,7 @@ export default function AdminPage() {
                 <motion.section
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.45 }}
+                    transition={{ duration: 0.55, ease: EASE.emphasized }}
                     className="rounded-[36px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-10"
                 >
                     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -401,11 +402,18 @@ export default function AdminPage() {
                     </div>
 
                     <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        {dashboardStats.map((item) => (
-                            <div key={item.label} className="rounded-3xl border border-slate-100 bg-[#F9FBFF] p-4 text-center shadow-inner">
+                        {dashboardStats.map((item, idx) => (
+                            <motion.div
+                                key={item.label}
+                                className="rounded-3xl border border-slate-100 bg-[#F9FBFF] p-4 text-center shadow-inner"
+                                initial={SURFACES.floatIn.initial}
+                                whileInView={SURFACES.floatIn.animate(idx * 0.05)}
+                                viewport={{ once: true, amount: 0.5 }}
+                                whileHover={SURFACES.lift.whileHover}
+                            >
                                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{item.label}</p>
                                 <p className="mt-2 text-3xl font-bold text-[#2B2E83]">{item.value}</p>
-                            </div>
+                            </motion.div>
                         ))}
                     </div>
 
@@ -806,7 +814,7 @@ export default function AdminPage() {
                                 )}
                             </div>
                             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
-                                <p>Every submission is stored via the /feedback API.</p>
+                                <p>Every submission lands in the shared feedback inbox for review.</p>
                                 <Link href="/contact" className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 font-semibold text-slate-700 hover:bg-white">
                                     Contact page
                                 </Link>

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays, CheckCircle2, UserPlus } from "lucide-react";
 import SiteNav from "@/components/site-nav";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { EASE } from "@/lib/motion-presets";
 
 const signupFields = [
     { label: "Student name", type: "text", placeholder: "Taylor Lee" },
@@ -29,6 +31,8 @@ export default function MentorsPage() {
     const [selectedDay, setSelectedDay] = useState<string | null>(null);
     const [format, setFormat] = useState("Video call");
     const [notes, setNotes] = useState("");
+    const { user } = useCurrentUser();
+    const canPost = Boolean(user && ["ADMIN", "CREATOR", "TUTOR"].includes(user.role));
 
     return (
         <div className="min-h-dvh bg-[#F5F7FB] text-slate-800">
@@ -39,31 +43,51 @@ export default function MentorsPage() {
                 </div>
 
                 <section className="mt-6 grid gap-8 rounded-[36px] bg-white/95 p-6 shadow-2xl md:grid-cols-2 md:p-10">
-                    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+                    <motion.div
+                        initial={{ opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, ease: EASE.emphasized }}
+                    >
                         <div className="flex items-center gap-3 text-sm font-semibold text-[#5DAA9C]">
                             <UserPlus className="h-5 w-5" /> New Student Mentor Signup
                         </div>
                         <p className="mt-4 text-sm text-slate-600">
                             Tell us about your background and areas where you’d like to mentor peers. We’ll match you with students across SparkHub cohorts.
                         </p>
-                        <form className="mt-6 space-y-4">
+                        <form className="relative mt-6 space-y-4">
+                            {!canPost && (
+                                <div className="absolute inset-0 z-10 rounded-2xl bg-white/70 backdrop-blur">
+                                    <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-sm font-semibold text-slate-700">
+                                        <p>Sign in as an admin, creator, or tutor to post mentor availability.</p>
+                                        <div className="flex gap-2 text-[13px] font-semibold">
+                                            <a href="/login" className="rounded-full bg-[#2D8F80] px-3 py-1 text-white shadow-sm">Log in</a>
+                                            <a href="/register" className="rounded-full border border-[#2D8F80] px-3 py-1 text-[#2D8F80] shadow-sm">Sign up</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             {signupFields.map((field) => (
                                 <label key={field.label} className="block text-sm font-medium text-slate-700">
                                     {field.label}
                                     {field.type === "textarea" ? (
                                         <textarea
                                             placeholder={field.placeholder}
+                                            disabled={!canPost}
                                             className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700"
                                             rows={4}
                                         />
                                     ) : field.type === "select" ? (
-                                        <select className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
+                                        <select
+                                            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700"
+                                            disabled={!canPost}
+                                        >
                                             <option value="">Select</option>
                                         </select>
                                     ) : (
                                         <input
                                             type={field.type}
                                             placeholder={field.placeholder}
+                                            disabled={!canPost}
                                             className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700"
                                         />
                                     )}
@@ -73,20 +97,26 @@ export default function MentorsPage() {
                                 Availability notes
                                 <textarea
                                     placeholder="Weekly cadence, time zones"
+                                    disabled={!canPost}
                                     className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700"
                                     rows={3}
                                 />
                             </label>
                             <button
                                 type="button"
-                                className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-[#63C0B9] px-5 py-3 text-sm font-semibold text-white shadow-md"
+                                disabled={!canPost}
+                                className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-[#63C0B9] px-5 py-3 text-sm font-semibold text-white shadow-md disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 Submit form
                             </button>
                         </form>
                     </motion.div>
 
-                    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.45 }}>
+                    <motion.div
+                        initial={{ opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.08, duration: 0.5, ease: EASE.lift }}
+                    >
                         <div className="flex items-center gap-3 text-sm font-semibold text-[#5DAA9C]">
                             <CalendarDays className="h-5 w-5" /> 1-On-1 Mentoring Session Scheduling
                         </div>
@@ -114,8 +144,8 @@ export default function MentorsPage() {
                                 <table className="w-full text-center text-sm text-slate-600">
                                     <thead className="bg-[#F4F7FB] text-xs uppercase text-slate-500">
                                         <tr>
-                                            {"SMTWTFS".split("").map((day) => (
-                                                <th key={day} className="px-2 py-2 font-semibold">
+                                            {"SMTWTFS".split("").map((day, index) => (
+                                                <th key={`${day}-${index}`} className="px-2 py-2 font-semibold">
                                                     {day}
                                                 </th>
                                             ))}
@@ -123,9 +153,9 @@ export default function MentorsPage() {
                                     </thead>
                                     <tbody>
                                         {calendarWeeks.map((week, idx) => (
-                                            <tr key={idx} className="divide-x divide-slate-50">
-                                                {week.map((day) => (
-                                                    <td key={`${idx}-${day || idx}`} className="h-14 align-middle">
+                                            <tr key={`week-${idx}`} className="divide-x divide-slate-50">
+                                                {week.map((day, dayIdx) => (
+                                                    <td key={`cell-${idx}-${day || dayIdx}`} className="h-14 align-middle">
                                                         {day && (
                                                             <button
                                                                 type="button"

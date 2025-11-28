@@ -52,7 +52,7 @@ export default function TutorsPage() {
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">Find a tutor</p>
-                            <h1 className="mt-2 text-2xl font-semibold">Profiles pulled from the live tutor API</h1>
+                        <h1 className="mt-2 text-2xl font-semibold">Profiles refreshed from our mentor network</h1>
                             <p className="mt-1 text-sm text-slate-500">
                                 If no tutor profiles have been created yet, you will see a notice instead of placeholder cards.
                             </p>

@@ -9,6 +9,7 @@ import { Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 import { refreshCurrentUserStore } from "@/hooks/use-current-user";
+import { EASE, FADES, SURFACES } from "@/lib/motion-presets";
 
 async function safeJson(res: Response) {
     try {
@@ -81,9 +82,9 @@ export default function ForgotPasswordPage() {
     return (
         <main className="min-h-dvh flex items-start lg:items-center justify-center px-4 sm:px-6 lg:px-8 py-8 bg-[#F4F7FB]">
             <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, ease: "easeOut" }}
+                variants={FADES.floatUp}
+                initial="initial"
+                animate="animate"
                 className="w-full max-w-5xl rounded-[32px] bg-white shadow-[0_2px_24px_rgba(0,0,0,0.06)] px-6 sm:px-8 lg:px-12 py-8"
             >
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -100,7 +101,12 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <div className="mt-8 grid gap-6 lg:grid-cols-2">
-                    <section className="rounded-[28px] border border-slate-100 bg-[#F9FBFF] p-6">
+                    <motion.section
+                        className="rounded-[28px] border border-slate-100 bg-[#F9FBFF] p-6"
+                        initial={SURFACES.lift.initial}
+                        whileInView={SURFACES.lift.animate(0.05)}
+                        viewport={{ once: true, amount: 0.4 }}
+                    >
                         <div className="flex items-center gap-3">
                             <div className="rounded-2xl bg-[#E7F6F3] p-3 text-[#2D8F80]">
                                 <Mail className="h-5 w-5" />
@@ -122,13 +128,16 @@ export default function ForgotPasswordPage() {
                                     placeholder="you@email.com"
                                 />
                             </label>
-                            <button
+                            <motion.button
                                 type="submit"
                                 disabled={requesting}
                                 className="w-full rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                whileHover={{ y: -1, scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                transition={{ duration: 0.25, ease: EASE.swift }}
                             >
                                 {requesting ? "Sending…" : "Send reset link"}
-                            </button>
+                            </motion.button>
                             {requestStatus && (
                                 <p className="rounded-2xl border border-[#CFE3E0] bg-white/80 px-4 py-3 text-sm text-slate-700">
                                     {requestStatus}
@@ -142,9 +151,14 @@ export default function ForgotPasswordPage() {
                                 </div>
                             )}
                         </form>
-                    </section>
+                    </motion.section>
 
-                    <section className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm">
+                    <motion.section
+                        className="rounded-[28px] border border-slate-100 bg-white p-6 shadow-sm"
+                        initial={SURFACES.lift.initial}
+                        whileInView={SURFACES.lift.animate(0.12)}
+                        viewport={{ once: true, amount: 0.4 }}
+                    >
                         <div className="flex items-center gap-3">
                             <div className="rounded-2xl bg-[#E7F6F3] p-3 text-[#2D8F80]">
                                 <ShieldCheck className="h-5 w-5" />
@@ -178,13 +192,16 @@ export default function ForgotPasswordPage() {
                                     placeholder="At least 6 characters"
                                 />
                             </label>
-                            <button
+                            <motion.button
                                 type="submit"
                                 disabled={resetting}
                                 className="w-full rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                whileHover={{ y: -1, scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                transition={{ duration: 0.25, ease: EASE.swift }}
                             >
                                 {resetting ? "Updating…" : "Reset password"}
-                            </button>
+                            </motion.button>
                             {resetStatus && (
                                 <p className="rounded-2xl border border-[#CFE3E0] bg-[#E9F7F5] px-4 py-3 text-sm text-slate-700">
                                     {resetStatus}
@@ -194,7 +211,7 @@ export default function ForgotPasswordPage() {
                         <p className="mt-4 text-xs text-slate-500">
                             Need help? <Link href="/contact" className="font-semibold text-[#2D8F80]">Contact the admin team</Link>.
                         </p>
-                    </section>
+                    </motion.section>
                 </div>
 
                 <div className="mt-8 grid gap-4 md:grid-cols-3 text-sm">

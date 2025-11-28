@@ -1,16 +1,103 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
 import SiteNav from "@/components/site-nav";
+import { EASE, FADES } from "@/lib/motion-presets";
 
 const releases = [
+    {
+        version: "2.9",
+        codename: "Silk Pocket",
+        date: "September 2025",
+        image: "/releases/silk-pocket.svg",
+        highlights: [
+            "Glass nav now auto-switches to a profile-style menu on slim screens while staying scrollable and accessible",
+            "Navigation drawers reuse the shared non-linear easing so mobile toggles and submenus feel consistent",
+            "Pinned chrome keeps desktop spacing intact as animations stay smooth at the top of every page",
+        ],
+        notes: "Primary dev: Baichen Yu — keeping every destination reachable with silky mobile menus and unified motion.",
+    },
+    {
+        version: "2.8",
+        codename: "Cascade Bloom",
+        date: "August 2025",
+        image: "/releases/cascade-bloom.svg",
+        highlights: [
+            "Non-linear motion presets now wrap contact, recovery, and opportunities flows with shared easing and springs",
+            "Animated submenu shells keep nav, drawers, and expandable cards consistent across desktop and pocket layouts",
+            "Return-to-top controls, CTA pills, and feature suites all inherit the unified glass and accent animation language",
+        ],
+        notes: "Primary dev: Baichen Yu — shipping site-wide motion cohesion, smoother drawers, and glassier CTAs across pages.",
+    },
+    {
+        version: "2.7",
+        codename: "Harbor Prism",
+        date: "July 2025",
+        image: "/releases/harbor-prism.svg",
+        highlights: [
+            "Glass nav now auto-compacts into a horizontally scrolling strip on tight widths without hiding any links",
+            "Desktop pills keep their breathing room while overflow gradients hint that you can scroll for more destinations",
+            "Non-linear motion presets power every nav, drawer, and release card animation for a unified feel",
+        ],
+        notes: "Primary dev: Baichen Yu — keeping every page reachable with smooth glass motion and overflow-aware chrome.",
+    },
+    {
+        version: "2.6",
+        codename: "Ribbon Drift",
+        date: "June 2025",
+        image: "/releases/ribbon-drift.svg",
+        highlights: [
+            "Mobile glass nav now wraps pills instead of overflowing so every page stays reachable on tight screens",
+            "Shared non-linear motion presets animate drawers, cards, and menus for a consistent Apple-like feel",
+            "Accent-aware chrome spreads across quick links, drawers, and profile touchpoints with clearer spacing",
+        ],
+        notes: "Primary dev: Baichen Yu — expanding pocket access, accent coverage, and immersive motion across the site.",
+    },
+    {
+        version: "2.5",
+        codename: "Pocket Glass",
+        date: "May 2025",
+        image: "/releases/pocket-glass.svg",
+        highlights: [
+            "Responsive nav that tucks quick links into the menu on tight screens while keeping desktop pills unchanged",
+            "Compact profile access and glass chrome that stay readable on phones without losing the frosted effect",
+            "Non-linear motion presets applied to drawers, menus, and cards for a cohesive feel everywhere",
+        ],
+        notes: "Primary dev: Baichen Yu — championing pocket-friendly glass navigation and unified motion polish.",
+    },
+    {
+        version: "2.4",
+        codename: "Velvet Pulse",
+        date: "April 2025",
+        image: "/releases/velvet-pulse.svg",
+        highlights: [
+            "Removed the obstructive progress bar in favor of breathable glass chrome and visible underlying UI",
+            "Unified non-linear motion presets across nav, drawers, release cards, and return-to-top controls",
+            "Dedicated animation shells for expandable menus keep sub-navigation fluid and consistently timed",
+        ],
+        notes: "Primary dev: Baichen Yu — leading the motion unification, glass refinement, and ergonomics refresh.",
+    },
+    {
+        version: "2.3",
+        codename: "Aurora Rise",
+        date: "March 2025",
+        image: "/releases/aurora-rise.svg",
+        highlights: [
+            "Cinematic, non-linear glass nav motion that stays readable while revealing UI beneath with edge blur",
+            "Floating return-to-top control keeps long reads ergonomic without visual clutter",
+            "Accent-rich chrome touches extended to quick actions, drawers, and new surface veils",
+        ],
+        notes: "Primary dev: Baichen Yu — bringing Apple-like motion polish, handy shortcuts, and clearer cues.",
+    },
     {
         version: "2.2",
         codename: "Skyline Drift",
         date: "February 2025",
+        image: "/releases/skyline-drift.svg",
         highlights: [
             "Pinned glass nav with softened edge blur that reveals the UI beneath without hiding controls",
             "Navigation pills keep their spacing and single-line join actions while animating smoothly at the top of the page",
@@ -22,6 +109,7 @@ const releases = [
         version: "2.1",
         codename: "Edge Current",
         date: "January 2025",
+        image: "/releases/edge-current.svg",
         highlights: [
             "Glass-pill navigation that stays pinned with edge blur while you scroll",
             "Accent-aware chrome that shows through underlying UI with softer gradients",
@@ -33,6 +121,7 @@ const releases = [
         version: "2.0",
         codename: "Glass Harbor",
         date: "December 2024",
+        image: "/releases/glass-harbor.svg",
         highlights: [
             "Frosted pill navigation with accent-driven gradients and quicker tap targets",
             "Expanded accent palette plus richer theming touches across controls",
@@ -44,6 +133,7 @@ const releases = [
         version: "1.9",
         codename: "Mesa Bloom",
         date: "November 2024",
+        image: "/releases/mesa-bloom.svg",
         highlights: [
             "Ergonomic navigation with scrollable quick links on desktop and mobile",
             "Expanded accent palette with richer customization options",
@@ -55,9 +145,10 @@ const releases = [
         version: "1.8",
         codename: "Sierra Lantern",
         date: "October 2024",
+        image: "/releases/sierra-lantern.svg",
         highlights: [
             "Smarter opportunity publishing with richer validation",
-            "Faster API responses with optional clustered workers",
+            "Snappier responses powered by optional clustered workers",
             "Clipboard-safe join codes for every course",
         ],
         notes: "Primary dev: Baichen Yu — delivering resilient growth for new cohorts.",
@@ -66,6 +157,7 @@ const releases = [
         version: "1.7",
         codename: "Marigold Arc",
         date: "September 2024",
+        image: "/releases/marigold-arc.svg",
         highlights: ["Improved tutor workspace layouts", "New calendar-ready event exports"],
         notes: "Primary dev: Baichen Yu — smoothing publishing flows and calendars.",
     },
@@ -73,12 +165,37 @@ const releases = [
         version: "1.6",
         codename: "Cinder Bay",
         date: "August 2024",
+        image: "/releases/cinder-bay.svg",
         highlights: ["Resource hub redesign", "Streamlined authentication and session recovery"],
         notes: "Primary dev: Baichen Yu — cleanup with better recovery and discovery.",
     },
 ];
 
 const featureCallouts = [
+    {
+        title: "Reach every page anywhere",
+        copy: "Glass pills scroll horizontally with gentle gradients on tight screens so pages like Contact or Tutors stay one tap away.",
+    },
+    {
+        title: "Unified non-linear motion",
+        copy: "Shared easing and spring presets now drive nav, drawers, cards, and recovery flows so every animation feels connected.",
+    },
+    {
+        title: "Pocket-ready glass nav",
+        copy: "On narrow screens the frosted pills slide into a compact strip or menu while desktop spacing stays untouched.",
+    },
+    {
+        title: "Glide across the page",
+        copy: "Pinned frosted nav with edge blur, breathing space, and a floating return-to-top keeps you oriented without clutter.",
+    },
+    {
+        title: "Glass CTAs with character",
+        copy: "Return-to-top buttons, contact CTAs, and opportunities cards now lift with accent glows and non-linear motion cues.",
+    },
+    {
+        title: "Apple-inspired motion",
+        copy: "Non-linear easing, subtle parallax veils, and springy controls now power drawers, menus, release cards, and quick links alike.",
+    },
     {
         title: "Opportunities built to grow",
         copy: "Publish internships, projects, or mentorships with attachments, timelines, and recruiter contact all in one place.",
@@ -105,7 +222,7 @@ const featureCallouts = [
     },
     {
         title: "Always-visible glass nav",
-        copy: "A frosted pill that follows you with edge blur, progressive glow, and ergonomic spacing so links stay easy to tap.",
+        copy: "A frosted pill that follows you with edge blur, ergonomic spacing, and glass veils so links stay easy to tap.",
     },
     {
         title: "Theme it your way",
@@ -117,11 +234,6 @@ const featureCallouts = [
     },
 ];
 
-const fadeUp = {
-    initial: { opacity: 0, y: 24 },
-    animate: { opacity: 1, y: 0 },
-};
-
 export default function AboutPage() {
     const [openRelease, setOpenRelease] = useState(releases[0].version);
 
@@ -130,8 +242,9 @@ export default function AboutPage() {
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
                 <motion.section
-                    {...fadeUp}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    variants={FADES.gentleUp}
+                    initial="initial"
+                    animate="animate"
                     className="overflow-hidden rounded-[32px] border border-white/60 bg-gradient-to-br from-white via-white to-[#E6F4F1] p-8 shadow-2xl md:p-12"
                 >
                     <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -159,12 +272,26 @@ export default function AboutPage() {
                         </div>
                         <motion.div
                             whileHover={{ rotate: -1.5, scale: 1.02 }}
-                            className="rounded-[28px] border border-[#CFE3E0] bg-white/90 p-6 shadow-xl"
+                            className="flex flex-col gap-4 rounded-[28px] border border-[#CFE3E0] bg-white/90 p-6 shadow-xl"
                         >
                             <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">Latest release</p>
                             <h2 className="mt-2 text-2xl font-semibold text-slate-900">{releases[0].version}</h2>
                             <p className="text-sm text-slate-600">{releases[0].date}</p>
                             <p className="text-sm font-semibold text-[#2D8F80]">Codename: {releases[0].codename}</p>
+                            <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, ease: EASE.lift }}
+                                className="overflow-hidden rounded-2xl border border-[#E6F0EF] bg-gradient-to-br from-white via-white to-[#F2F7FF] shadow-inner"
+                            >
+                                <Image
+                                    src={releases[0].image}
+                                    alt={`${releases[0].codename} release art`}
+                                    width={760}
+                                    height={420}
+                                    className="h-full w-full object-cover"
+                                />
+                            </motion.div>
                             <ul className="mt-3 space-y-2 text-sm text-slate-700">
                                 {releases[0].highlights.map((item) => (
                                     <li key={item} className="flex items-start gap-2">
@@ -182,81 +309,39 @@ export default function AboutPage() {
 
                 <section className="mt-10 grid gap-6 md:grid-cols-2">
                     <motion.div
-                        {...fadeUp}
-                        transition={{ duration: 0.45, delay: 0.05 }}
+                        variants={FADES.gentleUp}
+                        initial="initial"
+                        animate="animate"
+                        transition={{ delay: 0.05 }}
                         className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-2xl"
                     >
                         <p className="text-xs font-semibold uppercase tracking-wide text-[#2D8F80]">Release notes</p>
                         <h3 className="mt-2 text-xl font-semibold text-slate-900">What changed recently</h3>
                         <div className="mt-4 space-y-4">
-                            {releases.map((release, idx) => {
-                                const isOpen = openRelease === release.version;
-                                return (
-                                    <motion.button
-                                        key={release.version}
-                                        whileHover={{ y: -2 }}
-                                        onClick={() => setOpenRelease(isOpen ? "" : release.version)}
-                                        className={`w-full rounded-2xl border p-4 text-left shadow-sm transition ${
-                                            isOpen
-                                                ? "border-[var(--sh-accent)] bg-[#F9FEFD] shadow-[var(--sh-card-glow)]"
-                                                : "border-[#E6F0EF] bg-[#F9FEFD]"
-                                        }`}
-                                        transition={{ duration: 0.2, delay: idx * 0.03 }}
-                                    >
-                                        <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
-                                            <div className="flex items-center gap-2">
-                                                <span className="rounded-full bg-[var(--sh-accent-soft)] px-3 py-1 text-xs font-bold text-[var(--sh-accent)]">
-                                                    Codename {release.codename}
-                                                </span>
-                                                <span>Version {release.version}</span>
-                                            </div>
-                                            <span className="text-xs text-slate-500">{release.date}</span>
-                                        </div>
-                                        <AnimatePresence initial={false}>
-                                            {isOpen && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden"
-                                                >
-                                                    <ul className="mt-3 space-y-1 text-sm text-slate-700">
-                                                        {release.highlights.map((item) => (
-                                                            <li key={item} className="flex items-start gap-2">
-                                                                <span className="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-[#2B2E83]" />
-                                                                <span>{item}</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                    <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold text-[#2B2E83] shadow-[var(--sh-card-glow)]">
-                                                        {release.notes}
-                                                    </p>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </motion.button>
-                                );
-                            })}
+                            {releases.map((release, idx) => (
+                                <ReleaseCard
+                                    key={release.version}
+                                    release={release}
+                                    isOpen={openRelease === release.version}
+                                    index={idx}
+                                    onToggle={() => setOpenRelease(openRelease === release.version ? "" : release.version)}
+                                />
+                            ))}
                         </div>
                     </motion.div>
 
                     <motion.div
-                        {...fadeUp}
-                        transition={{ duration: 0.45, delay: 0.1 }}
+                        variants={FADES.gentleUp}
+                        initial="initial"
+                        animate="animate"
+                        transition={{ delay: 0.1 }}
                         className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-2xl"
                     >
                         <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">Why teams choose SparkHub</p>
                         <h3 className="mt-2 text-xl font-semibold text-slate-900">Feature highlights</h3>
                         <div className="mt-4 grid gap-4">
-                            {featureCallouts.map((feature) => (
-                                <motion.div
-                                    key={feature.title}
-                                    whileHover={{ scale: 1.01 }}
-                                    className="rounded-2xl border border-[#E6EAF5] bg-[#F8FAFF] p-4 shadow-sm"
-                                >
-                                    <p className="text-sm font-semibold text-slate-900">{feature.title}</p>
-                                    <p className="mt-1 text-sm text-slate-600">{feature.copy}</p>
-                                </motion.div>
+                            {featureCallouts.map((feature, idx) => (
+                                <FeatureCard key={feature.title} feature={feature} index={idx} />
                             ))}
                         </div>
                         <div className="mt-6 rounded-2xl border border-dashed border-[#CFE3E0] bg-[#F2FBF9] p-4 text-sm text-slate-700">
@@ -266,5 +351,85 @@ export default function AboutPage() {
                 </section>
             </main>
         </div>
+    );
+}
+
+type Release = (typeof releases)[number];
+
+function ReleaseCard({ release, isOpen, index, onToggle }: { release: Release; isOpen: boolean; index: number; onToggle: () => void }) {
+    return (
+        <motion.button
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.995 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={onToggle}
+            className={`w-full rounded-2xl border p-4 text-left shadow-sm transition ${
+                isOpen ? "border-[var(--sh-accent)] bg-[#F9FEFD] shadow-[var(--sh-card-glow)]" : "border-[#E6F0EF] bg-[#F9FEFD]"
+            }`}
+            transition={{ duration: 0.32, ease: EASE.emphasized, delay: index * 0.045 }}
+        >
+            <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
+                <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-[var(--sh-accent-soft)] px-3 py-1 text-xs font-bold text-[var(--sh-accent)]">
+                        Codename {release.codename}
+                    </span>
+                    <span>Version {release.version}</span>
+                </div>
+                <span className="text-xs text-slate-500">{release.date}</span>
+            </div>
+            <AnimatePresence initial={false}>
+                {isOpen && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0, y: -6 }}
+                        animate={{ height: "auto", opacity: 1, y: 0 }}
+                        exit={{ height: 0, opacity: 0, y: -4 }}
+                        transition={{ duration: 0.35, ease: EASE.lift }}
+                        className="overflow-hidden"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.35, ease: EASE.lift, delay: 0.02 }}
+                            className="mt-3 overflow-hidden rounded-2xl border border-[#E6F0EF] bg-white/90 shadow-inner"
+                        >
+                            <Image
+                                src={release.image}
+                                alt={`${release.codename} release preview`}
+                                width={900}
+                                height={500}
+                                className="h-full w-full object-cover"
+                            />
+                        </motion.div>
+                        <ul className="mt-3 space-y-1 text-sm text-slate-700">
+                            {release.highlights.map((item) => (
+                                <li key={item} className="flex items-start gap-2">
+                                    <span className="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-[#2B2E83]" />
+                                    <span>{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold text-[#2B2E83] shadow-[var(--sh-card-glow)]">
+                            {release.notes}
+                        </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.button>
+    );
+}
+
+function FeatureCard({ feature, index }: { feature: { title: string; copy: string }; index: number }) {
+    return (
+        <motion.div
+            whileHover={{ scale: 1.015, y: -1 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, ease: EASE.lift, delay: index * 0.04 }}
+            className="rounded-2xl border border-[#E6EAF5] bg-[#F8FAFF] p-4 shadow-sm"
+        >
+            <p className="text-sm font-semibold text-slate-900">{feature.title}</p>
+            <p className="mt-1 text-sm text-slate-600">{feature.copy}</p>
+        </motion.div>
     );
 }
