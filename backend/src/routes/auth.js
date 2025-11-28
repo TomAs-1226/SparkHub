@@ -3,6 +3,7 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { requireAuth, signToken } = require("../middleware/auth");
+const { sendPasswordResetEmail } = require("../utils/email");
 const { isUnknownFieldError, cloneArgs } = require("../utils/prisma-compat");
 const { prisma } = require("../prisma");
 const { startExclusiveSession } = require("../utils/sessions");
@@ -84,6 +85,9 @@ router.post("/register", async (req, res) => {
         const hash = await bcrypt.hash(password, 10);
 
         const user = await runUserQuery("create", { data: { email, password: hash, name, role } });
+        await prisma.emailPreference.create({ data: { userId: user.id } }).catch((err) => {
+            console.warn("Failed to seed email preferences", err?.message);
+        });
         const { token } = await issueExclusiveSession(user, req);
         return res.json({ ok: true, token, user });
     } catch (err) {
@@ -155,10 +159,10 @@ router.post("/forgot", async (req, res) => {
         const record = await prisma.passwordResetToken.create({
             data: { userId: user.id, token, expiresAt },
         });
+        await sendPasswordResetEmail(user, record.token);
         return res.json({
             ok: true,
-            msg: "Reset link created.",
-            token: record.token,
+            msg: "If the email exists we sent reset instructions.",
             expiresAt: record.expiresAt,
         });
     } catch (err) {

@@ -33,6 +33,9 @@ model User {
   tutorAvailabilities TutorAvailability[]
   auditLogs        AuditLog[]
   resetTokens     PasswordResetToken[]
+  emailPreference EmailPreference?
+  emailLogs       EmailLog[]
+  weeklyUpdates   WeeklyUpdate[]   @relation("UserWeeklyUpdates")
   assignmentsAuthored CourseAssignment[] @relation("AssignmentCreator")
   courseSubmissions  CourseSubmission[]  @relation("SubmissionStudent")
   sessions        UserSession[]
@@ -309,6 +312,47 @@ model PasswordResetToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime @default(now())
+}
+
+model EmailPreference {
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String   @unique
+  weeklyUpdates  Boolean  @default(true)
+  productUpdates Boolean  @default(true)
+  marketing      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model EmailLog {
+  id           String   @id @default(cuid())
+  to           String
+  subject      String
+  bodyText     String?
+  bodyHtml     String?
+  status       String   @default("QUEUED")
+  category     String   @default("GENERAL")
+  errorMessage String?
+  metadataJson String   @default("{}")
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId       String?
+  createdAt    DateTime @default(now())
+  sentAt       DateTime?
+}
+
+model WeeklyUpdate {
+  id            String   @id @default(cuid())
+  title         String
+  summary       String?
+  body          String
+  status        String   @default("DRAFT")
+  publishAt     DateTime?
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     User?    @relation("UserWeeklyUpdates", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById   String?
 }
 model Quiz {
   id          String         @id @default(cuid())
