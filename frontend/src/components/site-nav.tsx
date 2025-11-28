@@ -59,6 +59,8 @@ export default function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const [atTop, setAtTop] = useState(true);
     const [showScrollTop, setShowScrollTop] = useState(false);
+    const navScrollRef = useRef<HTMLDivElement | null>(null);
+    const navScrollPosition = useRef(0);
     const scrollRaf = useRef<number | null>(null);
 
     useEffect(() => {
@@ -112,12 +114,15 @@ export default function Navbar() {
 
     useEffect(() => {
         setOpen(false);
+        if (navScrollRef.current) {
+            navScrollRef.current.scrollLeft = navScrollPosition.current;
+        }
     }, [pathname]);
 
     return (
         <>
             <motion.header
-                className="relative sticky top-2 z-50 w-full px-2 pb-3 sm:top-3 sm:px-4"
+                className="relative sticky top-0 z-50 w-full px-2 pb-2 sm:px-4"
                 animate={{
                     y: scrolled ? 2 : 0,
                     scale: scrolled ? 0.996 : 1,
@@ -139,7 +144,7 @@ export default function Navbar() {
                 animate={{ opacity: atTop ? 0.82 : 0.96, scaleX: scrolled ? 1.02 : 1 }}
                 transition={{ duration: 0.6, ease: EASE.emphasized }}
             />
-            <div className="relative mx-auto mt-2 flex max-w-[1220px] items-center gap-3 rounded-full border border-[color:var(--sh-glass-border)] bg-[color:rgba(255,255,255,0.78)] px-4 py-2.5 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-[color:var(--sh-accent-veil)]">
+            <div className="relative mx-auto flex max-w-[1220px] items-center gap-3 rounded-full border border-[color:var(--sh-glass-border)] bg-[color:rgba(255,255,255,0.78)] px-4 py-2.5 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-[color:var(--sh-accent-veil)]">
                 <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_12%_26%,var(--sh-accent-soft)_0,transparent_35%),radial-gradient(circle_at_82%_40%,var(--sh-accent-glass)_0,transparent_30%),linear-gradient(120deg,var(--sh-accent-veil),transparent_45%)] pointer-events-none" aria-hidden />
                 <motion.div
                     className="pointer-events-none absolute inset-1 rounded-full border border-white/40"
@@ -157,16 +162,23 @@ export default function Navbar() {
                 <div className="relative z-10 hidden min-w-0 flex-1 md:flex">
                     <div className="relative w-full rounded-full border border-white/60 bg-white/70 px-1 py-1 shadow-inner shadow-white/30 backdrop-blur">
                         <div className="pointer-events-none absolute left-0 top-0 h-full w-12 rounded-l-full bg-gradient-to-r from-white/90 via-white/60 to-transparent" />
-                <nav className="no-scrollbar relative flex items-center gap-1.5 overflow-x-auto px-2 text-sm font-semibold text-slate-700">
-                    {desktopLinks.map((link) => {
-                        const isActive = pathname?.startsWith(link.href);
-                        return (
-                            <NavLinkPill key={link.href} href={link.href} active={isActive}>
-                                {link.label}
-                            </NavLinkPill>
-                        );
-                    })}
-                </nav>
+                        <nav
+                            ref={navScrollRef}
+                            className="no-scrollbar relative flex items-center gap-1.5 overflow-x-auto px-2 text-sm font-semibold text-slate-700"
+                            onScroll={(evt) => {
+                                const current = evt.currentTarget;
+                                navScrollPosition.current = current.scrollLeft;
+                            }}
+                        >
+                            {desktopLinks.map((link) => {
+                                const isActive = pathname?.startsWith(link.href);
+                                return (
+                                    <NavLinkPill key={link.href} href={link.href} active={isActive}>
+                                        {link.label}
+                                    </NavLinkPill>
+                                );
+                            })}
+                        </nav>
                         <div className="pointer-events-none absolute right-0 top-0 h-full w-12 rounded-r-full bg-gradient-to-l from-white/90 via-white/60 to-transparent" />
                     </div>
                 </div>

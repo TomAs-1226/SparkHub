@@ -7,6 +7,7 @@ import { BookOpenCheck, ExternalLink, Download } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { EASE, FADES, STAGGER, SURFACES } from "@/lib/motion-presets";
 
 interface ResourceItem {
     id: string;
@@ -47,9 +48,10 @@ export default function ResourcesPage() {
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
                 <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    variants={FADES.floatUp}
+                    initial="initial"
+                    animate="animate"
+                    transition={{ ease: EASE.lift }}
                     className="rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-10"
                 >
                     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -86,7 +88,13 @@ export default function ResourcesPage() {
                         )}
                     </div>
 
-                    <div className="mt-8 grid gap-5">
+                    <motion.div
+                        className="mt-8 grid gap-5"
+                        variants={{ hidden: {}, visible: { transition: STAGGER.base } }}
+                        initial="hidden"
+                        animate="visible"
+                        viewport={{ once: true, amount: 0.35 }}
+                    >
                         {loading ? (
                             Array.from({ length: 4 }).map((_, idx) => (
                                 <div key={idx} className="h-[120px] animate-pulse rounded-2xl bg-slate-100" />
@@ -96,9 +104,14 @@ export default function ResourcesPage() {
                                 There are currently no resources in the system.
                             </div>
                         ) : (
-                            resources.map((resource) => (
-                                <article
+                            resources.map((resource, idx) => (
+                                <motion.article
                                     key={resource.id}
+                                    initial={SURFACES.lift.initial}
+                                    whileInView={SURFACES.lift.animate(idx * 0.05)}
+                                    viewport={{ once: true, amount: 0.35 }}
+                                    whileHover={SURFACES.lift.whileHover}
+                                    transition={{ duration: 0.5, ease: EASE.emphasized }}
                                     className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white to-[#F7FBFF] p-6 shadow-xl"
                                 >
                                     <div className="flex items-start justify-between gap-3">
@@ -152,10 +165,10 @@ export default function ResourcesPage() {
                                             </a>
                                         )}
                                     </div>
-                                </article>
+                                </motion.article>
                             ))
                         )}
-                    </div>
+                    </motion.div>
                 </motion.section>
             </main>
         </div>

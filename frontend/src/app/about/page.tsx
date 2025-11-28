@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -12,6 +13,7 @@ const releases = [
         version: "2.9",
         codename: "Silk Pocket",
         date: "September 2025",
+        image: "/releases/silk-pocket.svg",
         highlights: [
             "Glass nav now auto-switches to a profile-style menu on slim screens while staying scrollable and accessible",
             "Navigation drawers reuse the shared non-linear easing so mobile toggles and submenus feel consistent",
@@ -23,6 +25,7 @@ const releases = [
         version: "2.8",
         codename: "Cascade Bloom",
         date: "August 2025",
+        image: "/releases/cascade-bloom.svg",
         highlights: [
             "Non-linear motion presets now wrap contact, recovery, and opportunities flows with shared easing and springs",
             "Animated submenu shells keep nav, drawers, and expandable cards consistent across desktop and pocket layouts",
@@ -34,6 +37,7 @@ const releases = [
         version: "2.7",
         codename: "Harbor Prism",
         date: "July 2025",
+        image: "/releases/harbor-prism.svg",
         highlights: [
             "Glass nav now auto-compacts into a horizontally scrolling strip on tight widths without hiding any links",
             "Desktop pills keep their breathing room while overflow gradients hint that you can scroll for more destinations",
@@ -45,6 +49,7 @@ const releases = [
         version: "2.6",
         codename: "Ribbon Drift",
         date: "June 2025",
+        image: "/releases/ribbon-drift.svg",
         highlights: [
             "Mobile glass nav now wraps pills instead of overflowing so every page stays reachable on tight screens",
             "Shared non-linear motion presets animate drawers, cards, and menus for a consistent Apple-like feel",
@@ -56,6 +61,7 @@ const releases = [
         version: "2.5",
         codename: "Pocket Glass",
         date: "May 2025",
+        image: "/releases/pocket-glass.svg",
         highlights: [
             "Responsive nav that tucks quick links into the menu on tight screens while keeping desktop pills unchanged",
             "Compact profile access and glass chrome that stay readable on phones without losing the frosted effect",
@@ -67,6 +73,7 @@ const releases = [
         version: "2.4",
         codename: "Velvet Pulse",
         date: "April 2025",
+        image: "/releases/velvet-pulse.svg",
         highlights: [
             "Removed the obstructive progress bar in favor of breathable glass chrome and visible underlying UI",
             "Unified non-linear motion presets across nav, drawers, release cards, and return-to-top controls",
@@ -78,6 +85,7 @@ const releases = [
         version: "2.3",
         codename: "Aurora Rise",
         date: "March 2025",
+        image: "/releases/aurora-rise.svg",
         highlights: [
             "Cinematic, non-linear glass nav motion that stays readable while revealing UI beneath with edge blur",
             "Floating return-to-top control keeps long reads ergonomic without visual clutter",
@@ -89,6 +97,7 @@ const releases = [
         version: "2.2",
         codename: "Skyline Drift",
         date: "February 2025",
+        image: "/releases/skyline-drift.svg",
         highlights: [
             "Pinned glass nav with softened edge blur that reveals the UI beneath without hiding controls",
             "Navigation pills keep their spacing and single-line join actions while animating smoothly at the top of the page",
@@ -100,6 +109,7 @@ const releases = [
         version: "2.1",
         codename: "Edge Current",
         date: "January 2025",
+        image: "/releases/edge-current.svg",
         highlights: [
             "Glass-pill navigation that stays pinned with edge blur while you scroll",
             "Accent-aware chrome that shows through underlying UI with softer gradients",
@@ -111,6 +121,7 @@ const releases = [
         version: "2.0",
         codename: "Glass Harbor",
         date: "December 2024",
+        image: "/releases/glass-harbor.svg",
         highlights: [
             "Frosted pill navigation with accent-driven gradients and quicker tap targets",
             "Expanded accent palette plus richer theming touches across controls",
@@ -122,6 +133,7 @@ const releases = [
         version: "1.9",
         codename: "Mesa Bloom",
         date: "November 2024",
+        image: "/releases/mesa-bloom.svg",
         highlights: [
             "Ergonomic navigation with scrollable quick links on desktop and mobile",
             "Expanded accent palette with richer customization options",
@@ -133,6 +145,7 @@ const releases = [
         version: "1.8",
         codename: "Sierra Lantern",
         date: "October 2024",
+        image: "/releases/sierra-lantern.svg",
         highlights: [
             "Smarter opportunity publishing with richer validation",
             "Faster API responses with optional clustered workers",
@@ -144,6 +157,7 @@ const releases = [
         version: "1.7",
         codename: "Marigold Arc",
         date: "September 2024",
+        image: "/releases/marigold-arc.svg",
         highlights: ["Improved tutor workspace layouts", "New calendar-ready event exports"],
         notes: "Primary dev: Baichen Yu — smoothing publishing flows and calendars.",
     },
@@ -151,6 +165,7 @@ const releases = [
         version: "1.6",
         codename: "Cinder Bay",
         date: "August 2024",
+        image: "/releases/cinder-bay.svg",
         highlights: ["Resource hub redesign", "Streamlined authentication and session recovery"],
         notes: "Primary dev: Baichen Yu — cleanup with better recovery and discovery.",
     },
@@ -257,12 +272,26 @@ export default function AboutPage() {
                         </div>
                         <motion.div
                             whileHover={{ rotate: -1.5, scale: 1.02 }}
-                            className="rounded-[28px] border border-[#CFE3E0] bg-white/90 p-6 shadow-xl"
+                            className="flex flex-col gap-4 rounded-[28px] border border-[#CFE3E0] bg-white/90 p-6 shadow-xl"
                         >
                             <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">Latest release</p>
                             <h2 className="mt-2 text-2xl font-semibold text-slate-900">{releases[0].version}</h2>
                             <p className="text-sm text-slate-600">{releases[0].date}</p>
                             <p className="text-sm font-semibold text-[#2D8F80]">Codename: {releases[0].codename}</p>
+                            <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, ease: EASE.lift }}
+                                className="overflow-hidden rounded-2xl border border-[#E6F0EF] bg-gradient-to-br from-white via-white to-[#F2F7FF] shadow-inner"
+                            >
+                                <Image
+                                    src={releases[0].image}
+                                    alt={`${releases[0].codename} release art`}
+                                    width={760}
+                                    height={420}
+                                    className="h-full w-full object-cover"
+                                />
+                            </motion.div>
                             <ul className="mt-3 space-y-2 text-sm text-slate-700">
                                 {releases[0].highlights.map((item) => (
                                     <li key={item} className="flex items-start gap-2">
@@ -358,6 +387,20 @@ function ReleaseCard({ release, isOpen, index, onToggle }: { release: Release; i
                         transition={{ duration: 0.35, ease: EASE.lift }}
                         className="overflow-hidden"
                     >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.35, ease: EASE.lift, delay: 0.02 }}
+                            className="mt-3 overflow-hidden rounded-2xl border border-[#E6F0EF] bg-white/90 shadow-inner"
+                        >
+                            <Image
+                                src={release.image}
+                                alt={`${release.codename} release preview`}
+                                width={900}
+                                height={500}
+                                className="h-full w-full object-cover"
+                            />
+                        </motion.div>
                         <ul className="mt-3 space-y-1 text-sm text-slate-700">
                             {release.highlights.map((item) => (
                                 <li key={item} className="flex items-start gap-2">
