@@ -183,19 +183,6 @@ export default function Navbar() {
                 </div>
 
                 <div className="relative z-10 flex flex-1 items-center justify-end gap-2 md:hidden">
-                    <div className="no-scrollbar flex min-w-0 flex-1 items-center justify-end overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-[13px] font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur">
-                        <div className="relative flex w-full flex-nowrap items-center gap-1 pr-8">
-                            <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white/85 to-transparent" aria-hidden />
-                            {desktopLinks.map((link) => {
-                                const isActive = pathname?.startsWith(link.href);
-                                return (
-                                    <NavLinkPill key={link.href} href={link.href} active={isActive} compact>
-                                        {link.label}
-                                    </NavLinkPill>
-                                );
-                            })}
-                        </div>
-                    </div>
                     <button
                         className="inline-flex items-center justify-center rounded-full border border-white/70 bg-white/80 p-2 text-slate-700 shadow-sm shadow-white/40"
                         onClick={() => setOpen((v) => !v)}
@@ -237,7 +224,7 @@ export default function Navbar() {
                         transition={{ duration: 0.3, ease: EASE.emphasized }}
                         className="mx-auto mt-2 max-w-[1180px] rounded-3xl border border-[color:var(--sh-glass-border)] bg-white/90 p-4 shadow-[0_22px_60px_-30px_rgba(15,23,42,0.45)] ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur-2xl md:hidden"
                     >
-                        <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
+                        <div className="flex max-h-[70vh] flex-col gap-2 overflow-y-auto text-sm font-semibold text-slate-700">
                             {desktopLinks.map((link) => (
                                 <Link
                                     key={link.href}

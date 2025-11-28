@@ -9,6 +9,17 @@ import { EASE, FADES } from "@/lib/motion-presets";
 
 const releases = [
     {
+        version: "2.9",
+        codename: "Silk Pocket",
+        date: "September 2025",
+        highlights: [
+            "Glass nav now auto-switches to a profile-style menu on slim screens while staying scrollable and accessible",
+            "Navigation drawers reuse the shared non-linear easing so mobile toggles and submenus feel consistent",
+            "Pinned chrome keeps desktop spacing intact as animations stay smooth at the top of every page",
+        ],
+        notes: "Primary dev: Baichen Yu — keeping every destination reachable with silky mobile menus and unified motion.",
+    },
+    {
         version: "2.8",
         codename: "Cascade Bloom",
         date: "August 2025",
