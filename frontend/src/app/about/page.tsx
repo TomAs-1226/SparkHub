@@ -5,18 +5,30 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
 import SiteNav from "@/components/site-nav";
+import { EASE, FADES } from "@/lib/motion-presets";
 
 const releases = [
+    {
+        version: "2.4",
+        codename: "Velvet Pulse",
+        date: "April 2025",
+        highlights: [
+            "Removed the obstructive progress bar in favor of breathable glass chrome and visible underlying UI",
+            "Unified non-linear motion presets across nav, drawers, release cards, and return-to-top controls",
+            "Dedicated animation shells for expandable menus keep sub-navigation fluid and consistently timed",
+        ],
+        notes: "Primary dev: Baichen Yu — leading the motion unification, glass refinement, and ergonomics refresh.",
+    },
     {
         version: "2.3",
         codename: "Aurora Rise",
         date: "March 2025",
         highlights: [
             "Cinematic, non-linear glass nav motion that stays readable while revealing UI beneath with edge blur",
-            "Dynamic scroll progress glow lifted above the nav plus a floating return-to-top button for long reads",
+            "Floating return-to-top control keeps long reads ergonomic without visual clutter",
             "Accent-rich chrome touches extended to quick actions, drawers, and new surface veils",
         ],
-        notes: "Primary dev: Baichen Yu — bringing Apple-like motion polish, handy shortcuts, and clearer progress cues.",
+        notes: "Primary dev: Baichen Yu — bringing Apple-like motion polish, handy shortcuts, and clearer cues.",
     },
     {
         version: "2.2",
@@ -91,12 +103,12 @@ const releases = [
 
 const featureCallouts = [
     {
-        title: "Always know where you are",
-        copy: "A lifted progress glow sits above the glass nav while a floating return-to-top pill keeps long reads ergonomic.",
+        title: "Glide across the page",
+        copy: "Pinned frosted nav with edge blur, breathing space, and a floating return-to-top keeps you oriented without clutter.",
     },
     {
         title: "Apple-inspired motion",
-        copy: "Non-linear easing, subtle parallax veils, and springy controls make navigation feel lively without being loud.",
+        copy: "Non-linear easing, subtle parallax veils, and springy controls now power drawers, menus, and release cards alike.",
     },
     {
         title: "Opportunities built to grow",
@@ -124,7 +136,7 @@ const featureCallouts = [
     },
     {
         title: "Always-visible glass nav",
-        copy: "A frosted pill that follows you with edge blur, progressive glow, and ergonomic spacing so links stay easy to tap.",
+        copy: "A frosted pill that follows you with edge blur, ergonomic spacing, and glass veils so links stay easy to tap.",
     },
     {
         title: "Theme it your way",
@@ -136,11 +148,6 @@ const featureCallouts = [
     },
 ];
 
-const fadeUp = {
-    initial: { opacity: 0, y: 24 },
-    animate: { opacity: 1, y: 0 },
-};
-
 export default function AboutPage() {
     const [openRelease, setOpenRelease] = useState(releases[0].version);
 
@@ -149,8 +156,9 @@ export default function AboutPage() {
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
                 <motion.section
-                    {...fadeUp}
-                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    variants={FADES.gentleUp}
+                    initial="initial"
+                    animate="animate"
                     className="overflow-hidden rounded-[32px] border border-white/60 bg-gradient-to-br from-white via-white to-[#E6F4F1] p-8 shadow-2xl md:p-12"
                 >
                     <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -201,81 +209,39 @@ export default function AboutPage() {
 
                 <section className="mt-10 grid gap-6 md:grid-cols-2">
                     <motion.div
-                        {...fadeUp}
-                        transition={{ duration: 0.45, delay: 0.05 }}
+                        variants={FADES.gentleUp}
+                        initial="initial"
+                        animate="animate"
+                        transition={{ delay: 0.05 }}
                         className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-2xl"
                     >
                         <p className="text-xs font-semibold uppercase tracking-wide text-[#2D8F80]">Release notes</p>
                         <h3 className="mt-2 text-xl font-semibold text-slate-900">What changed recently</h3>
                         <div className="mt-4 space-y-4">
-                            {releases.map((release, idx) => {
-                                const isOpen = openRelease === release.version;
-                                return (
-                                    <motion.button
-                                        key={release.version}
-                                        whileHover={{ y: -2 }}
-                                        onClick={() => setOpenRelease(isOpen ? "" : release.version)}
-                                        className={`w-full rounded-2xl border p-4 text-left shadow-sm transition ${
-                                            isOpen
-                                                ? "border-[var(--sh-accent)] bg-[#F9FEFD] shadow-[var(--sh-card-glow)]"
-                                                : "border-[#E6F0EF] bg-[#F9FEFD]"
-                                        }`}
-                                        transition={{ duration: 0.2, delay: idx * 0.03 }}
-                                    >
-                                        <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
-                                            <div className="flex items-center gap-2">
-                                                <span className="rounded-full bg-[var(--sh-accent-soft)] px-3 py-1 text-xs font-bold text-[var(--sh-accent)]">
-                                                    Codename {release.codename}
-                                                </span>
-                                                <span>Version {release.version}</span>
-                                            </div>
-                                            <span className="text-xs text-slate-500">{release.date}</span>
-                                        </div>
-                                        <AnimatePresence initial={false}>
-                                            {isOpen && (
-                                                <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden"
-                                                >
-                                                    <ul className="mt-3 space-y-1 text-sm text-slate-700">
-                                                        {release.highlights.map((item) => (
-                                                            <li key={item} className="flex items-start gap-2">
-                                                                <span className="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-[#2B2E83]" />
-                                                                <span>{item}</span>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                    <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold text-[#2B2E83] shadow-[var(--sh-card-glow)]">
-                                                        {release.notes}
-                                                    </p>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </motion.button>
-                                );
-                            })}
+                            {releases.map((release, idx) => (
+                                <ReleaseCard
+                                    key={release.version}
+                                    release={release}
+                                    isOpen={openRelease === release.version}
+                                    index={idx}
+                                    onToggle={() => setOpenRelease(openRelease === release.version ? "" : release.version)}
+                                />
+                            ))}
                         </div>
                     </motion.div>
 
                     <motion.div
-                        {...fadeUp}
-                        transition={{ duration: 0.45, delay: 0.1 }}
+                        variants={FADES.gentleUp}
+                        initial="initial"
+                        animate="animate"
+                        transition={{ delay: 0.1 }}
                         className="rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-2xl"
                     >
                         <p className="text-xs font-semibold uppercase tracking-wide text-[#2B2E83]">Why teams choose SparkHub</p>
                         <h3 className="mt-2 text-xl font-semibold text-slate-900">Feature highlights</h3>
                         <div className="mt-4 grid gap-4">
-                            {featureCallouts.map((feature) => (
-                                <motion.div
-                                    key={feature.title}
-                                    whileHover={{ scale: 1.01 }}
-                                    className="rounded-2xl border border-[#E6EAF5] bg-[#F8FAFF] p-4 shadow-sm"
-                                >
-                                    <p className="text-sm font-semibold text-slate-900">{feature.title}</p>
-                                    <p className="mt-1 text-sm text-slate-600">{feature.copy}</p>
-                                </motion.div>
+                            {featureCallouts.map((feature, idx) => (
+                                <FeatureCard key={feature.title} feature={feature} index={idx} />
                             ))}
                         </div>
                         <div className="mt-6 rounded-2xl border border-dashed border-[#CFE3E0] bg-[#F2FBF9] p-4 text-sm text-slate-700">
@@ -285,5 +251,67 @@ export default function AboutPage() {
                 </section>
             </main>
         </div>
+    );
+}
+
+type Release = (typeof releases)[number];
+
+function ReleaseCard({ release, isOpen, index, onToggle }: { release: Release; isOpen: boolean; index: number; onToggle: () => void }) {
+    return (
+        <motion.button
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.995 }}
+            onClick={onToggle}
+            className={`w-full rounded-2xl border p-4 text-left shadow-sm transition ${
+                isOpen ? "border-[var(--sh-accent)] bg-[#F9FEFD] shadow-[var(--sh-card-glow)]" : "border-[#E6F0EF] bg-[#F9FEFD]"
+            }`}
+            transition={{ duration: 0.3, ease: EASE.emphasized, delay: index * 0.035 }}
+        >
+            <div className="flex items-center justify-between text-sm font-semibold text-slate-800">
+                <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-[var(--sh-accent-soft)] px-3 py-1 text-xs font-bold text-[var(--sh-accent)]">
+                        Codename {release.codename}
+                    </span>
+                    <span>Version {release.version}</span>
+                </div>
+                <span className="text-xs text-slate-500">{release.date}</span>
+            </div>
+            <AnimatePresence initial={false}>
+                {isOpen && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0, y: -6 }}
+                        animate={{ height: "auto", opacity: 1, y: 0 }}
+                        exit={{ height: 0, opacity: 0, y: -4 }}
+                        transition={{ duration: 0.35, ease: EASE.lift }}
+                        className="overflow-hidden"
+                    >
+                        <ul className="mt-3 space-y-1 text-sm text-slate-700">
+                            {release.highlights.map((item) => (
+                                <li key={item} className="flex items-start gap-2">
+                                    <span className="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-[#2B2E83]" />
+                                    <span>{item}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold text-[#2B2E83] shadow-[var(--sh-card-glow)]">
+                            {release.notes}
+                        </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </motion.button>
+    );
+}
+
+function FeatureCard({ feature, index }: { feature: { title: string; copy: string }; index: number }) {
+    return (
+        <motion.div
+            whileHover={{ scale: 1.015, y: -1 }}
+            transition={{ duration: 0.3, ease: EASE.swift, delay: index * 0.025 }}
+            className="rounded-2xl border border-[#E6EAF5] bg-[#F8FAFF] p-4 shadow-sm"
+        >
+            <p className="text-sm font-semibold text-slate-900">{feature.title}</p>
+            <p className="mt-1 text-sm text-slate-600">{feature.copy}</p>
+        </motion.div>
     );
 }

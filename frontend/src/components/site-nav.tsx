@@ -10,6 +10,7 @@ import SparkHubLogo from "@/components/SparkHubLogo";
 import { clearToken } from "@/lib/auth";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ACCENT_OPTIONS, AccentOption, applyAccent, loadAccent } from "@/lib/accent-theme";
+import { EASE } from "@/lib/motion-presets";
 
 type RoleAwareLink = { href: string; label: string; roles?: string[] };
 
@@ -55,7 +56,6 @@ export default function Navbar() {
     const [clientReady, setClientReady] = useState(false);
     const [accent, setAccent] = useState<AccentOption | null>(null);
     const [scrolled, setScrolled] = useState(false);
-    const [scrollProgress, setScrollProgress] = useState(0);
     const [atTop, setAtTop] = useState(true);
     const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -74,10 +74,8 @@ export default function Navbar() {
     useEffect(() => {
         const handleScroll = () => {
             const scrollTop = window.scrollY;
-            const docHeight = document.documentElement.scrollHeight - window.innerHeight;
             setScrolled(scrollTop > 8);
             setAtTop(scrollTop < 4);
-            setScrollProgress(docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0);
             setShowScrollTop(scrollTop > 320);
         };
         handleScroll();
@@ -106,40 +104,34 @@ export default function Navbar() {
         <>
             <motion.header
                 className="relative sticky top-0 z-50 w-full px-2 pb-3 sm:px-4"
-                animate={{ y: scrolled ? 4 : 0, scale: scrolled ? 0.995 : 1, filter: scrolled ? "drop-shadow(0 16px 40px rgba(15,23,42,0.14))" : "drop-shadow(0 12px 32px rgba(15,23,42,0.1))" }}
-                transition={{ duration: 0.38, ease: [0.22, 0.61, 0.36, 1] }}
+                animate={{
+                    y: scrolled ? 4 : 0,
+                    scale: scrolled ? 0.995 : 1,
+                    filter: scrolled
+                        ? "drop-shadow(0 16px 40px rgba(15,23,42,0.14))"
+                        : "drop-shadow(0 12px 32px rgba(15,23,42,0.1))",
+                }}
+                transition={{ duration: 0.5, ease: EASE.emphasized }}
             >
             <motion.div
                 className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white/75 via-white/40 to-transparent backdrop-blur-2xl"
                 aria-hidden
                 animate={{ opacity: scrolled ? 0.95 : 0.72, filter: scrolled ? "blur(7px)" : "blur(4px)" }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.6, ease: EASE.lift }}
             />
-            <div className="pointer-events-none absolute inset-x-3 top-1 z-[55] h-1.5 overflow-hidden rounded-full border border-white/60 bg-white/80 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)]" aria-hidden>
-                <motion.div
-                    className="h-full rounded-full bg-[var(--sh-accent)]/80 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.55)]"
-                    animate={{ width: `${Math.max(scrollProgress * 100, scrolled ? 14 : 0)}%`, opacity: scrolled ? 1 : 0.75 }}
-                    transition={{ type: "spring", stiffness: 130, damping: 20, mass: 0.7 }}
-                />
-            </div>
             <motion.div
                 className="pointer-events-none absolute inset-x-2 top-2 h-[68px] rounded-full bg-[var(--sh-glass-edge)] blur-2xl"
                 aria-hidden
-                animate={{ opacity: atTop ? 0.8 : 1, scaleX: scrolled ? 1.02 : 1 }}
+                animate={{ opacity: atTop ? 0.82 : 0.96, scaleX: scrolled ? 1.02 : 1 }}
+                transition={{ duration: 0.6, ease: EASE.emphasized }}
             />
             <div className="relative mx-auto mt-2 flex max-w-[1220px] items-center gap-3 rounded-full border border-[color:var(--sh-glass-border)] bg-[color:rgba(255,255,255,0.78)] px-4 py-2.5 shadow-[0_28px_80px_-32px_rgba(15,23,42,0.45)] backdrop-blur-2xl backdrop-saturate-150 ring-1 ring-[color:var(--sh-accent-veil)]">
                 <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_12%_26%,var(--sh-accent-soft)_0,transparent_35%),radial-gradient(circle_at_82%_40%,var(--sh-accent-glass)_0,transparent_30%),linear-gradient(120deg,var(--sh-accent-veil),transparent_45%)] pointer-events-none" aria-hidden />
                 <motion.div
                     className="pointer-events-none absolute inset-1 rounded-full border border-white/40"
                     aria-hidden
-                    animate={{ opacity: scrolled ? 0.7 : 0.35 }}
-                    transition={{ duration: 0.25 }}
-                />
-                <motion.div
-                    className="pointer-events-none absolute inset-y-1 left-14 w-24 rounded-full bg-[var(--sh-accent-soft)] blur-3xl"
-                    aria-hidden
-                    animate={{ x: scrollProgress * 60, opacity: atTop ? 0.75 : 0.55 }}
-                    transition={{ type: "spring", stiffness: 80, damping: 18 }}
+                    animate={{ opacity: scrolled ? 0.72 : 0.42, scale: scrolled ? 1.01 : 1 }}
+                    transition={{ duration: 0.45, ease: EASE.emphasized }}
                 />
                 <Link
                     href="/"
@@ -155,7 +147,12 @@ export default function Navbar() {
                             {desktopLinks.map((link) => {
                                 const isActive = pathname?.startsWith(link.href);
                                 return (
-                                    <motion.div key={link.href} whileHover={{ y: -1 }} transition={{ duration: 0.15 }}>
+                                    <motion.div
+                                        key={link.href}
+                                        whileHover={{ y: -1 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        transition={{ duration: 0.22, ease: EASE.swift }}
+                                    >
                                         <Link
                                             href={link.href}
                                             className={`rounded-full px-3 py-1.5 whitespace-nowrap transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--sh-accent)] ${
@@ -252,10 +249,10 @@ export default function Navbar() {
             <AnimatePresence initial={false}>
                 {open && (
                     <motion.div
-                        initial={{ opacity: 0, y: -6 }}
+                        initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        transition={{ duration: 0.18 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.3, ease: EASE.emphasized }}
                         className="mx-auto mt-2 max-w-[1180px] rounded-3xl border border-[color:var(--sh-glass-border)] bg-white/90 p-4 shadow-[0_22px_60px_-30px_rgba(15,23,42,0.45)] ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur-2xl md:hidden"
                     >
                         <div className="flex flex-col gap-2 text-sm font-semibold text-slate-700">
@@ -433,8 +430,15 @@ function ProfileMenu({
                     <Image src={avatar} alt="Profile avatar" width={36} height={36} className="h-full w-full object-cover" />
                 </span>
             </button>
-            {open && (
-                <div className="absolute right-0 mt-3 w-60 rounded-2xl border border-white/70 bg-white/90 p-3 text-sm shadow-2xl ring-1 ring-[var(--sh-accent-soft)] backdrop-blur">
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                        transition={{ duration: 0.26, ease: EASE.lift }}
+                        className="absolute right-0 mt-3 w-60 rounded-2xl border border-white/70 bg-white/90 p-3 text-sm shadow-2xl ring-1 ring-[var(--sh-accent-soft)] backdrop-blur"
+                    >
                     <p className="px-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Quick access</p>
                     <div className="mt-2 flex flex-col gap-1">
                         {menuItems.map((item) => (
@@ -477,18 +481,19 @@ function ProfileMenu({
                             <p className="text-[11px] text-slate-500">Glass pill nav and action buttons will instantly pick up your accent.</p>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setOpen(false);
-                            onSignOut();
-                        }}
-                        className="mt-3 w-full rounded-full bg-[var(--sh-accent)] px-4 py-2 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] hover:brightness-110"
-                    >
-                        Sign out
-                    </button>
-                </div>
-            )}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setOpen(false);
+                                onSignOut();
+                            }}
+                            className="mt-3 w-full rounded-full bg-[var(--sh-accent)] px-4 py-2 text-sm font-semibold text-[var(--sh-accent-contrast)] shadow-[var(--sh-card-glow)] hover:brightness-110"
+                        >
+                            Sign out
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
@@ -497,14 +502,14 @@ function ScrollToTop({ show }: { show: boolean }) {
     return (
         <AnimatePresence>
             {show && (
-                <motion.button
-                    key="scrolltop"
-                    initial={{ opacity: 0, y: 40, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 40, scale: 0.9 }}
-                    transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                    className="fixed bottom-6 right-4 z-[70] inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/85 px-3 py-2 text-sm font-semibold text-slate-800 shadow-lg shadow-[var(--sh-card-glow)] ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur hover:translate-y-[-2px] hover:border-[var(--sh-accent-soft)] hover:shadow-xl"
+                    <motion.button
+                        key="scrolltop"
+                        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 40, scale: 0.9 }}
+                    transition={{ duration: 0.42, ease: EASE.lift }}
+                        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                        className="fixed bottom-6 right-4 z-[70] inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/85 px-3 py-2 text-sm font-semibold text-slate-800 shadow-lg shadow-[var(--sh-card-glow)] ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur hover:translate-y-[-2px] hover:border-[var(--sh-accent-soft)] hover:shadow-xl"
                 >
                     <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--sh-accent-soft)] text-[color:var(--sh-accent-ink)] shadow-inner shadow-white/60">
                         ↑
