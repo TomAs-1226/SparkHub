@@ -9,6 +9,17 @@ import { EASE, FADES } from "@/lib/motion-presets";
 
 const releases = [
     {
+        version: "2.8",
+        codename: "Cascade Bloom",
+        date: "August 2025",
+        highlights: [
+            "Non-linear motion presets now wrap contact, recovery, and opportunities flows with shared easing and springs",
+            "Animated submenu shells keep nav, drawers, and expandable cards consistent across desktop and pocket layouts",
+            "Return-to-top controls, CTA pills, and feature suites all inherit the unified glass and accent animation language",
+        ],
+        notes: "Primary dev: Baichen Yu — shipping site-wide motion cohesion, smoother drawers, and glassier CTAs across pages.",
+    },
+    {
         version: "2.7",
         codename: "Harbor Prism",
         date: "July 2025",
@@ -140,12 +151,20 @@ const featureCallouts = [
         copy: "Glass pills scroll horizontally with gentle gradients on tight screens so pages like Contact or Tutors stay one tap away.",
     },
     {
+        title: "Unified non-linear motion",
+        copy: "Shared easing and spring presets now drive nav, drawers, cards, and recovery flows so every animation feels connected.",
+    },
+    {
         title: "Pocket-ready glass nav",
         copy: "On narrow screens the frosted pills slide into a compact strip or menu while desktop spacing stays untouched.",
     },
     {
         title: "Glide across the page",
         copy: "Pinned frosted nav with edge blur, breathing space, and a floating return-to-top keeps you oriented without clutter.",
+    },
+    {
+        title: "Glass CTAs with character",
+        copy: "Return-to-top buttons, contact CTAs, and opportunities cards now lift with accent glows and non-linear motion cues.",
     },
     {
         title: "Apple-inspired motion",

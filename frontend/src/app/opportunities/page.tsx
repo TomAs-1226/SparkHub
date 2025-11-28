@@ -7,6 +7,12 @@ import { Briefcase, Download, ExternalLink } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { EASE, FADES, STAGGER, SURFACES } from "@/lib/motion-presets";
+
+const staggeredList = {
+    hidden: {},
+    visible: { transition: STAGGER.slow },
+};
 
 interface JobItem {
     id: string;
@@ -50,9 +56,9 @@ export default function OpportunitiesPage() {
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
                 <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    variants={FADES.floatUp}
+                    initial="initial"
+                    animate="animate"
                     className="rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-10"
                 >
                     <div className="flex flex-wrap items-center justify-between gap-4">
@@ -118,7 +124,13 @@ export default function OpportunitiesPage() {
                         );
                     })()}
 
-                    <div className="mt-8 grid gap-6">
+                    <motion.div
+                        className="mt-8 grid gap-6"
+                        variants={staggeredList}
+                        initial="hidden"
+                        animate="visible"
+                        viewport={{ once: true, amount: 0.45 }}
+                    >
                         {loading ? (
                             Array.from({ length: 3 }).map((_, idx) => (
                                 <div key={idx} className="h-[180px] animate-pulse rounded-2xl bg-slate-100" />
@@ -131,10 +143,11 @@ export default function OpportunitiesPage() {
                             jobs.map((job, idx) => (
                                 <motion.article
                                     key={job.id}
-                                    initial={{ opacity: 0, y: 12 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.25, delay: idx * 0.04 }}
-                                    whileHover={{ y: -4, scale: 1.01 }}
+                                    initial={SURFACES.lift.initial}
+                                    whileInView={SURFACES.lift.animate(idx * 0.05)}
+                                    viewport={{ once: true, amount: 0.4 }}
+                                    whileHover={SURFACES.lift.whileHover}
+                                    transition={{ duration: 0.6, ease: EASE.emphasized }}
                                     className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white to-[#F4F8FF] p-6 shadow-xl"
                                 >
                                     <div className="flex items-start justify-between gap-3">
@@ -202,7 +215,7 @@ export default function OpportunitiesPage() {
                                 </motion.article>
                             ))
                         )}
-                    </div>
+                    </motion.div>
                 </motion.section>
             </main>
         </div>
