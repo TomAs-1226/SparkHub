@@ -141,7 +141,7 @@ export default function Navbar() {
                     <SparkHubLogo className="h-8 w-auto text-slate-900" />
                 </Link>
 
-                <div className="relative z-10 hidden flex-1 md:flex">
+                <div className="relative z-10 hidden min-w-0 flex-1 md:flex">
                     <div className="relative w-full rounded-full border border-white/60 bg-white/70 px-1 py-1 shadow-inner shadow-white/30 backdrop-blur">
                         <div className="pointer-events-none absolute left-0 top-0 h-full w-12 rounded-l-full bg-gradient-to-r from-white/90 via-white/60 to-transparent" />
                 <nav className="no-scrollbar relative flex items-center gap-1.5 overflow-x-auto px-2 text-sm font-semibold text-slate-700">
@@ -183,9 +183,9 @@ export default function Navbar() {
                 </div>
 
                 <div className="relative z-10 flex flex-1 items-center justify-end gap-2 md:hidden">
-                    <div className="no-scrollbar hidden max-w-[68%] flex-1 items-center justify-end overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-[13px] font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur min-[360px]:flex">
-                        <div className="relative flex w-full flex-nowrap items-center gap-1 pr-6">
-                            <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-white/85 to-transparent" aria-hidden />
+                    <div className="no-scrollbar flex min-w-0 flex-1 items-center justify-end overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-[13px] font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur">
+                        <div className="relative flex w-full flex-nowrap items-center gap-1 pr-8">
+                            <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white/85 to-transparent" aria-hidden />
                             {desktopLinks.map((link) => {
                                 const isActive = pathname?.startsWith(link.href);
                                 return (
