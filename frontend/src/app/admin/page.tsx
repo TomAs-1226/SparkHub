@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BookMarked, Briefcase, CalendarDays, MessageSquare, Trash2, UsersRound } from "lucide-react";
+import { BookMarked, Briefcase, CalendarDays, FileUp, MessageSquare, Send, Trash2, UsersRound } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { api } from "@/lib/api";
@@ -61,6 +61,25 @@ interface FeedbackRow {
     userId?: string | null;
 }
 
+interface WeeklyAttachment {
+    name: string;
+    url: string;
+    mimeType?: string | null;
+    size?: number | null;
+}
+
+interface WeeklyUpdateRow {
+    id: string;
+    title: string;
+    summary?: string | null;
+    body: string;
+    status: string;
+    publishAt?: string | null;
+    publishedAt?: string | null;
+    attachments?: WeeklyAttachment[];
+    createdAt?: string;
+}
+
 const EVENT_DEFAULT = {
     title: "",
     location: "",
@@ -96,6 +115,14 @@ const JOB_DEFAULT = {
     files: [] as string[],
 };
 
+const WEEKLY_UPDATE_DEFAULT = {
+    title: "",
+    summary: "",
+    body: "",
+    publishAt: "",
+    attachments: [] as WeeklyAttachment[],
+};
+
 export default function AdminPage() {
     const router = useRouter();
     const { user, loading: userLoading } = useCurrentUser();
@@ -110,12 +137,16 @@ export default function AdminPage() {
     const [jobs, setJobs] = useState<JobRow[]>([]);
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
+    const [weeklyUpdates, setWeeklyUpdates] = useState<WeeklyUpdateRow[]>([]);
 
     const [eventForm, setEventForm] = useState(EVENT_DEFAULT);
     const [resourceForm, setResourceForm] = useState(RESOURCE_DEFAULT);
     const [jobForm, setJobForm] = useState(JOB_DEFAULT);
+    const [weeklyForm, setWeeklyForm] = useState(WEEKLY_UPDATE_DEFAULT);
 
     const [saving, setSaving] = useState({ event: false, resource: false, job: false });
+    const [weeklySaving, setWeeklySaving] = useState(false);
+    const [weeklyStatus, setWeeklyStatus] = useState<string | null>(null);
 
     const loadAll = useCallback(async () => {
         const endpoints = [
@@ -124,6 +155,7 @@ export default function AdminPage() {
             { key: "jobs", path: "/jobs" },
             { key: "users", path: "/admin/users" },
             { key: "feedback", path: "/feedback" },
+            { key: "weeklyUpdates", path: "/emails/weekly-updates/admin" },
         ] as const;
 
         const settled = await Promise.all(
@@ -148,6 +180,7 @@ export default function AdminPage() {
             jobs: [] as JobRow[],
             users: [] as AdminUser[],
             feedback: [] as FeedbackRow[],
+            weeklyUpdates: [] as WeeklyUpdateRow[],
         };
         const errors: string[] = [];
         settled.forEach((result) => {
@@ -181,6 +214,7 @@ export default function AdminPage() {
             setJobs(data.jobs);
             setUsers(data.users);
             setFeedback(data.feedback);
+            setWeeklyUpdates(data.weeklyUpdates);
             setLoadAlert(errors.length ? `Some sections failed to load: ${errors.join(" · ")}` : null);
             setBootstrap(false);
         })();
@@ -196,8 +230,9 @@ export default function AdminPage() {
             { label: "Opportunities", value: jobs.length },
             { label: "Users", value: users.length },
             { label: "Contacts", value: feedback.length },
+            { label: "Weekly updates", value: weeklyUpdates.length },
         ],
-        [events.length, resources.length, jobs.length, users.length, feedback.length],
+        [events.length, resources.length, jobs.length, users.length, feedback.length, weeklyUpdates.length],
     );
 
     const refreshAll = useCallback(async () => {
@@ -207,6 +242,7 @@ export default function AdminPage() {
         setJobs(data.jobs);
         setUsers(data.users);
         setFeedback(data.feedback);
+        setWeeklyUpdates(data.weeklyUpdates);
         setLoadAlert(errors.length ? `Some sections failed to load: ${errors.join(" · ")}` : null);
     }, [loadAll]);
 
@@ -295,6 +331,86 @@ export default function AdminPage() {
             setStatusMsg(getErrorMessage(err) || "Failed to create opportunity.");
         } finally {
             setSaving((s) => ({ ...s, job: false }));
+        }
+    }
+
+    async function handleUploadWeeklyAttachment(file: File) {
+        setWeeklyStatus("Uploading attachment…");
+        try {
+            const path = await uploadAsset(file);
+            const attachment: WeeklyAttachment = {
+                name: file.name,
+                url: path,
+                mimeType: file.type || undefined,
+                size: file.size,
+            };
+            if (file.type?.startsWith("text/")) {
+                const fileText = await file.text();
+                setWeeklyForm((current) => ({ ...current, body: current.body || `<pre>${fileText}</pre>` }));
+            }
+            setWeeklyForm((current) => ({ ...current, attachments: [...current.attachments, attachment] }));
+            setWeeklyStatus("Attachment added to this weekly update.");
+        } catch (err) {
+            setWeeklyStatus(getErrorMessage(err));
+        }
+    }
+
+    function removeWeeklyAttachment(url: string) {
+        setWeeklyForm((current) => ({
+            ...current,
+            attachments: current.attachments.filter((att) => att.url !== url),
+        }));
+    }
+
+    async function saveWeeklyUpdate(publishNow?: boolean) {
+        setWeeklySaving(true);
+        setWeeklyStatus(null);
+        try {
+            if (!weeklyForm.title || !weeklyForm.body) {
+                throw new Error("Add a title and body before publishing.");
+            }
+            const res = await api("/emails/weekly-updates", {
+                method: "POST",
+                body: JSON.stringify({
+                    ...weeklyForm,
+                    publishAt: weeklyForm.publishAt || undefined,
+                    status: publishNow ? "PUBLISHED" : "DRAFT",
+                }),
+            });
+            const json = await safeJson(res);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to save weekly update.");
+            setWeeklyForm(WEEKLY_UPDATE_DEFAULT);
+            await refreshAll();
+            setWeeklyStatus(publishNow ? "Weekly update published." : "Weekly update saved.");
+        } catch (err) {
+            setWeeklyStatus(getErrorMessage(err));
+        } finally {
+            setWeeklySaving(false);
+        }
+    }
+
+    async function publishExistingWeeklyUpdate(id: string) {
+        setWeeklyStatus("Publishing update…");
+        try {
+            const res = await api(`/emails/weekly-updates/${id}/publish`, { method: "POST" });
+            const json = await safeJson(res);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to publish update.");
+            await refreshAll();
+            setWeeklyStatus("Published.");
+        } catch (err) {
+            setWeeklyStatus(getErrorMessage(err));
+        }
+    }
+
+    async function sendWeeklyUpdate(id: string) {
+        setWeeklyStatus("Sending weekly email to subscribers…");
+        try {
+            const res = await api(`/emails/weekly-updates/${id}/send`, { method: "POST" });
+            const json = await safeJson(res);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to send update.");
+            setWeeklyStatus(`Sent to ${json?.sent ?? 0} subscribers.`);
+        } catch (err) {
+            setWeeklyStatus(getErrorMessage(err));
         }
     }
 
@@ -788,6 +904,154 @@ export default function AdminPage() {
                                     {saving.job ? "Saving..." : "Publish opportunity"}
                                 </button>
                             </form>
+                        </AdminCard>
+
+                        <AdminCard title="Weekly update email" icon={<Send className="h-5 w-5" />}>
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    void saveWeeklyUpdate(false);
+                                }}
+                                className="space-y-3 text-sm"
+                            >
+                                <input
+                                    type="text"
+                                    placeholder="Weekly headline"
+                                    value={weeklyForm.title}
+                                    onChange={(e) => setWeeklyForm({ ...weeklyForm, title: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    required
+                                />
+                                <textarea
+                                    placeholder="Summary for inbox previews"
+                                    value={weeklyForm.summary}
+                                    onChange={(e) => setWeeklyForm({ ...weeklyForm, summary: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    rows={2}
+                                />
+                                <textarea
+                                    placeholder="Body (HTML allowed)"
+                                    value={weeklyForm.body}
+                                    onChange={(e) => setWeeklyForm({ ...weeklyForm, body: e.target.value })}
+                                    className="w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                    rows={4}
+                                    required
+                                />
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Publish at (optional)
+                                    <input
+                                        type="datetime-local"
+                                        value={weeklyForm.publishAt}
+                                        onChange={(e) => setWeeklyForm({ ...weeklyForm, publishAt: e.target.value })}
+                                        className="mt-1 w-full rounded-2xl border border-slate-200 px-3 py-2"
+                                    />
+                                </label>
+                                <label className="text-xs font-semibold text-slate-500">
+                                    Attach files (text files will auto-format in the email)
+                                    <input
+                                        type="file"
+                                        className="mt-1 w-full text-xs"
+                                        onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) await handleUploadWeeklyAttachment(file);
+                                            e.target.value = "";
+                                        }}
+                                    />
+                                    {weeklyForm.attachments.length > 0 && (
+                                        <div className="mt-2 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-[11px] text-slate-700">
+                                            {weeklyForm.attachments.map((att) => (
+                                                <div key={att.url} className="flex items-center justify-between gap-2">
+                                                    <div>
+                                                        <p className="font-semibold">{att.name}</p>
+                                                        <p className="text-[10px] text-slate-500">{att.mimeType || "File"}</p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        className="rounded-full border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-white"
+                                                        onClick={() => removeWeeklyAttachment(att.url)}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </label>
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <button
+                                        type="submit"
+                                        disabled={weeklySaving}
+                                        className="flex-1 rounded-full bg-[#2B2E83] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                    >
+                                        {weeklySaving ? "Saving draft…" : "Save draft"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={weeklySaving}
+                                        onClick={() => saveWeeklyUpdate(true)}
+                                        className="flex-1 rounded-full border border-[#63C0B9] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-[#F4FBFA] disabled:opacity-60"
+                                    >
+                                        {weeklySaving ? "Publishing…" : "Publish now"}
+                                    </button>
+                                </div>
+                                {weeklyStatus && (
+                                    <p className="rounded-2xl border border-slate-100 bg-[#F8FAFC] px-3 py-2 text-xs text-slate-700">{weeklyStatus}</p>
+                                )}
+                            </form>
+                        </AdminCard>
+                    </div>
+
+                    <div className="mt-10">
+                        <AdminCard title="Weekly update queue" icon={<FileUp className="h-5 w-5" />}>
+                            <div className="space-y-3 text-sm">
+                                {weeklyUpdates.length === 0 ? (
+                                    <p className="text-slate-500">No weekly updates yet. Draft one above with optional attachments.</p>
+                                ) : (
+                                    weeklyUpdates.map((update) => (
+                                        <div key={update.id} className="rounded-2xl border border-slate-100 bg-[#F9FBFF] p-4">
+                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-sm font-semibold text-slate-900">{update.title}</p>
+                                                    <p className="text-xs text-slate-500">
+                                                        {update.status} · {update.publishedAt ? formatTimestamp(update.publishedAt) : "Not published"}
+                                                    </p>
+                                                    {update.attachments && update.attachments.length > 0 && (
+                                                        <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[#2B2B2B]">
+                                                            {update.attachments.map((att) => (
+                                                                <a
+                                                                    key={`${update.id}-${att.url}`}
+                                                                    href={att.url}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className="rounded-full bg-white px-2 py-1 font-semibold"
+                                                                >
+                                                                    {att.name || "Attachment"}
+                                                                </a>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-wrap justify-end gap-2 text-xs font-semibold">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => publishExistingWeeklyUpdate(update.id)}
+                                                        className="rounded-full border border-[#63C0B9] px-3 py-1 text-[#2B2B2B] hover:bg-white"
+                                                    >
+                                                        Publish
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => sendWeeklyUpdate(update.id)}
+                                                        className="rounded-full bg-[#2B2E83] px-3 py-1 text-white hover:opacity-90"
+                                                    >
+                                                        Send to subscribers
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </AdminCard>
                     </div>
 

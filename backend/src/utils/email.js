@@ -1,3 +1,5 @@
+const fs = require('fs')
+const path = require('path')
 const nodemailer = require('nodemailer')
 const { prisma } = require('../prisma')
 
@@ -46,11 +48,11 @@ async function recordEmailLog({ to, subject, bodyText, bodyHtml, category, userI
     }
 }
 
-async function sendEmail({ to, subject, text, html, category = 'GENERAL', userId = null, metadata = {} }) {
+async function sendEmail({ to, subject, text, html, category = 'GENERAL', userId = null, metadata = {}, attachments = [] }) {
     const initialLog = await recordEmailLog({ to, subject, bodyText: text, bodyHtml: html, category, userId, status: transporter ? 'QUEUED' : 'SKIPPED', metadata })
 
     if (!transporter) {
-        console.log('Email preview (no SMTP configured):', { to, subject, text, html })
+        console.log('Email preview (no SMTP configured):', { to, subject, text, html, attachments })
         return { ok: true, skipped: true, logId: initialLog?.id }
     }
 
@@ -60,7 +62,8 @@ async function sendEmail({ to, subject, text, html, category = 'GENERAL', userId
             to,
             subject,
             text,
-            html
+            html,
+            attachments
         })
         if (initialLog) {
             await prisma.emailLog.update({ where: { id: initialLog.id }, data: { status: 'SENT', sentAt: new Date() } })
@@ -78,6 +81,45 @@ async function sendEmail({ to, subject, text, html, category = 'GENERAL', userId
 function resolveFrontendUrl(pathname = '') {
     const base = process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000'
     return `${base.replace(/\/$/, '')}${pathname.startsWith('/') ? '' : '/'}${pathname}`
+}
+
+function resolveUploadPath(url = '') {
+    const uploadDir = process.env.UPLOAD_DIR || './uploads'
+    const filename = url.replace(/^\/uploads\//, '')
+    return path.resolve(uploadDir, filename)
+}
+
+function buildAttachmentPreview(attachment) {
+    if (!attachment?.mimeType || !attachment.mimeType.startsWith('text/')) return null
+    const filePath = resolveUploadPath(attachment.url)
+    if (!fs.existsSync(filePath)) return null
+    try {
+        const content = fs.readFileSync(filePath, 'utf-8')
+        const trimmed = content.slice(0, 1200)
+        const more = content.length > trimmed.length ? '\n…' : ''
+        return `<pre style="background:#f8fafc;border-radius:12px;padding:12px;font-family:SFMono-Regular,Menlo,monospace;white-space:pre-wrap;">${trimmed}${more}</pre>`
+    } catch (err) {
+        console.warn('Failed to read attachment preview', err)
+        return null
+    }
+}
+
+function buildAttachmentList(attachments = []) {
+    if (!Array.isArray(attachments) || attachments.length === 0) return { html: '', text: '' }
+    const itemsHtml = []
+    const itemsText = []
+    attachments.forEach((att) => {
+        const safeName = att?.name || 'Attachment'
+        const url = att?.url || ''
+        itemsHtml.push(`<li><a href="${resolveFrontendUrl(url)}" style="color:#4F46E5;">${safeName}</a>${att?.mimeType ? ` <span style="color:#475569">(${att.mimeType})</span>` : ''}</li>`)
+        itemsText.push(`- ${safeName}${att?.mimeType ? ` (${att.mimeType})` : ''}${url ? ` → ${resolveFrontendUrl(url)}` : ''}`)
+        const preview = buildAttachmentPreview(att)
+        if (preview) itemsHtml.push(`<div style="margin:8px 0 16px 0;">${preview}</div>`)
+    })
+    return {
+        html: `<div style="margin-top:12px;"><p style="font-weight:600;">Attachments</p><ul>${itemsHtml.join('')}</ul></div>`,
+        text: `Attachments:\n${itemsText.join('\n')}`
+    }
 }
 
 function buildPasswordResetTemplate(user, resetUrl) {
@@ -113,15 +155,17 @@ function buildWeeklyUpdateTemplate(update, recipientName) {
     const greeting = recipientName ? `Hi ${recipientName},` : 'Hi there,'
     const intro = update.summary || 'Here are the latest highlights from SparkHub.'
     const footer = `You are receiving weekly updates from SparkHub. You can update your email preferences from your profile.`
+    const attachmentBlock = buildAttachmentList(update.attachments || [])
     const html = `
         <div style="font-family: Arial, sans-serif; color: #0f172a; line-height: 1.6;">
             <p>${greeting}</p>
             <p>${intro}</p>
             <div style="border-left: 4px solid #4F46E5; padding-left: 12px; margin: 16px 0;">${update.body}</div>
+            ${attachmentBlock.html}
             <p style="color:#475569; font-size: 14px;">${footer}</p>
         </div>
     `
-    const text = `${greeting}\n\n${intro}\n\n${update.body.replace(/<[^>]+>/g, '')}\n\n${footer}`
+    const text = `${greeting}\n\n${intro}\n\n${update.body.replace(/<[^>]+>/g, '')}\n\n${attachmentBlock.text}\n\n${footer}`
     return { text, html }
 }
 
@@ -130,6 +174,18 @@ async function sendWeeklyUpdateEmail(update, recipients) {
         return { ok: true, skipped: true, sent: 0 }
     }
     let sent = 0
+    const mailAttachments = (update.attachments || [])
+        .map((att) => {
+            if (!att?.url) return null
+            const filePath = resolveUploadPath(att.url)
+            if (!fs.existsSync(filePath)) return null
+            return {
+                filename: att.name || path.basename(filePath),
+                path: filePath,
+                contentType: att.mimeType || undefined
+            }
+        })
+        .filter(Boolean)
     for (const recipient of recipients) {
         const { text, html } = buildWeeklyUpdateTemplate(update, recipient?.name)
         const result = await sendEmail({
@@ -139,7 +195,8 @@ async function sendWeeklyUpdateEmail(update, recipients) {
             html,
             userId: recipient.id || null,
             category: 'WEEKLY_UPDATE',
-            metadata: { updateId: update.id }
+            attachments: mailAttachments,
+            metadata: { updateId: update.id, attachments: update.attachments || [] }
         })
         if (result.ok) sent += 1
     }

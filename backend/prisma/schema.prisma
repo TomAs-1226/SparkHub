@@ -346,6 +346,7 @@ model WeeklyUpdate {
   title         String
   summary       String?
   body          String
+  attachmentsJson String  @default("[]")
   status        String   @default("DRAFT")
   publishAt     DateTime?
   publishedAt   DateTime?
