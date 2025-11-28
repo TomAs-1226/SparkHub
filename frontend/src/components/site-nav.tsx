@@ -57,6 +57,7 @@ export default function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const [scrollProgress, setScrollProgress] = useState(0);
     const [atTop, setAtTop] = useState(true);
+    const [showScrollTop, setShowScrollTop] = useState(false);
 
     useEffect(() => {
         setClientReady(true);
@@ -77,6 +78,7 @@ export default function Navbar() {
             setScrolled(scrollTop > 8);
             setAtTop(scrollTop < 4);
             setScrollProgress(docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0);
+            setShowScrollTop(scrollTop > 320);
         };
         handleScroll();
         window.addEventListener("scroll", handleScroll, { passive: true });
@@ -101,21 +103,23 @@ export default function Navbar() {
     }, [pathname]);
 
     return (
-        <motion.header
-            className="relative sticky top-0 z-50 w-full px-2 pb-3 sm:px-4"
-            animate={{ y: scrolled ? 4 : 0, scale: scrolled ? 0.995 : 1, filter: scrolled ? "drop-shadow(0 16px 40px rgba(15,23,42,0.14))" : "drop-shadow(0 12px 32px rgba(15,23,42,0.1))" }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-        >
+        <>
+            <motion.header
+                className="relative sticky top-0 z-50 w-full px-2 pb-3 sm:px-4"
+                animate={{ y: scrolled ? 4 : 0, scale: scrolled ? 0.995 : 1, filter: scrolled ? "drop-shadow(0 16px 40px rgba(15,23,42,0.14))" : "drop-shadow(0 12px 32px rgba(15,23,42,0.1))" }}
+                transition={{ duration: 0.38, ease: [0.22, 0.61, 0.36, 1] }}
+            >
             <motion.div
-                className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white/70 via-white/40 to-transparent backdrop-blur-xl"
+                className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white/75 via-white/40 to-transparent backdrop-blur-2xl"
                 aria-hidden
-                animate={{ opacity: scrolled ? 0.95 : 0.7, filter: scrolled ? "blur(6px)" : "blur(4px)" }}
+                animate={{ opacity: scrolled ? 0.95 : 0.72, filter: scrolled ? "blur(7px)" : "blur(4px)" }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             />
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-2 overflow-hidden" aria-hidden>
+            <div className="pointer-events-none absolute inset-x-3 top-1 z-[55] h-1.5 overflow-hidden rounded-full border border-white/60 bg-white/80 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)]" aria-hidden>
                 <motion.div
-                    className="h-full rounded-full bg-[var(--sh-accent)]/70 shadow-[0_6px_18px_-10px_rgba(15,23,42,0.55)]"
-                    animate={{ width: `${Math.max(scrollProgress * 100, scrolled ? 18 : 0)}%`, opacity: scrolled ? 1 : 0.65 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="h-full rounded-full bg-[var(--sh-accent)]/80 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.55)]"
+                    animate={{ width: `${Math.max(scrollProgress * 100, scrolled ? 14 : 0)}%`, opacity: scrolled ? 1 : 0.75 }}
+                    transition={{ type: "spring", stiffness: 130, damping: 20, mass: 0.7 }}
                 />
             </div>
             <motion.div
@@ -361,7 +365,9 @@ export default function Navbar() {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </motion.header>
+            </motion.header>
+            <ScrollToTop show={showScrollTop} />
+        </>
     );
 }
 
@@ -484,5 +490,28 @@ function ProfileMenu({
                 </div>
             )}
         </div>
+    );
+}
+
+function ScrollToTop({ show }: { show: boolean }) {
+    return (
+        <AnimatePresence>
+            {show && (
+                <motion.button
+                    key="scrolltop"
+                    initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 40, scale: 0.9 }}
+                    transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                    className="fixed bottom-6 right-4 z-[70] inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/85 px-3 py-2 text-sm font-semibold text-slate-800 shadow-lg shadow-[var(--sh-card-glow)] ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur hover:translate-y-[-2px] hover:border-[var(--sh-accent-soft)] hover:shadow-xl"
+                >
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--sh-accent-soft)] text-[color:var(--sh-accent-ink)] shadow-inner shadow-white/60">
+                        ↑
+                    </span>
+                    Top
+                </motion.button>
+            )}
+        </AnimatePresence>
     );
 }

@@ -8,6 +8,17 @@ import SiteNav from "@/components/site-nav";
 
 const releases = [
     {
+        version: "2.3",
+        codename: "Aurora Rise",
+        date: "March 2025",
+        highlights: [
+            "Cinematic, non-linear glass nav motion that stays readable while revealing UI beneath with edge blur",
+            "Dynamic scroll progress glow lifted above the nav plus a floating return-to-top button for long reads",
+            "Accent-rich chrome touches extended to quick actions, drawers, and new surface veils",
+        ],
+        notes: "Primary dev: Baichen Yu — bringing Apple-like motion polish, handy shortcuts, and clearer progress cues.",
+    },
+    {
         version: "2.2",
         codename: "Skyline Drift",
         date: "February 2025",
@@ -79,6 +90,14 @@ const releases = [
 ];
 
 const featureCallouts = [
+    {
+        title: "Always know where you are",
+        copy: "A lifted progress glow sits above the glass nav while a floating return-to-top pill keeps long reads ergonomic.",
+    },
+    {
+        title: "Apple-inspired motion",
+        copy: "Non-linear easing, subtle parallax veils, and springy controls make navigation feel lively without being loud.",
+    },
     {
         title: "Opportunities built to grow",
         copy: "Publish internships, projects, or mentorships with attachments, timelines, and recruiter contact all in one place.",
