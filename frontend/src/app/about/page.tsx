@@ -9,6 +9,17 @@ import { EASE, FADES } from "@/lib/motion-presets";
 
 const releases = [
     {
+        version: "2.7",
+        codename: "Harbor Prism",
+        date: "July 2025",
+        highlights: [
+            "Glass nav now auto-compacts into a horizontally scrolling strip on tight widths without hiding any links",
+            "Desktop pills keep their breathing room while overflow gradients hint that you can scroll for more destinations",
+            "Non-linear motion presets power every nav, drawer, and release card animation for a unified feel",
+        ],
+        notes: "Primary dev: Baichen Yu — keeping every page reachable with smooth glass motion and overflow-aware chrome.",
+    },
+    {
         version: "2.6",
         codename: "Ribbon Drift",
         date: "June 2025",
@@ -126,11 +137,11 @@ const releases = [
 const featureCallouts = [
     {
         title: "Reach every page anywhere",
-        copy: "Mobile glass pills now wrap gracefully so all destinations remain tap-friendly without overflowing the screen.",
+        copy: "Glass pills scroll horizontally with gentle gradients on tight screens so pages like Contact or Tutors stay one tap away.",
     },
     {
         title: "Pocket-ready glass nav",
-        copy: "On narrow screens the frosted pills gracefully collapse into the menu while desktop spacing stays untouched.",
+        copy: "On narrow screens the frosted pills slide into a compact strip or menu while desktop spacing stays untouched.",
     },
     {
         title: "Glide across the page",

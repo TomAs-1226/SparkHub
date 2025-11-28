@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,6 +23,7 @@ const NAV_LINKS: RoleAwareLink[] = [
     { href: "/opportunities", label: "Opportunities" },
     { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
+    { href: "/mentors", label: "Mentors" },
 ];
 
 const ROLE_LINKS: Record<string, RoleAwareLink[]> = {
@@ -143,30 +144,16 @@ export default function Navbar() {
                 <div className="relative z-10 hidden flex-1 md:flex">
                     <div className="relative w-full rounded-full border border-white/60 bg-white/70 px-1 py-1 shadow-inner shadow-white/30 backdrop-blur">
                         <div className="pointer-events-none absolute left-0 top-0 h-full w-12 rounded-l-full bg-gradient-to-r from-white/90 via-white/60 to-transparent" />
-                        <nav className="no-scrollbar relative flex items-center gap-1.5 overflow-x-auto px-2 text-sm font-semibold text-slate-700">
-                            {desktopLinks.map((link) => {
-                                const isActive = pathname?.startsWith(link.href);
-                                return (
-                                    <motion.div
-                                        key={link.href}
-                                        whileHover={{ y: -1 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        transition={{ duration: 0.22, ease: EASE.swift }}
-                                    >
-                                        <Link
-                                            href={link.href}
-                                            className={`rounded-full px-3 py-1.5 whitespace-nowrap transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--sh-accent)] ${
-                                                isActive
-                                                    ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm shadow-[var(--sh-card-glow)]"
-                                                    : "hover:bg-white/80"
-                                            }`}
-                                        >
-                                            {link.label}
-                                        </Link>
-                                    </motion.div>
-                                );
-                            })}
-                        </nav>
+                <nav className="no-scrollbar relative flex items-center gap-1.5 overflow-x-auto px-2 text-sm font-semibold text-slate-700">
+                    {desktopLinks.map((link) => {
+                        const isActive = pathname?.startsWith(link.href);
+                        return (
+                            <NavLinkPill key={link.href} href={link.href} active={isActive}>
+                                {link.label}
+                            </NavLinkPill>
+                        );
+                    })}
+                </nav>
                         <div className="pointer-events-none absolute right-0 top-0 h-full w-12 rounded-r-full bg-gradient-to-l from-white/90 via-white/60 to-transparent" />
                     </div>
                 </div>
@@ -196,23 +183,18 @@ export default function Navbar() {
                 </div>
 
                 <div className="relative z-10 flex flex-1 items-center justify-end gap-2 md:hidden">
-                    <div className="no-scrollbar hidden flex-1 flex-wrap items-center justify-end gap-1 overflow-visible rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-[13px] font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur min-[360px]:flex">
-                        {desktopLinks.map((link) => {
-                            const isActive = pathname?.startsWith(link.href);
-                            return (
-                                <Link
-                                    key={link.href}
-                                    href={link.href}
-                                    className={`rounded-full px-2.5 py-1 transition ${
-                                        isActive
-                                            ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm shadow-[var(--sh-card-glow)]"
-                                            : "hover:bg-white/70"
-                                    }`}
-                                >
-                                    {link.label}
-                                </Link>
-                            );
-                        })}
+                    <div className="no-scrollbar hidden max-w-[68%] flex-1 items-center justify-end overflow-x-auto rounded-full border border-[color:var(--sh-glass-border)] bg-white/85 px-2 py-1 text-[13px] font-semibold text-slate-700 shadow-inner shadow-white/40 ring-1 ring-[color:var(--sh-accent-veil)] backdrop-blur min-[360px]:flex">
+                        <div className="relative flex w-full flex-nowrap items-center gap-1 pr-6">
+                            <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-white/85 to-transparent" aria-hidden />
+                            {desktopLinks.map((link) => {
+                                const isActive = pathname?.startsWith(link.href);
+                                return (
+                                    <NavLinkPill key={link.href} href={link.href} active={isActive} compact>
+                                        {link.label}
+                                    </NavLinkPill>
+                                );
+                            })}
+                        </div>
                     </div>
                     <button
                         className="inline-flex items-center justify-center rounded-full border border-white/70 bg-white/80 p-2 text-slate-700 shadow-sm shadow-white/40"
@@ -518,5 +500,36 @@ function ScrollToTop({ show }: { show: boolean }) {
                 </motion.button>
             )}
         </AnimatePresence>
+    );
+}
+
+function NavLinkPill({
+    href,
+    active,
+    compact,
+    children,
+}: {
+    href: string;
+    active: boolean;
+    compact?: boolean;
+    children: ReactNode;
+}) {
+    return (
+        <motion.div
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ duration: 0.22, ease: EASE.swift }}
+        >
+            <Link
+                href={href}
+                className={`rounded-full ${compact ? "px-2.5 py-1" : "px-3 py-1.5"} whitespace-nowrap transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--sh-accent)] ${
+                    active
+                        ? "bg-[var(--sh-accent-soft)] text-slate-900 shadow-sm shadow-[var(--sh-card-glow)]"
+                        : "hover:bg-white/80"
+                }`}
+            >
+                {children}
+            </Link>
+        </motion.div>
     );
 }
