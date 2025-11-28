@@ -59,6 +59,7 @@ export default function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const [atTop, setAtTop] = useState(true);
     const [showScrollTop, setShowScrollTop] = useState(false);
+    const scrollRaf = useRef<number | null>(null);
 
     useEffect(() => {
         setClientReady(true);
@@ -73,15 +74,27 @@ export default function Navbar() {
     }, []);
 
     useEffect(() => {
-        const handleScroll = () => {
+        const updateScroll = () => {
             const scrollTop = window.scrollY;
-            setScrolled(scrollTop > 8);
-            setAtTop(scrollTop < 4);
+            setScrolled(scrollTop > 10);
+            setAtTop(scrollTop < 6);
             setShowScrollTop(scrollTop > 320);
+            scrollRaf.current = null;
         };
-        handleScroll();
+
+        const handleScroll = () => {
+            if (scrollRaf.current !== null) return;
+            scrollRaf.current = window.requestAnimationFrame(updateScroll);
+        };
+
+        updateScroll();
         window.addEventListener("scroll", handleScroll, { passive: true });
-        return () => window.removeEventListener("scroll", handleScroll);
+        return () => {
+            if (scrollRaf.current !== null) {
+                window.cancelAnimationFrame(scrollRaf.current);
+            }
+            window.removeEventListener("scroll", handleScroll);
+        };
     }, []);
 
     const resolvedUser = clientReady ? user : null;
@@ -104,15 +117,15 @@ export default function Navbar() {
     return (
         <>
             <motion.header
-                className="relative sticky top-0 z-50 w-full px-2 pb-3 sm:px-4"
+                className="relative sticky top-2 z-50 w-full px-2 pb-3 sm:top-3 sm:px-4"
                 animate={{
-                    y: scrolled ? 4 : 0,
-                    scale: scrolled ? 0.995 : 1,
+                    y: scrolled ? 2 : 0,
+                    scale: scrolled ? 0.996 : 1,
                     filter: scrolled
                         ? "drop-shadow(0 16px 40px rgba(15,23,42,0.14))"
                         : "drop-shadow(0 12px 32px rgba(15,23,42,0.1))",
                 }}
-                transition={{ duration: 0.5, ease: EASE.emphasized }}
+                transition={{ type: "spring", stiffness: 220, damping: 26, mass: 1.05 }}
             >
             <motion.div
                 className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-white/75 via-white/40 to-transparent backdrop-blur-2xl"

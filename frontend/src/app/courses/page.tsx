@@ -29,6 +29,7 @@ import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { api } from "@/lib/api";
 import { copyToClipboard } from "@/lib/copy-to-clipboard";
+import { EASE, FADES, STAGGER, SURFACES } from "@/lib/motion-presets";
 import { uploadAsset } from "@/lib/upload";
 import { fetchCourseWorkspace } from "./load-course";
 import {
@@ -372,13 +373,25 @@ export default function CoursesPage() {
         <div className="min-h-dvh bg-[#F6F8FC] text-slate-800">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-10">
-                <div className="flex items-center gap-2 text-sm font-semibold text-[#2D8F80]">
+                <motion.div {...FADES.gentleUp} className="flex items-center gap-2 text-sm font-semibold text-[#2D8F80]">
                     <Sparkles className="h-5 w-5" /> Course suite
-                </div>
+                </motion.div>
 
-                <section className="mt-6 rounded-[36px] bg-white p-6 shadow-2xl shadow-slate-200/70 sm:p-10">
-                    <div className="flex flex-col gap-8 md:flex-row md:items-center">
-                        <div className="flex-1">
+                <motion.section
+                    {...FADES.floatUp}
+                    className="mt-6 rounded-[36px] bg-white p-6 shadow-2xl shadow-slate-200/70 sm:p-10"
+                    transition={{ duration: 0.7, ease: EASE.drift }}
+                >
+                    <motion.div
+                        className="flex flex-col gap-8 md:flex-row md:items-center"
+                        initial="initial"
+                        animate="animate"
+                        variants={{
+                            initial: {},
+                            animate: { transition: STAGGER.slow },
+                        }}
+                    >
+                        <motion.div variants={FADES.gentleUp} className="flex-1">
                             <p className="text-sm font-semibold text-[#5C9E95]">Welcome back! Ready for your next lesson?</p>
                             <h1 className="mt-3 text-4xl font-bold text-slate-900">Run live cohorts, release lessons, and learn with peers.</h1>
                             <p className="mt-4 text-base text-slate-600">
@@ -401,10 +414,19 @@ export default function CoursesPage() {
                                     </Link>
                                 )}
                             </div>
-                        </div>
-                        <div className="flex flex-col gap-4 md:w-[320px]">
-                            {heroCourses.map((course) => (
-                                <motion.div key={course.title} whileHover={{ y: -4 }} className="rounded-3xl border border-slate-100 bg-[#F9FBFF] p-4">
+                        </motion.div>
+                        <motion.div
+                            variants={{ animate: { transition: STAGGER.brisk } }}
+                            className="flex flex-col gap-4 md:w-[320px]"
+                        >
+                            {heroCourses.map((course, idx) => (
+                                <motion.div
+                                    key={course.title}
+                                    initial={SURFACES.lift.initial}
+                                    animate={SURFACES.lift.animate(idx * 0.08)}
+                                    whileHover={SURFACES.lift.withHover ?? SURFACES.lift.whileHover}
+                                    className="rounded-3xl border border-slate-100 bg-[#F9FBFF] p-4"
+                                >
                                     <div className="flex items-center gap-3">
                                         <div className="relative h-14 w-14 overflow-hidden rounded-2xl bg-slate-200">
                                             <Image src={course.image} alt={course.title} fill className="object-cover" />
@@ -417,10 +439,18 @@ export default function CoursesPage() {
                                     <p className="mt-3 text-sm text-slate-600">{course.description}</p>
                                 </motion.div>
                             ))}
-                        </div>
-                    </div>
-                    <div className="mt-6 grid gap-4 rounded-3xl bg-slate-50 p-4 sm:grid-cols-2">
-                        <div>
+                        </motion.div>
+                    </motion.div>
+                    <motion.div
+                        className="mt-6 grid gap-4 rounded-3xl bg-slate-50 p-4 sm:grid-cols-2"
+                        initial="initial"
+                        animate="animate"
+                        variants={{
+                            initial: {},
+                            animate: { transition: STAGGER.brisk },
+                        }}
+                    >
+                        <motion.div variants={FADES.gentleUp}>
                             <p className="text-xs font-semibold uppercase tracking-wider text-[#5C9E95]">Have a code?</p>
                             <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                                 <input
@@ -444,16 +474,16 @@ export default function CoursesPage() {
                                 className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm focus:border-[#2D8F80] focus:outline-none"
                             />
                             {codeForm.msg && <p className="mt-1 text-xs text-[#2D8F80]">{codeForm.msg}</p>}
-                        </div>
-                        <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-600">
+                        </motion.div>
+                        <motion.div variants={FADES.gentleUp} className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-600">
                             <p className="text-sm font-semibold text-slate-800">Need help?</p>
                             <p>Share codes with teammates, review contact submissions in the admin inbox, or hop into the tutor dashboard to stage lessons.</p>
                             <Link href="/contact" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-[#2D8F80]">
                                 Contact the SparkHub team <ArrowUpRight className="h-4 w-4" />
                             </Link>
-                        </div>
-                    </div>
-                </section>
+                        </motion.div>
+                    </motion.div>
+                </motion.section>
 
                 {isStudent && (
                     <section className="mt-10 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm" id="my-enrollments">
