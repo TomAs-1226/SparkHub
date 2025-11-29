@@ -5,6 +5,41 @@ const { sendWeeklyUpdateEmail } = require('../utils/email')
 
 const router = express.Router()
 
+function normalizeEmail(raw) {
+    return typeof raw === 'string' ? raw.trim().toLowerCase() : ''
+}
+
+router.post('/subscribe', async (req, res) => {
+    const email = normalizeEmail(req.body.email)
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : null
+
+    if (!email || !email.includes('@')) {
+        return res.status(400).json({ ok: false, msg: 'A valid email is required.' })
+    }
+
+    try {
+        const existingUser = await prisma.user.findUnique({ where: { email } })
+        if (existingUser) {
+            await prisma.emailPreference.upsert({
+                where: { userId: existingUser.id },
+                update: { weeklyUpdates: true },
+                create: { userId: existingUser.id, weeklyUpdates: true },
+            })
+        }
+
+        await prisma.newsletterSubscriber.upsert({
+            where: { email },
+            update: { active: true, name },
+            create: { email, name, active: true },
+        })
+
+        return res.json({ ok: true, msg: 'Subscribed successfully.' })
+    } catch (err) {
+        console.error('subscribe error', err)
+        return res.status(500).json({ ok: false, msg: 'Unable to subscribe right now.' })
+    }
+})
+
 async function getOrCreatePreferences(userId) {
     const existing = await prisma.emailPreference.findUnique({ where: { userId } })
     if (existing) return existing
@@ -141,13 +176,33 @@ router.post('/weekly-updates/:id/send', async (req, res) => {
         return res.status(400).json({ ok: false, msg: 'Only published updates can be sent.' })
     }
 
-    const subscribers = await prisma.emailPreference.findMany({
-        where: { weeklyUpdates: true },
-        include: { user: { select: { id: true, email: true, name: true } } }
+    const users = await prisma.user.findMany({
+        where: {
+            emailVerified: true,
+            OR: [
+                { emailPreference: { weeklyUpdates: true } },
+                { emailPreference: null }
+            ]
+        },
+        select: { id: true, email: true, name: true }
     })
-    const recipients = subscribers
-        .map((entry) => entry.user)
-        .filter((u) => u && u.email)
+
+    const subscribers = await prisma.newsletterSubscriber.findMany({
+        where: { active: true },
+        select: { email: true, name: true }
+    })
+
+    const deduped = new Map()
+    for (const user of users) {
+        if (user?.email) deduped.set(user.email.toLowerCase(), { ...user })
+    }
+    for (const sub of subscribers) {
+        if (sub?.email && !deduped.has(sub.email.toLowerCase())) {
+            deduped.set(sub.email.toLowerCase(), { email: sub.email, name: sub.name || null })
+        }
+    }
+
+    const recipients = Array.from(deduped.values())
     const updateWithAttachments = presentWeeklyUpdate(update)
     const result = await sendWeeklyUpdateEmail(updateWithAttachments, recipients)
     res.json({ ok: true, sent: result.sent || 0 })

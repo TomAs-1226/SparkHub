@@ -165,6 +165,8 @@ router.post("/register", async (req, res) => {
         const password = String(req.body.password || "");
         const role = normalizeRole(req.body.role);
         const adminSecret = typeof req.body.adminSecret === "string" ? req.body.adminSecret.trim() : "";
+        const wantsWeeklyUpdates =
+            typeof req.body.weeklyUpdates === "boolean" ? req.body.weeklyUpdates : true;
 
         if (!email || !password || !name) {
             return res.status(400).json({ ok: false, msg: "Missing email, password, or name." });
@@ -182,7 +184,7 @@ router.post("/register", async (req, res) => {
         const hash = await bcrypt.hash(password, 10);
 
         const user = await runUserQuery("create", { data: { email, password: hash, name, role } });
-        await prisma.emailPreference.create({ data: { userId: user.id } }).catch((err) => {
+        await prisma.emailPreference.create({ data: { userId: user.id, weeklyUpdates: wantsWeeklyUpdates } }).catch((err) => {
             console.warn("Failed to seed email preferences", err?.message);
         });
         const verification = await issueVerificationForUser(user).catch((err) => {

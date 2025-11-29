@@ -342,6 +342,16 @@ model EmailPreference {
   updatedAt      DateTime @updatedAt
 }
 
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([active])
+}
+
 model EmailLog {
   id           String   @id @default(cuid())
   to           String

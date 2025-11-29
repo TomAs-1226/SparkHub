@@ -5,8 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import SiteNav from "@/components/site-nav";
 import SparkHubLogo from "@/components/SparkHubLogo";
+import { api } from "@/lib/api";
 
 // client-only to avoid hydration issues in ExploreContents
 const ExploreContents = dynamic(() => import("@/components/explore-contents"), {
@@ -61,6 +63,9 @@ async function fetchEvents(limit = 4, signal?: AbortSignal): Promise<EventItem[]
 
 export default function HomePage() {
     const [events, setEvents] = useState<EventItem[]>([]);
+    const [subscribeEmail, setSubscribeEmail] = useState("");
+    const [subscribeStatus, setSubscribeStatus] = useState<string | null>(null);
+    const [subscribeLoading, setSubscribeLoading] = useState(false);
     useEffect(() => {
         const controller = new AbortController();
         fetchEvents(4, controller.signal)
@@ -74,6 +79,28 @@ export default function HomePage() {
     }, []);
     const feature = useMemo(() => events[0], [events]);
     const side = useMemo(() => events.slice(1, 4), [events]);
+
+    async function handleSubscribe(e: FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        if (!subscribeEmail) return;
+        setSubscribeStatus(null);
+        setSubscribeLoading(true);
+        try {
+            const res = await api("/emails/subscribe", {
+                method: "POST",
+                body: JSON.stringify({ email: subscribeEmail }),
+            });
+            const json = await res.json().catch(() => null);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to subscribe right now.");
+            setSubscribeStatus("Thanks! You're on the list for weekly updates.");
+            setSubscribeEmail("");
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : "Unable to subscribe right now.";
+            setSubscribeStatus(msg);
+        } finally {
+            setSubscribeLoading(false);
+        }
+    }
 
     return (
         <main className="min-h-dvh">
@@ -447,24 +474,28 @@ export default function HomePage() {
                                 Subscribe to get updates on events
                             </div>
                             <form
-                                onSubmit={(e) => {
-                                    e.preventDefault();
-                                }}
+                                onSubmit={handleSubscribe}
                                 className="flex items-center gap-2"
                             >
                                 <input
                                     type="email"
                                     placeholder="Your Email"
                                     className="w-60 rounded-full bg-transparent px-4 py-2 text-sm outline-none ring-1 ring-white/30 placeholder:text-white/50 focus:ring-white/60"
+                                    value={subscribeEmail}
+                                    onChange={(e) => setSubscribeEmail(e.target.value)}
                                     required
                                 />
                                 <button
                                     type="submit"
-                                    className="rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-[#1E2335] hover:brightness-110"
+                                    disabled={subscribeLoading}
+                                    className="rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-[#1E2335] hover:brightness-110 disabled:opacity-60"
                                 >
-                                    Subscribe
+                                    {subscribeLoading ? "Subscribing…" : "Subscribe"}
                                 </button>
                             </form>
+                            {subscribeStatus && (
+                                <p className="mt-2 text-xs text-white/80">{subscribeStatus}</p>
+                            )}
                         </div>
                     </div>
 

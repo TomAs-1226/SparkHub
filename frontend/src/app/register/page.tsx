@@ -29,6 +29,7 @@ export default function RegisterPage() {
     const [err, setErr] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [adminSecret, setAdminSecret] = useState("");
+    const [weeklyUpdates, setWeeklyUpdates] = useState(true);
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -43,6 +44,7 @@ export default function RegisterPage() {
                     password,
                     role: accountType,
                     adminSecret: accountType === "admin" ? adminSecret : undefined,
+                    weeklyUpdates,
                 }),
             });
             const data = await safeJson(res);
@@ -223,6 +225,19 @@ export default function RegisterPage() {
                                     </p>
                                 </div>
                             )}
+
+                            <label className="flex items-start gap-3 rounded-2xl border border-[#E4EFED] bg-[#F8FBFA] px-4 py-3 text-[13px] text-[#3A3A3A]">
+                                <input
+                                    type="checkbox"
+                                    className="mt-1 h-4 w-4 rounded border-[#94C7C2] text-[#69BFBA] focus:ring-[#69BFBA]"
+                                    checked={weeklyUpdates}
+                                    onChange={(e) => setWeeklyUpdates(e.target.checked)}
+                                />
+                                <span>
+                                    Keep me posted with SparkHub weekly updates, highlights, and new resources.
+                                    <span className="block text-[12px] text-[#6C6C6C]">You can change this anytime from your settings.</span>
+                                </span>
+                            </label>
 
                             {err && (
                                 <motion.p
