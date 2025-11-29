@@ -113,7 +113,8 @@ router.get('/weekly-updates', async (_req, res) => {
 router.use('/weekly-updates', requireRole(['ADMIN']))
 
 router.post('/weekly-updates', async (req, res) => {
-    const { title, summary, body, publishAt, status, attachments } = req.body
+    const bodyInput = req.body || {}
+    const { title, summary, body, publishAt, status, attachments } = bodyInput
     if (!title || !body) {
         return res.status(400).json({ ok: false, msg: 'Title and body are required.' })
     }
@@ -142,7 +143,8 @@ router.get('/weekly-updates/admin', async (_req, res) => {
 })
 
 router.patch('/weekly-updates/:id', async (req, res) => {
-    const { title, summary, body, status, publishAt, attachments } = req.body
+    const bodyInput = req.body || {}
+    const { title, summary, body, status, publishAt, attachments } = bodyInput
     const data = {}
     if (typeof title === 'string') data.title = title.trim()
     if (typeof summary === 'string') data.summary = summary.trim()
@@ -161,9 +163,10 @@ router.patch('/weekly-updates/:id', async (req, res) => {
 
 router.post('/weekly-updates/:id/publish', async (req, res) => {
     const now = new Date()
+    const publishAt = req.body?.publishAt ? new Date(req.body.publishAt) : null
     const update = await prisma.weeklyUpdate.update({
         where: { id: req.params.id },
-        data: { status: 'PUBLISHED', publishedAt: now, publishAt: req.body.publishAt ? new Date(req.body.publishAt) : null }
+        data: { status: 'PUBLISHED', publishedAt: now, publishAt }
     })
     res.json({ ok: true, update: presentWeeklyUpdate(update) })
 })
