@@ -30,6 +30,8 @@ export default function VerifyEmailPage() {
     const [linkState, setLinkState] = useState<"idle" | "pending" | "success">("idle");
     const [codeState, setCodeState] = useState<"idle" | "pending" | "success">("idle");
     const [resendStatus, setResendStatus] = useState<string | null>(null);
+    const [verifiedDetails, setVerifiedDetails] = useState<{ code?: string; email?: string; verifiedAt?: string | Date } | null>(null);
+    const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
 
     useEffect(() => {
         if (token) {
@@ -50,7 +52,8 @@ export default function VerifyEmailPage() {
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Link is invalid or expired.");
             setLinkState("success");
             setStatus("Email verified! You can log in now.");
-            router.push("/login");
+            setVerifiedDetails({ code: json?.code, email: json?.user?.email ?? email, verifiedAt: json?.verifiedAt });
+            if (!redirectCountdown) setRedirectCountdown(6);
         } catch (err) {
             setLinkState("idle");
             setStatus(err instanceof Error ? err.message : "Unable to verify link.");
@@ -70,7 +73,8 @@ export default function VerifyEmailPage() {
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Verification failed.");
             setCodeState("success");
             setStatus("Email verified! You can log in now.");
-            router.push("/login");
+            setVerifiedDetails({ code: json?.code ?? code, email, verifiedAt: json?.verifiedAt });
+            if (!redirectCountdown) setRedirectCountdown(6);
         } catch (err) {
             setCodeState("idle");
             setStatus(err instanceof Error ? err.message : "Unable to verify.");
@@ -93,6 +97,22 @@ export default function VerifyEmailPage() {
             setResendStatus(err instanceof Error ? err.message : "Unable to send verification email.");
         }
     }
+
+    useEffect(() => {
+        if (verifiedDetails && redirectCountdown === null) {
+            setRedirectCountdown(6);
+        }
+    }, [verifiedDetails, redirectCountdown]);
+
+    useEffect(() => {
+        if (redirectCountdown === null) return;
+        if (redirectCountdown <= 0) {
+            router.push("/login");
+            return;
+        }
+        const timer = setTimeout(() => setRedirectCountdown((prev) => (prev ?? 1) - 1), 1000);
+        return () => clearTimeout(timer);
+    }, [redirectCountdown, router]);
 
     return (
         <main className="min-h-dvh flex items-start lg:items-center justify-center px-4 sm:px-6 lg:px-8 py-8 bg-[#F4F7FB]">
@@ -138,6 +158,22 @@ export default function VerifyEmailPage() {
                             <p className="font-semibold text-slate-900">Status</p>
                             <p className="mt-1 text-slate-600">{status || "Waiting for verification."}</p>
                         </div>
+                        {verifiedDetails && (
+                            <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-900">
+                                <p className="font-semibold text-emerald-900">Verification succeeded</p>
+                                <p className="mt-1 text-emerald-800">
+                                    You are verified{verifiedDetails.email ? ` as ${verifiedDetails.email}` : ""}. If you are not redirected automatically, use the code below to finish on another device.
+                                </p>
+                                {verifiedDetails.code && (
+                                    <div className="mt-3 flex items-center justify-between rounded-xl bg-white px-4 py-3 font-mono text-lg font-semibold text-emerald-800 shadow-inner">
+                                        <span>{verifiedDetails.code}</span>
+                                        {redirectCountdown !== null && redirectCountdown > 0 && (
+                                            <span className="text-xs font-semibold text-emerald-700">Redirecting in {redirectCountdown}s…</span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <motion.button
                             type="button"
                             onClick={() => token && verifyWithToken(token)}

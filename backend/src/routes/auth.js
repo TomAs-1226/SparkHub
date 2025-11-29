@@ -55,6 +55,8 @@ function generateVerificationCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+const ADMIN_SECRET = process.env.ADMIN_REG_SECRET || "sparkhub-admin-master-key-274cda";
+
 const ROLE_MAP = {
     learner: "STUDENT",
     student: "STUDENT",
@@ -138,10 +140,10 @@ async function describeVerificationToken(token) {
     return { status: "valid", token, code: record.code, expiresAt: record.expiresAt, user: record.user };
 }
 
-async function completeVerification(record) {
+async function completeVerification(record, verifiedAt = new Date()) {
     await prisma.$transaction([
         prisma.user.update({ where: { id: record.userId }, data: { emailVerified: true } }),
-        prisma.emailVerificationToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+        prisma.emailVerificationToken.update({ where: { id: record.id }, data: { usedAt: verifiedAt } }),
         prisma.emailVerificationToken.deleteMany({ where: { userId: record.userId, usedAt: null, NOT: { id: record.id } } }),
     ]);
     const user = await runUserQuery("findUnique", { where: { id: record.userId } });
@@ -162,6 +164,7 @@ router.post("/register", async (req, res) => {
             (email ? email.split("@")[0] : "");
         const password = String(req.body.password || "");
         const role = normalizeRole(req.body.role);
+        const adminSecret = typeof req.body.adminSecret === "string" ? req.body.adminSecret.trim() : "";
 
         if (!email || !password || !name) {
             return res.status(400).json({ ok: false, msg: "Missing email, password, or name." });
@@ -169,6 +172,12 @@ router.post("/register", async (req, res) => {
 
         const exists = await prisma.user.findUnique({ where: { email } });
         if (exists) return res.status(400).json({ ok: false, msg: "Email already exists." });
+
+        if (role === "ADMIN" && adminSecret !== ADMIN_SECRET) {
+            return res
+                .status(403)
+                .json({ ok: false, msg: "Invalid admin registration secret." });
+        }
 
         const hash = await bcrypt.hash(password, 10);
 
@@ -397,8 +406,9 @@ router.post("/verify-email/confirm", async (req, res) => {
         if (record.usedAt) return res.status(400).json({ ok: false, msg: "This code has already been used." });
         if (record.expiresAt.getTime() < Date.now()) return res.status(400).json({ ok: false, msg: "Verification code has expired." });
 
-        const user = await completeVerification(record);
-        return res.json({ ok: true, verified: true, user });
+        const verifiedAt = new Date();
+        const user = await completeVerification(record, verifiedAt);
+        return res.json({ ok: true, verified: true, user, code: record.code, verifiedAt });
     } catch (err) {
         console.error("CONFIRM VERIFY ERROR:", err);
         return res.status(500).json({ ok: false, msg: "Server error." });

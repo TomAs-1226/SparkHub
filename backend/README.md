@@ -14,6 +14,8 @@ The email features (password reset links, weekly updates, and other notification
    FRONTEND_URL=http://localhost:3000
    # Optional: custom logo URL for transactional emails (defaults to an inline SparkHub badge)
    EMAIL_LOGO_URL=https://yourcdn.com/sparkhub-logo.png
+   # Optional: admin invite secret (required when self-signing admin accounts from the UI)
+   ADMIN_REG_SECRET=choose-a-long-random-string
    ```
 2. Restart the backend server so it picks up the new variables.
 3. Check the server logs for `Email disabled` disappearing. Password reset and weekly update emails will now send via your SMTP provider.

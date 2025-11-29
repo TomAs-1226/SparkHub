@@ -28,6 +28,7 @@ export default function RegisterPage() {
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
+    const [adminSecret, setAdminSecret] = useState("");
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -36,7 +37,13 @@ export default function RegisterPage() {
         try {
             const res = await api("/auth/register", {
                 method: "POST",
-                body: JSON.stringify({ email, name, password, role: accountType }),
+                body: JSON.stringify({
+                    email,
+                    name,
+                    password,
+                    role: accountType,
+                    adminSecret: accountType === "admin" ? adminSecret : undefined,
+                }),
             });
             const data = await safeJson(res);
             if (!res.ok || data?.ok === false) throw new Error(data?.msg || `Register failed (${res.status})`);
@@ -199,6 +206,23 @@ export default function RegisterPage() {
                                 {/* Strength meter (appears only after typing) */}
                                 <PasswordStrength password={password} email={email} name={name} />
                             </div>
+
+                            {accountType === "admin" && (
+                                <div>
+                                    <label className="mb-2 block text-[13px] font-semibold text-[#3A3A3A]">Admin invite key</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter the secret your team provided"
+                                        value={adminSecret}
+                                        onChange={(e) => setAdminSecret(e.target.value)}
+                                        className="h-[48px] w-full rounded-full border border-[#CFE3E0] bg-white px-5 text-[14px] text-[#2B2B2B] placeholder:text-[#A0A7A7] focus:border-[#69BFBA] focus:ring-0 transition-colors"
+                                        required
+                                    />
+                                    <p className="mt-2 text-[12px] text-[#6C6C6C]">
+                                        This keeps admin access private. Ask the site owner for the invite key before continuing.
+                                    </p>
+                                </div>
+                            )}
 
                             {err && (
                                 <motion.p
