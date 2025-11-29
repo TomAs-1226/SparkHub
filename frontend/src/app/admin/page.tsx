@@ -164,7 +164,17 @@ export default function AdminPage() {
                     const res = await api(endpoint.path, { method: "GET" });
                     const json = await safeJson(res);
                     if (!res.ok) throw new Error(json?.msg || `Failed to load ${endpoint.key}`);
-                    return { key: endpoint.key, list: Array.isArray(json?.list) ? json.list : [] };
+                    const list =
+                        endpoint.key === "weeklyUpdates"
+                            ? Array.isArray(json?.updates)
+                                ? json.updates
+                                : Array.isArray(json?.list)
+                                  ? json.list
+                                  : []
+                            : Array.isArray(json?.list)
+                              ? json.list
+                              : [];
+                    return { key: endpoint.key, list };
                 } catch (err) {
                     return {
                         key: endpoint.key,

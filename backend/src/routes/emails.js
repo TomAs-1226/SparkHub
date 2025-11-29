@@ -137,7 +137,8 @@ router.get('/weekly-updates/admin', async (_req, res) => {
         orderBy: { createdAt: 'desc' },
         take: 25
     })
-    res.json({ ok: true, updates: updatesRaw.map(presentWeeklyUpdate) })
+    const updates = updatesRaw.map(presentWeeklyUpdate)
+    res.json({ ok: true, updates, list: updates })
 })
 
 router.patch('/weekly-updates/:id', async (req, res) => {
@@ -204,6 +205,9 @@ router.post('/weekly-updates/:id/send', async (req, res) => {
         }
 
         const recipients = Array.from(deduped.values())
+        if (recipients.length === 0) {
+            return res.status(400).json({ ok: false, msg: 'No eligible recipients for this update.' })
+        }
         const updateWithAttachments = presentWeeklyUpdate(update)
         const result = await sendWeeklyUpdateEmail(updateWithAttachments, recipients)
 
