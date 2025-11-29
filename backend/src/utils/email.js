@@ -54,6 +54,22 @@ const logoOverride = process.env.EMAIL_LOGO_URL?.trim() || ''
 const LOGO_CID = transporter && !logoOverride ? 'sparkhub-inline-logo' : null
 const logoUrl = LOGO_CID ? `cid:${LOGO_CID}` : logoOverride || INLINE_LOGO
 
+let transporterVerified = false
+async function ensureTransporter() {
+    if (!transporter) {
+        return { ok: false, error: 'Email sending is disabled: no SMTP transport configured.' }
+    }
+    if (transporterVerified) return { ok: true }
+    try {
+        await transporter.verify()
+        transporterVerified = true
+        return { ok: true }
+    } catch (err) {
+        console.error('SMTP verification failed', err)
+        return { ok: false, error: `SMTP connection failed: ${err.message}` }
+    }
+}
+
 function stripHtml(input = '') {
     return input.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()
 }
@@ -138,11 +154,18 @@ async function sendEmail({
     const mergedAttachments = [logoAttachment, ...(attachments || [])].filter(Boolean)
     const initialLog = await recordEmailLog({ to, subject, bodyText: text, bodyHtml: html, category, userId, status: transporter ? 'QUEUED' : 'SKIPPED', metadata })
 
-    if (!transporter) {
-        if (requireTransporter) {
-            console.error('Email disabled: missing SMTP credentials (SMTP_HOST/SMTP_USER/SMTP_PASS)')
-            return { ok: false, error: 'Email disabled: configure SMTP credentials.' }
+    if (requireTransporter) {
+        const transportStatus = await ensureTransporter()
+        if (!transportStatus.ok) {
+            console.error('Email disabled:', transportStatus.error)
+            if (initialLog) {
+                await prisma.emailLog.update({ where: { id: initialLog.id }, data: { status: 'FAILED', errorMessage: transportStatus.error } })
+            }
+            return { ok: false, error: transportStatus.error }
         }
+    }
+
+    if (!transporter) {
         console.log('Email preview (no SMTP configured):', { to, subject, text, html, attachments: mergedAttachments })
         return { ok: true, skipped: true, logId: initialLog?.id }
     }
@@ -319,6 +342,10 @@ function buildWeeklyUpdateTemplate(update, recipientName) {
 async function sendWeeklyUpdateEmail(update, recipients) {
     if (!Array.isArray(recipients) || recipients.length === 0) {
         return { ok: true, skipped: true, sent: 0 }
+    }
+    const transportStatus = await ensureTransporter()
+    if (!transportStatus.ok) {
+        return { ok: false, sent: 0, failed: recipients.map((r) => ({ email: r.email, error: transportStatus.error })) }
     }
     let sent = 0
     const failures = []
