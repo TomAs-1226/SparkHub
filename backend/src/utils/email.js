@@ -121,7 +121,17 @@ async function recordEmailLog({ to, subject, bodyText, bodyHtml, category, userI
     }
 }
 
-async function sendEmail({ to, subject, text, html, category = 'GENERAL', userId = null, metadata = {}, attachments = [] }) {
+async function sendEmail({
+    to,
+    subject,
+    text,
+    html,
+    category = 'GENERAL',
+    userId = null,
+    metadata = {},
+    attachments = [],
+    requireTransporter = false,
+}) {
     const logoAttachment = LOGO_CID
         ? { filename: 'sparkhub-logo.svg', content: logoSvg, contentType: 'image/svg+xml', cid: LOGO_CID }
         : null
@@ -129,6 +139,10 @@ async function sendEmail({ to, subject, text, html, category = 'GENERAL', userId
     const initialLog = await recordEmailLog({ to, subject, bodyText: text, bodyHtml: html, category, userId, status: transporter ? 'QUEUED' : 'SKIPPED', metadata })
 
     if (!transporter) {
+        if (requireTransporter) {
+            console.error('Email disabled: missing SMTP credentials (SMTP_HOST/SMTP_USER/SMTP_PASS)')
+            return { ok: false, error: 'Email disabled: configure SMTP credentials.' }
+        }
         console.log('Email preview (no SMTP configured):', { to, subject, text, html, attachments: mergedAttachments })
         return { ok: true, skipped: true, logId: initialLog?.id }
     }
@@ -307,6 +321,7 @@ async function sendWeeklyUpdateEmail(update, recipients) {
         return { ok: true, skipped: true, sent: 0 }
     }
     let sent = 0
+    const failures = []
     const mailAttachments = (update.attachments || [])
         .map((att) => {
             if (!att?.url) return null
@@ -323,17 +338,19 @@ async function sendWeeklyUpdateEmail(update, recipients) {
         const { text, html } = buildWeeklyUpdateTemplate(update, recipient?.name)
         const result = await sendEmail({
             to: recipient.email,
-            subject: `SparkHub Weekly Update: ${update.title}`,
+            subject: `SparkHub Weekly Update${update.title ? `: ${update.title}` : ''}`,
             text,
             html,
             userId: recipient.id || null,
             category: 'WEEKLY_UPDATE',
             attachments: mailAttachments,
-            metadata: { updateId: update.id, attachments: update.attachments || [] }
+            metadata: { updateId: update.id, attachments: update.attachments || [] },
+            requireTransporter: true,
         })
         if (result.ok) sent += 1
+        else failures.push({ email: recipient.email, error: result.error || 'Unknown error' })
     }
-    return { ok: true, sent }
+    return { ok: failures.length === 0, sent, failed: failures }
 }
 
 module.exports = {
