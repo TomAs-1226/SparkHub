@@ -156,7 +156,11 @@ async function sendEmail({ to, subject, text, html, category = 'GENERAL', userId
 }
 
 function resolveFrontendUrl(pathname = '') {
-    const base = process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000'
+    const base =
+        process.env.EMAIL_LINK_BASE
+        || process.env.FRONTEND_URL
+        || process.env.APP_URL
+        || 'http://sparkhub.playit.plus:19142'
     return `${base.replace(/\/$/, '')}${pathname.startsWith('/') ? '' : '/'}${pathname}`
 }
 

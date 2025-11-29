@@ -11,6 +11,11 @@ The email features (password reset links, weekly updates, and other notification
    SMTP_USER=your_smtp_username
    SMTP_PASS=your_smtp_password
    MAIL_FROM="SparkHub <noreply@sparkhub.dev>"
+   # Base URL for links in emails (reset, verification, weekly updates)
+   EMAIL_LINK_BASE=http://sparkhub.playit.plus:19142
+   # Allowed web origins (comma-separated) for CORS/helmet CSP
+   FRONTEND_ORIGINS=http://sparkhub.playit.plus:19142,http://localhost:3000
+   # Default frontend URL fallback (used if EMAIL_LINK_BASE is not set)
    FRONTEND_URL=http://localhost:3000
    # Optional: custom logo URL for transactional emails (defaults to an inline SparkHub badge)
    EMAIL_LOGO_URL=https://yourcdn.com/sparkhub-logo.png
