@@ -10,6 +10,7 @@ datasource db {
 model User {
   id               String           @id @default(cuid())
   email            String           @unique
+  emailVerified    Boolean          @default(false)
   password         String
   name             String
   role             String           @default("STUDENT")
@@ -33,6 +34,7 @@ model User {
   tutorAvailabilities TutorAvailability[]
   auditLogs        AuditLog[]
   resetTokens     PasswordResetToken[]
+  emailVerifications EmailVerificationToken[]
   emailPreference EmailPreference?
   emailLogs       EmailLog[]
   weeklyUpdates   WeeklyUpdate[]   @relation("UserWeeklyUpdates")
@@ -312,6 +314,21 @@ model PasswordResetToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime @default(now())
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  code      String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@unique([userId, code])
 }
 
 model EmailPreference {

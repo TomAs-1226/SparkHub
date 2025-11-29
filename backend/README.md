@@ -12,8 +12,10 @@ The email features (password reset links, weekly updates, and other notification
    SMTP_PASS=your_smtp_password
    MAIL_FROM="SparkHub <noreply@sparkhub.dev>"
    FRONTEND_URL=http://localhost:3000
+   # Optional: custom logo URL for transactional emails (defaults to an inline SparkHub badge)
+   EMAIL_LOGO_URL=https://yourcdn.com/sparkhub-logo.png
    ```
 2. Restart the backend server so it picks up the new variables.
 3. Check the server logs for `Email disabled` disappearing. Password reset and weekly update emails will now send via your SMTP provider.
 
-> Tip: For local development, you can use a test SMTP service (e.g., Mailtrap) and plug in the credentials it provides.
+> Tip: For local development, you can use a test SMTP service (e.g., Mailtrap) and plug in the credentials it provides. New signups will receive a verification email that includes both a button and a 6-digit code.

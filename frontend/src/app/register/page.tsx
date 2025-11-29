@@ -7,9 +7,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/api";
-import { setToken } from "@/lib/auth";
 import PasswordStrength from "@/components/password-strength";
-import { refreshCurrentUserStore } from "@/hooks/use-current-user";
 
 type AccountType = "learner" | "creator" | "tutor" | "admin";
 
@@ -29,6 +27,7 @@ export default function RegisterPage() {
     const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
     const [err, setErr] = useState<string | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -41,13 +40,12 @@ export default function RegisterPage() {
             });
             const data = await safeJson(res);
             if (!res.ok || data?.ok === false) throw new Error(data?.msg || `Register failed (${res.status})`);
-
-            if (data?.token) {
-                setToken(data.token);
-                await refreshCurrentUserStore();
-                router.push("/dashboard");
+            if (data?.requiresVerification) {
+                setNotice(data?.msg || "Check your email for a verification link.");
+                router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+                return;
             }
-            else { router.push("/login"); }
+            router.push("/login");
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : "Unable to register.";
             setErr(message);
@@ -209,6 +207,16 @@ export default function RegisterPage() {
                                     className="rounded-[10px] bg-red-50 px-4 py-3 text-[12px] text-red-700"
                                 >
                                     {err}
+                                </motion.p>
+                            )}
+
+                            {notice && !err && (
+                                <motion.p
+                                    initial={{ opacity: 0, y: 6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="rounded-[10px] bg-emerald-50 px-4 py-3 text-[12px] text-emerald-700"
+                                >
+                                    {notice}
                                 </motion.p>
                             )}
 

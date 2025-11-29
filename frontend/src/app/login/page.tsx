@@ -28,7 +28,17 @@ export default function LoginPage() {
                 body: JSON.stringify({ email: identity, username: identity, password }),
             });
             const data = await safeJson(res);
-            if (!res.ok || !data?.ok) throw new Error(data?.msg || `Login failed (${res.status})`);
+            if (!res.ok || !data?.ok) {
+                if (data?.requiresVerification) {
+                    router.push(
+                        `/verify-email?email=${encodeURIComponent(data?.email || identity)}&alert=${encodeURIComponent(
+                            data?.msg || "Please verify your email first."
+                        )}`
+                    );
+                    return;
+                }
+                throw new Error(data?.msg || `Login failed (${res.status})`);
+            }
             setToken(data.token);
             await refreshCurrentUserStore();
             router.push("/dashboard");
