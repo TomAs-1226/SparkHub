@@ -92,7 +92,8 @@ export default function ForgotPasswordPage() {
                         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#2D8F80]">Account recovery</p>
                         <h1 className="mt-2 text-3xl font-semibold text-slate-900">Reset your SparkHub password</h1>
                         <p className="mt-1 text-sm text-slate-500">
-                            Submit the email associated with your account and use the secure reset code to choose a new password.
+                            Submit the email associated with your account to get a unique reset link. You can also paste the secure code
+                            we send to you below.
                         </p>
                     </div>
                     <Link href="/login" className="rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B]">

@@ -26,6 +26,8 @@ export default function SettingsPage() {
     const [avatarUrl, setAvatarUrl] = useState("");
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
+    const [prefLoading, setPrefLoading] = useState(false);
+    const [weeklyOptIn, setWeeklyOptIn] = useState(true);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -36,6 +38,20 @@ export default function SettingsPage() {
     useEffect(() => {
         setName(user?.name || "");
         setAvatarUrl(user?.avatarUrl || "");
+    }, [user]);
+
+    useEffect(() => {
+        if (!user) return;
+        setPrefLoading(true);
+        api("/emails/preferences")
+            .then((res) => res.json().catch(() => null))
+            .then((json) => {
+                if (json?.preferences) {
+                    setWeeklyOptIn(Boolean(json.preferences.weeklyUpdates));
+                }
+            })
+            .catch(() => {})
+            .finally(() => setPrefLoading(false));
     }, [user]);
 
     async function handleSubmit(e: React.FormEvent) {
@@ -58,6 +74,23 @@ export default function SettingsPage() {
             setStatus(err instanceof Error ? err.message : "Unable to update profile.");
         } finally {
             setSaving(false);
+        }
+    }
+
+    async function handleWeeklyUpdate(nextValue: boolean) {
+        setWeeklyOptIn(nextValue);
+        setStatus(null);
+        try {
+            const res = await api("/emails/preferences", {
+                method: "PATCH",
+                body: JSON.stringify({ weeklyUpdates: nextValue }),
+            });
+            const json = await safeJson(res);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to update preferences.");
+            setStatus(nextValue ? "Weekly updates enabled." : "Weekly updates turned off.");
+        } catch (err) {
+            setWeeklyOptIn(!nextValue);
+            setStatus(err instanceof Error ? err.message : "Unable to update preferences.");
         }
     }
 
@@ -147,6 +180,31 @@ export default function SettingsPage() {
                             {saving ? "Saving..." : "Save profile"}
                         </button>
                     </form>
+
+                    <div className="mt-6 rounded-3xl border border-slate-100 bg-[#F9FBFF] p-5">
+                        <div className="flex items-center gap-3">
+                            <div className="rounded-full bg-[#E7F6F3] p-3 text-[#2D8F80]">
+                                <CheckCircle2 className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">Email updates</p>
+                                <p className="text-sm text-slate-500">Choose if you want weekly highlights sent to your inbox.</p>
+                            </div>
+                        </div>
+                        <label className="mt-4 flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                            <input
+                                type="checkbox"
+                                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#63C0B9] focus:ring-[#63C0B9]"
+                                checked={weeklyOptIn}
+                                disabled={prefLoading}
+                                onChange={(e) => handleWeeklyUpdate(e.target.checked)}
+                            />
+                            <div>
+                                Receive SparkHub weekly updates and new events.
+                                <span className="block text-xs text-slate-500">We only send one roundup per week. You can toggle this anytime.</span>
+                            </div>
+                        </label>
+                    </div>
 
                     <div className="mt-8 rounded-3xl border border-slate-100 bg-[#F9FBFF] p-5">
                         <div className="flex items-center gap-3">

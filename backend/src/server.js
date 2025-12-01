@@ -1,6 +1,13 @@
-require('dotenv').config()
-const express = require('express')
+// Load environment variables from the backend folder first, then fall back to a repo-level .env
 const path = require('path')
+const dotenv = require('dotenv')
+const backendEnvPath = path.resolve(__dirname, '..', '.env')
+dotenv.config({ path: backendEnvPath })
+// Allow a top-level project .env to fill in any missing keys (common in some dev setups)
+const repoEnvPath = path.resolve(__dirname, '..', '..', '.env')
+dotenv.config({ path: repoEnvPath, override: false })
+
+const express = require('express')
 const os = require('os')
 const cluster = require('cluster')
 const wireSecurity = require('./security')
@@ -75,6 +82,7 @@ app.use('/feedback', require('./routes/feedback'))
 app.use('/resources', require('./routes/resources'))
 app.use('/admin', require('./routes/admin'))
 app.use('/upload', require('./routes/upload'))
+app.use('/emails', require('./routes/emails'))
 
 // Health
 app.get('/', (_req, res) => res.json({ ok: true, name: 'SparkHub API' }))
