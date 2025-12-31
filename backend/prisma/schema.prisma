@@ -10,6 +10,7 @@ datasource db {
 model User {
   id               String           @id @default(cuid())
   email            String           @unique
+  emailVerified    Boolean          @default(false)
   password         String
   name             String
   role             String           @default("STUDENT")
@@ -33,6 +34,10 @@ model User {
   tutorAvailabilities TutorAvailability[]
   auditLogs        AuditLog[]
   resetTokens     PasswordResetToken[]
+  emailVerifications EmailVerificationToken[]
+  emailPreference EmailPreference?
+  emailLogs       EmailLog[]
+  weeklyUpdates   WeeklyUpdate[]   @relation("UserWeeklyUpdates")
   assignmentsAuthored CourseAssignment[] @relation("AssignmentCreator")
   courseSubmissions  CourseSubmission[]  @relation("SubmissionStudent")
   sessions        UserSession[]
@@ -309,6 +314,73 @@ model PasswordResetToken {
   expiresAt DateTime
   usedAt    DateTime?
   createdAt DateTime @default(now())
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  code      String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@unique([userId, code])
+}
+
+model EmailPreference {
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String   @unique
+  weeklyUpdates  Boolean  @default(true)
+  productUpdates Boolean  @default(true)
+  marketing      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([active])
+}
+
+model EmailLog {
+  id           String   @id @default(cuid())
+  to           String
+  subject      String
+  bodyText     String?
+  bodyHtml     String?
+  status       String   @default("QUEUED")
+  category     String   @default("GENERAL")
+  errorMessage String?
+  metadataJson String   @default("{}")
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId       String?
+  createdAt    DateTime @default(now())
+  sentAt       DateTime?
+}
+
+model WeeklyUpdate {
+  id            String   @id @default(cuid())
+  title         String
+  summary       String?
+  body          String
+  attachmentsJson String  @default("[]")
+  status        String   @default("DRAFT")
+  publishAt     DateTime?
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     User?    @relation("UserWeeklyUpdates", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById   String?
 }
 model Quiz {
   id          String         @id @default(cuid())

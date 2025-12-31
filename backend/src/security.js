@@ -13,7 +13,8 @@ const LOCAL_DEV_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    'http://10.0.2.2:5173'
+    'http://10.0.2.2:5173',
+    'http://sparkhub.playit.plus:19142'
 ]
 
 const PRIVATE_NET_MATCHERS = [
