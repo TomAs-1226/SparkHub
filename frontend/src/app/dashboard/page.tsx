@@ -19,6 +19,7 @@ import {
 import { api } from "@/lib/api";
 import DashboardCard from "@/components/DashboardCard";
 import SiteNav from "@/components/site-nav";
+import AIAssistant from "@/components/ai-assistant";
 
 // ---------- types that match your backend responses ----------
 type User = {
@@ -636,6 +637,7 @@ export default function DashboardPage() {
                 </div>
             </div>
         </main>
+        <AIAssistant />
         </div>
     );
 }

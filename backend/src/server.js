@@ -83,6 +83,7 @@ app.use('/resources', require('./routes/resources'))
 app.use('/admin', require('./routes/admin'))
 app.use('/upload', require('./routes/upload'))
 app.use('/emails', require('./routes/emails'))
+app.use('/ai', require('./routes/ai'))
 
 // Health
 app.get('/', (_req, res) => res.json({ ok: true, name: 'SparkHub API' }))
