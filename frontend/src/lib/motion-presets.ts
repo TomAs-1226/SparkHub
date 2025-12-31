@@ -147,6 +147,129 @@ export const DURATIONS = {
     emphasis: 0.7,
 } as const;
 
+// Page transition animations
+export const PAGE_TRANSITIONS = {
+    fadeSlide: {
+        initial: { opacity: 0, x: -20 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: 20 },
+        transition: { duration: 0.3, ease: EASE.swift },
+    },
+    fadeScale: {
+        initial: { opacity: 0, scale: 0.96 },
+        animate: { opacity: 1, scale: 1 },
+        exit: { opacity: 0, scale: 0.96 },
+        transition: { duration: 0.25, ease: EASE.emphasized },
+    },
+    slideUp: {
+        initial: { opacity: 0, y: 30 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -30 },
+        transition: { duration: 0.35, ease: EASE.emphasized },
+    },
+};
+
+// Skeleton loading animations
+export const SKELETON = {
+    pulse: {
+        animate: {
+            opacity: [0.5, 1, 0.5],
+            transition: {
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+            },
+        },
+    },
+    shimmer: {
+        animate: {
+            backgroundPosition: ["200% 0", "-200% 0"],
+            transition: {
+                duration: 2,
+                repeat: Infinity,
+                ease: "linear",
+            },
+        },
+    },
+};
+
+// Button hover and tap animations
+export const BUTTON_VARIANTS = {
+    primary: {
+        whileHover: getReducedMotion() ? {} : { scale: 1.02, y: -1 },
+        whileTap: getReducedMotion() ? {} : { scale: 0.98 },
+        transition: { duration: 0.15, ease: EASE.swift },
+    },
+    secondary: {
+        whileHover: getReducedMotion() ? {} : { scale: 1.01 },
+        whileTap: getReducedMotion() ? {} : { scale: 0.99 },
+        transition: { duration: 0.12, ease: EASE.swift },
+    },
+    icon: {
+        whileHover: getReducedMotion() ? {} : { scale: 1.1, rotate: 5 },
+        whileTap: getReducedMotion() ? {} : { scale: 0.9 },
+        transition: { duration: 0.15, ease: EASE.swift },
+    },
+};
+
+// Card entrance animations for lists
+export const LIST_ITEM = {
+    hidden: { opacity: 0, y: 20, scale: 0.98 },
+    visible: (i: number) => ({
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        transition: {
+            delay: i * 0.05,
+            duration: 0.4,
+            ease: EASE.emphasized,
+        },
+    }),
+};
+
+// Modal/dialog animations
+export const MODAL = {
+    overlay: {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+        transition: { duration: 0.2 },
+    },
+    content: {
+        initial: { opacity: 0, scale: 0.95, y: 20 },
+        animate: { opacity: 1, scale: 1, y: 0 },
+        exit: { opacity: 0, scale: 0.95, y: 20 },
+        transition: { duration: 0.25, ease: EASE.emphasized },
+    },
+};
+
+// Notification/toast animations
+export const TOAST = {
+    initial: { opacity: 0, y: -20, scale: 0.9 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -10, scale: 0.95 },
+    transition: { duration: 0.25, ease: EASE.swift },
+};
+
+// Confetti burst effect (for achievements)
+export const CONFETTI = {
+    particle: (index: number) => ({
+        initial: { opacity: 1, scale: 1, x: 0, y: 0 },
+        animate: {
+            opacity: 0,
+            scale: 0,
+            x: (Math.random() - 0.5) * 200,
+            y: (Math.random() - 0.5) * 200,
+            rotate: Math.random() * 720 - 360,
+            transition: {
+                duration: 1 + Math.random() * 0.5,
+                delay: index * 0.02,
+                ease: EASE.accelerate,
+            },
+        },
+    }),
+};
+
 // Helper to create motion-safe animations
 export function createMotionSafeVariants<T extends Record<string, unknown>>(
     fullMotion: T,

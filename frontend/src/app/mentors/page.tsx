@@ -42,7 +42,7 @@ export default function MentorsPage() {
                     <CheckCircle2 className="h-5 w-5" /> 1-On-1 Mentor Application
                 </div>
 
-                <section className="mt-6 grid gap-8 rounded-[36px] bg-white/95 p-6 shadow-2xl md:grid-cols-2 md:p-10">
+                <section className="mt-6 grid gap-8 rounded-[36px] bg-white/95 dark:bg-slate-800/95 dark:border dark:border-slate-700 p-6 shadow-2xl md:grid-cols-2 md:p-10">
                     <motion.div
                         initial={{ opacity: 0, y: 14 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -155,7 +155,7 @@ export default function MentorsPage() {
                                         {calendarWeeks.map((week, idx) => (
                                             <tr key={`week-${idx}`} className="divide-x divide-slate-50">
                                                 {week.map((day, dayIdx) => (
-                                                    <td key={`cell-${idx}-${day || dayIdx}`} className="h-14 align-middle">
+                                                    <td key={`cell-${idx}-${dayIdx}`} className="h-14 align-middle">
                                                         {day && (
                                                             <button
                                                                 type="button"
