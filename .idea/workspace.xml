@@ -4,21 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c7022082-7f8c-45c4-9150-4e47696694c8" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/backend/src/routes/ai.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/backend/src/routes/matching.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/backend/src/scheduler/weekly-digest.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/prisma/dev.db" beforeDir="false" afterPath="$PROJECT_DIR$/backend/prisma/dev.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/prisma/schema.prisma" beforeDir="false" afterPath="$PROJECT_DIR$/backend/prisma/schema.prisma" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/prisma.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/prisma.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/routes/admin.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/admin.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/routes/auth.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/auth.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/routes/jobs.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/jobs.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/server.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/server.js" afterDir="false" />
-    </list>
+    <list default="true" id="c7022082-7f8c-45c4-9150-4e47696694c8" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -128,7 +114,7 @@
       <workItem from="1764299365792" duration="15655000" />
       <workItem from="1765050409173" duration="2158000" />
       <workItem from="1767206550875" duration="4520000" />
-      <workItem from="1767212685357" duration="6356000" />
+      <workItem from="1767212685357" duration="6955000" />
     </task>
     <servers />
   </component>
