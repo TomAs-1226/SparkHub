@@ -3,71 +3,156 @@ const router = express.Router()
 const { prisma } = require('../prisma')
 const { requireAuth } = require('../middleware/auth')
 
-// AI response generator - provides helpful responses based on context
-// In production, this would connect to an actual AI service
+// Educational AI System Prompt
+const SYSTEM_CONTEXT = `You are SparkHub AI, an educational learning assistant. Your primary role is to GUIDE students toward understanding, not to give direct answers.
+
+CORE PRINCIPLES:
+1. **Socratic Method**: Ask guiding questions that lead students to discover answers themselves
+2. **Step-by-Step Guidance**: Break down complex problems into manageable steps
+3. **Conceptual Understanding**: Focus on WHY things work, not just HOW
+4. **Encouragement**: Celebrate progress and effort
+5. **Academic Integrity**: Never complete assignments or provide direct answers to homework/tests
+
+RESPONSE FORMAT:
+- Use **bold** for key terms and concepts
+- Use *italics* for emphasis
+- Use bullet points and numbered lists for clarity
+- For math equations, use LaTeX format: $inline$ or $$block$$
+- Always explain the reasoning behind concepts
+
+WHEN ASKED FOR HOMEWORK/ASSIGNMENT ANSWERS:
+- Acknowledge the challenge
+- Ask what they've tried so far
+- Guide them to the relevant concepts
+- Provide hints and scaffolding
+- Point to learning resources
+- NEVER give the direct answer
+
+EXAMPLE RESPONSES:
+
+For "What is 2+2?":
+Good: "Great question! Let's think about this together. If you have 2 apples and someone gives you 2 more, how many do you have total? Try counting them!"
+Bad: "The answer is 4."
+
+For "Solve x² + 5x + 6 = 0":
+Good: "Let's work through this quadratic equation step by step!
+
+First, do you remember the **factoring method**? We need two numbers that:
+- Multiply to give us $6$ (the constant term)
+- Add up to $5$ (the coefficient of $x$)
+
+What two numbers do you think fit these criteria? Think about the factors of 6..."
+
+Bad: "x = -2 and x = -3"`
+
+// AI response generator with educational focus
 function generateAIResponse(message, history = [], userContext = null) {
     const lowerMessage = message.toLowerCase()
 
-    // Context-aware responses
+    // Check for homework/assignment-like questions
+    const isHomeworkQuestion = detectHomeworkQuestion(lowerMessage)
+
+    // Educational responses with markdown and LaTeX support
     const responses = {
+        homework_math: [
+            "I see you're working on a math problem! Let me guide you through the thinking process:\n\n**Step 1**: Identify what type of problem this is\n**Step 2**: Recall the relevant formulas or methods\n**Step 3**: Work through it step by step\n\n*What have you tried so far?* Tell me where you're stuck and I can point you in the right direction!\n\n💡 **Hint**: Break the problem into smaller parts - it becomes much more manageable!",
+            "Great question! Rather than giving you the answer directly, let me help you *understand* the concept:\n\n**Ask yourself**:\n1. What information do I have?\n2. What am I trying to find?\n3. What tools/formulas might help?\n\nFor equations, remember:\n- $ax^2 + bx + c = 0$ can be solved by factoring, completing the square, or the quadratic formula\n- Linear equations: isolate the variable step by step\n\n*Share what approach you're considering and I'll help you check your reasoning!*",
+        ],
+        homework_general: [
+            "I appreciate you reaching out! My role is to help you **learn** rather than just provide answers.\n\n**Here's how we can work together**:\n\n1. Tell me what you've understood so far\n2. Share any attempts you've made\n3. Identify where you're confused\n\nThis way, I can give you *targeted guidance* that actually helps you learn!\n\n*What's your current understanding of this topic?*",
+            "I'm here to be your learning companion, not your homework doer! 📚\n\n**Let's explore this together**:\n\n- What are the key concepts involved?\n- What resources have you checked?\n- Where specifically are you stuck?\n\nWhen you work through problems yourself (with guidance), you:\n- Build **lasting understanding**\n- Develop **problem-solving skills**\n- Feel more *confident* on tests\n\n*Tell me more about what you're finding challenging!*",
+        ],
         study: [
-            "Here are some effective study tips:\n\n1. **Active Recall**: Test yourself frequently instead of passive re-reading\n2. **Spaced Repetition**: Review material at increasing intervals\n3. **Pomodoro Technique**: Study for 25 minutes, break for 5\n4. **Teach Others**: Explaining concepts solidifies understanding\n5. **Create Mind Maps**: Visual connections help retention",
-            "For better learning outcomes:\n\n- Set specific, achievable goals for each study session\n- Find your optimal study time (morning vs. evening)\n- Eliminate distractions during focused work\n- Take regular breaks to avoid burnout\n- Use multiple sources to understand concepts from different angles",
+            "Here are evidence-based study strategies that really work:\n\n**Active Learning Techniques**:\n1. **Spaced Repetition**: Review material at increasing intervals\n   - Day 1: Learn → Day 2: Review → Day 4: Review → Day 7: Review\n2. **Active Recall**: Test yourself without looking at notes\n3. **Elaborative Interrogation**: Ask *\"Why does this work?\"*\n\n**Practical Tips**:\n- 🍅 *Pomodoro Technique*: 25 min focus + 5 min break\n- 📝 Take notes in your own words\n- 🗣️ Teach concepts to others (or a rubber duck!)\n\n**For Math & Science**:\n- Practice problems > re-reading\n- Focus on understanding *derivations*\n- Build concept maps showing relationships",
+            "Let me share some *scientifically-proven* study methods:\n\n**The Feynman Technique** (great for complex topics!):\n1. Choose a concept to learn\n2. Explain it as if teaching a child\n3. Identify gaps in your explanation\n4. Go back and fill those gaps\n5. Simplify and use analogies\n\n**Memory Palace** for memorization:\n- Associate information with familiar locations\n- Walk through your \"palace\" to recall\n\n**Interleaving**: Mix different topics/problem types\n- Example: Don't just do 20 algebra problems\n- Mix: algebra → geometry → algebra → statistics\n\n*Which subject are you studying? I can give more specific advice!*",
         ],
         course: [
-            "To get the most from your SparkHub courses:\n\n1. **Engage actively** with all course materials and assignments\n2. **Join discussions** in course channels to learn from peers\n3. **Complete quizzes** to test your understanding\n4. **Attend live sessions** when available\n5. **Download materials** for offline reference",
-            "Course success tips:\n\n- Review the syllabus and plan your schedule\n- Don't hesitate to ask questions in the course chat\n- Connect with tutors for personalized guidance\n- Apply what you learn in real projects\n- Track your progress and celebrate milestones",
+            "Here's how to maximize your learning from SparkHub courses:\n\n**Before Starting**:\n- Preview the syllabus and learning objectives\n- Set specific goals: *\"I want to learn X by Y date\"*\n\n**During the Course**:\n1. **Engage actively** - pause videos to think\n2. **Take notes** in your own words\n3. **Do all exercises** - even optional ones\n4. **Participate in discussions** - learning is social!\n\n**After Each Lesson**:\n- Summarize key points without looking\n- Create practice problems for yourself\n- Connect new knowledge to what you already know\n\n*Which course are you working on?*",
+            "To get the most from your courses:\n\n**Create a Learning Schedule**:\n```\nWeekly Template:\n- Mon/Wed/Fri: Video lessons (1-2 hours)\n- Tue/Thu: Practice exercises\n- Sat: Review and catch up\n- Sun: Plan next week\n```\n\n**Active Engagement Strategies**:\n- 🎯 Set specific session goals\n- ❓ Write questions as you learn\n- 🔗 Connect concepts to real-world examples\n- 📊 Track your progress\n\n**Don't Just Watch - DO**:\n- Follow along with coding tutorials\n- Recreate examples from scratch\n- Attempt problems before watching solutions\n\n*What's your biggest challenge with the course?*",
         ],
-        event: [
-            "SparkHub events are great for learning and networking:\n\n- **Workshops**: Hands-on skill-building sessions\n- **Webinars**: Expert talks on trending topics\n- **Study Groups**: Collaborative learning sessions\n- **Career Fairs**: Connect with potential employers\n- **Hackathons**: Apply skills in competitive settings",
-            "To make the most of events:\n\n1. Check the events page regularly for new opportunities\n2. Sign up early - some events have limited capacity\n3. Prepare questions in advance\n4. Network with other attendees\n5. Follow up on connections made during events",
+        math: [
+            "Mathematics is all about building understanding layer by layer! Let me help you develop mathematical thinking:\n\n**For Problem Solving**:\n1. **Understand** the problem completely\n2. **Devise** a plan (what methods might work?)\n3. **Execute** your plan step by step\n4. **Reflect** - does the answer make sense?\n\n**Common Formulas to Remember**:\n- Quadratic: $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$\n- Distance: $d = \\sqrt{(x_2-x_1)^2 + (y_2-y_1)^2}$\n- Slope: $m = \\frac{y_2-y_1}{x_2-x_1}$\n\n**Pro tip**: *Understanding WHY formulas work is more valuable than memorizing them!*\n\n*What specific math topic are you working on?*",
+            "Let's make math more approachable!\n\n**Key Mathematical Concepts**:\n\n*Algebra*:\n- Variables represent unknown values\n- Equations must stay **balanced** (what you do to one side, do to the other)\n\n*Geometry*:\n- Area of circle: $A = \\pi r^2$\n- Pythagorean theorem: $a^2 + b^2 = c^2$\n\n*Calculus Preview*:\n- Derivatives measure **rate of change**\n- Integrals measure **accumulation**\n\n**Learning Strategies for Math**:\n1. Work through examples step by step\n2. Identify *patterns* in problem types\n3. Make mistakes! They're the best teachers\n4. Practice regularly (daily > weekly cramming)\n\n*Which area of math would you like to explore?*",
+        ],
+        science: [
+            "Science is about understanding how the world works! Here's a scientific approach to learning:\n\n**The Scientific Method**:\n1. **Observe** - What do you notice?\n2. **Question** - Why does this happen?\n3. **Hypothesize** - What might explain it?\n4. **Test** - How can you check?\n5. **Analyze** - What do results show?\n\n**Key Equations to Know**:\n\n*Physics*:\n- Newton's 2nd Law: $F = ma$\n- Kinetic Energy: $KE = \\frac{1}{2}mv^2$\n- Einstein's Famous: $E = mc^2$\n\n*Chemistry*:\n- Ideal Gas Law: $PV = nRT$\n\n**Study Tips for Science**:\n- Draw diagrams and flowcharts\n- Connect concepts to everyday examples\n- Do lab work (even virtual labs)\n\n*What science topic interests you?*",
+        ],
+        coding: [
+            "Programming is a skill built through practice! Here's how to improve:\n\n**Learning to Code Effectively**:\n\n1. **Type out code** - don't copy/paste\n2. **Break problems down** into smaller pieces\n3. **Read error messages** - they're helpful!\n4. **Debug methodically** - use print statements\n\n**Key Programming Concepts**:\n```\n- Variables: Store data\n- Functions: Reusable code blocks\n- Loops: Repeat actions\n- Conditionals: Make decisions\n```\n\n**Problem-Solving Approach**:\n1. Understand what you need to build\n2. Write pseudocode first\n3. Code one piece at a time\n4. Test frequently\n5. Refactor for clarity\n\n*What programming language or concept are you learning?*",
+            "Here's a developer's guide to learning code:\n\n**Project-Based Learning**:\n- Start with small, achievable projects\n- Build things you're interested in\n- Each project teaches new skills\n\n**Debugging Mindset**:\n```\nWhen code doesn't work:\n1. Read the error message carefully\n2. Check the line number mentioned\n3. Print variable values to trace logic\n4. Google the specific error\n5. Take a break if stuck!\n```\n\n**Resources to Explore**:\n- Documentation (always start here!)\n- Stack Overflow for specific issues\n- GitHub for code examples\n- SparkHub courses for structured learning\n\n**Remember**: Every expert was once a beginner. *Errors are how you learn!*",
         ],
         career: [
-            "Career development advice:\n\n1. **Build a Portfolio**: Showcase your projects and skills\n2. **Network Actively**: Connect with professionals in your field\n3. **Stay Current**: Keep learning new technologies and trends\n4. **Seek Mentorship**: Learn from experienced professionals\n5. **Practice Interviews**: Prepare for common questions",
-            "To stand out in job applications:\n\n- Tailor your resume for each position\n- Highlight measurable achievements\n- Build an online presence (LinkedIn, GitHub)\n- Contribute to open-source or community projects\n- Develop both technical and soft skills",
+            "Let's plan your career development strategically!\n\n**Building Your Professional Profile**:\n\n1. **Skills Assessment**\n   - Technical skills (hard skills)\n   - Soft skills (communication, leadership)\n   - Identify gaps to fill\n\n2. **Portfolio Building**\n   - Document your projects\n   - Showcase problem-solving process\n   - Include measurable outcomes\n\n3. **Networking**\n   - Connect with professionals in your field\n   - Attend SparkHub events\n   - Engage in online communities\n\n**Interview Preparation**:\n- Practice the STAR method:\n  - **S**ituation\n  - **T**ask\n  - **A**ction\n  - **R**esult\n\n*What career field interests you?*",
+        ],
+        event: [
+            "SparkHub events are great learning opportunities!\n\n**Types of Events**:\n\n🎓 **Workshops** - Hands-on skill building\n📺 **Webinars** - Expert talks and Q&A\n👥 **Study Groups** - Collaborative learning\n💼 **Career Fairs** - Network with employers\n🏆 **Hackathons** - Apply skills competitively\n\n**Getting the Most from Events**:\n1. Prepare questions in advance\n2. Take notes during sessions\n3. Network with other attendees\n4. Follow up on new connections\n5. Apply what you learned immediately\n\n*Check our events page for upcoming sessions!*",
         ],
         tutor: [
-            "Working with SparkHub tutors:\n\n1. **Browse tutor profiles** to find experts in your subject\n2. **Book sessions** at times that work for you\n3. **Come prepared** with specific questions or topics\n4. **Be open to feedback** and different learning approaches\n5. **Follow up** on concepts between sessions",
-            "To maximize tutoring sessions:\n\n- Share your learning goals upfront\n- Take notes during sessions\n- Ask for resources and practice exercises\n- Schedule regular sessions for consistency\n- Provide feedback to help tutors adjust their approach",
-        ],
-        resource: [
-            "SparkHub resources include:\n\n- **Articles & Guides**: Written tutorials and explanations\n- **Videos**: Visual learning content\n- **Tools**: Interactive learning applications\n- **Templates**: Ready-to-use documents and frameworks\n- **External Links**: Curated third-party resources",
-            "Using resources effectively:\n\n1. Start with foundational materials before advanced content\n2. Bookmark resources you'll need to reference often\n3. Combine different resource types for varied learning\n4. Apply concepts from resources in practical projects\n5. Share helpful resources with your peers",
+            "Working with tutors can accelerate your learning!\n\n**Finding the Right Tutor**:\n- Review their subject expertise\n- Check their teaching style\n- Look for good communication skills\n\n**Making Sessions Productive**:\n\n1. **Come Prepared**\n   - Specific questions ready\n   - Materials reviewed beforehand\n   - Previous session notes\n\n2. **During Sessions**\n   - Be honest about confusion\n   - Ask *why*, not just *how*\n   - Take your own notes\n   - Try problems yourself\n\n3. **After Sessions**\n   - Review notes within 24 hours\n   - Practice similar problems\n   - Note questions for next time\n\n*The best tutoring is interactive, not passive!*",
         ],
         greeting: [
-            "Hello! I'm SparkHub AI, your learning assistant. I can help you with:\n\n- Study tips and learning strategies\n- Course guidance and recommendations\n- Career advice and job preparation\n- Finding tutors and resources\n- Event suggestions\n\nWhat would you like to explore?",
-            "Hi there! Welcome to SparkHub AI. I'm here to support your learning journey. Feel free to ask me about courses, tutoring, career advice, or study strategies. How can I assist you today?",
+            "Hello! I'm **SparkHub AI**, your educational learning assistant! 🎓\n\nI'm here to *guide* your learning journey, not just give answers. I believe in helping you develop real understanding!\n\n**I can help with**:\n- 📚 Study strategies and techniques\n- 🧮 Math and science concepts\n- 💻 Programming guidance\n- 📖 Course recommendations\n- 💼 Career development\n\n**My approach**:\n- Ask guiding questions\n- Break down complex topics\n- Encourage critical thinking\n- Point you to resources\n\n*What would you like to learn about today?*",
+            "Welcome! I'm **SparkHub AI** - your learning companion! ✨\n\nI use the *Socratic method* - that means I'll guide you to discover answers rather than just telling you. This builds **deeper understanding**!\n\n**How I can help**:\n- 🎯 Clarify confusing concepts\n- 📐 Walk through problem-solving\n- 📝 Suggest study strategies\n- 🔍 Point to relevant resources\n\n**My philosophy**: Learning happens when *you* make connections, not when someone hands you answers.\n\n*What brings you here today?*",
         ],
         default: [
-            "That's a great question! While I'm focused on helping with learning, courses, and career guidance, I'd be happy to point you in the right direction. Could you tell me more about what you're looking for?",
-            "I appreciate your question! My expertise is in education and career guidance. If you're looking for:\n\n- **Learning help**: Ask about study tips\n- **Course info**: Ask about enrolling or course content\n- **Career guidance**: Ask about job preparation\n- **Resources**: Ask about materials and tools\n\nWhat area interests you most?",
+            "Great question! Let me help guide your thinking:\n\n**First, let's clarify**:\n- What specifically are you trying to understand?\n- What have you already tried or researched?\n- Is this related to a particular subject or course?\n\nThe more context you share, the better I can *guide* you toward understanding!\n\n**I'm best at helping with**:\n- Academic subjects (math, science, humanities)\n- Study techniques and learning strategies\n- Course and career guidance\n- Explaining concepts in new ways\n\n*Tell me more about what you're working on!*",
+            "I'd love to help you learn! Let's approach this together:\n\n**My role is to**:\n- Guide your thinking with questions\n- Break down complex topics\n- Connect concepts you know to new ones\n- Encourage you when things get tough\n\n**Not to**:\n- Give direct answers to assignments\n- Do your work for you\n- Skip the learning process\n\nThis approach might feel slower, but it builds **lasting knowledge**!\n\n*What subject or topic are you exploring?*",
         ],
     }
 
     // Determine response category
     let category = 'default'
 
-    if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey') || lowerMessage.includes('help')) {
+    if (isHomeworkQuestion) {
+        if (lowerMessage.includes('math') || /\d+[+\-*/^=]|\d+x|solve|equation|calculate/i.test(lowerMessage)) {
+            category = 'homework_math'
+        } else {
+            category = 'homework_general'
+        }
+    } else if (/hello|hi |hey|welcome|help me|what can you/i.test(lowerMessage)) {
         category = 'greeting'
-    } else if (lowerMessage.includes('study') || lowerMessage.includes('learn') || lowerMessage.includes('focus') || lowerMessage.includes('remember')) {
+    } else if (/study|learn|focus|remember|memorize|exam|test prep/i.test(lowerMessage)) {
         category = 'study'
-    } else if (lowerMessage.includes('course') || lowerMessage.includes('class') || lowerMessage.includes('enroll') || lowerMessage.includes('lesson')) {
+    } else if (/course|class|enroll|lesson|curriculum/i.test(lowerMessage)) {
         category = 'course'
-    } else if (lowerMessage.includes('event') || lowerMessage.includes('workshop') || lowerMessage.includes('webinar') || lowerMessage.includes('meetup')) {
-        category = 'event'
-    } else if (lowerMessage.includes('job') || lowerMessage.includes('career') || lowerMessage.includes('work') || lowerMessage.includes('opportunity') || lowerMessage.includes('skill')) {
+    } else if (/math|algebra|calculus|geometry|equation|formula|solve|calculate/i.test(lowerMessage)) {
+        category = 'math'
+    } else if (/science|physics|chemistry|biology|experiment/i.test(lowerMessage)) {
+        category = 'science'
+    } else if (/code|program|javascript|python|developer|software|debug|function/i.test(lowerMessage)) {
+        category = 'coding'
+    } else if (/job|career|work|opportunity|interview|resume|skill/i.test(lowerMessage)) {
         category = 'career'
-    } else if (lowerMessage.includes('tutor') || lowerMessage.includes('mentor') || lowerMessage.includes('session') || lowerMessage.includes('help me')) {
+    } else if (/event|workshop|webinar|meetup|conference/i.test(lowerMessage)) {
+        category = 'event'
+    } else if (/tutor|mentor|session|one.on.one/i.test(lowerMessage)) {
         category = 'tutor'
-    } else if (lowerMessage.includes('resource') || lowerMessage.includes('material') || lowerMessage.includes('guide') || lowerMessage.includes('article')) {
-        category = 'resource'
     }
 
-    // Get random response from category
+    // Get response from category
     const categoryResponses = responses[category]
     const randomIndex = Math.floor(Math.random() * categoryResponses.length)
 
     return categoryResponses[randomIndex]
+}
+
+// Detect if the message is likely a homework question asking for direct answers
+function detectHomeworkQuestion(message) {
+    const homeworkPatterns = [
+        /what is \d+[+\-*/]\d+/i,
+        /solve (for )?(x|y|the equation)/i,
+        /calculate /i,
+        /find the (answer|solution|value)/i,
+        /what('s| is) the answer/i,
+        /help (me )?(with|do) (my |this )?homework/i,
+        /can you (solve|do|complete|finish)/i,
+        /give me the answer/i,
+        /tell me the answer/i,
+        /just tell me/i,
+        /what does .* equal/i,
+    ]
+
+    return homeworkPatterns.some(pattern => pattern.test(message))
 }
 
 // Chat endpoint

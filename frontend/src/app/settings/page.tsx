@@ -14,6 +14,11 @@ import {
     Bell,
     Palette,
     Sparkles,
+    Info,
+    FileText,
+    ChevronDown,
+    ChevronUp,
+    ExternalLink,
 } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
@@ -46,6 +51,7 @@ export default function SettingsPage() {
     const [weeklyOptIn, setWeeklyOptIn] = useState(true);
     const [productUpdates, setProductUpdates] = useState(true);
     const [marketing, setMarketing] = useState(false);
+    const [tosExpanded, setTosExpanded] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -392,6 +398,212 @@ export default function SettingsPage() {
                                 </Link>
                             )}
                         </div>
+                    </motion.div>
+
+                    {/* About SparkHub */}
+                    <motion.div
+                        className="mt-6 rounded-3xl border border-slate-100 dark:border-slate-700 bg-[#F9FBFF] dark:bg-slate-800/50 p-5"
+                        initial={SURFACES.lift.initial}
+                        whileInView={SURFACES.lift.animate(0.25)}
+                        viewport={{ once: true }}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="rounded-full bg-[#E7F6F3] dark:bg-slate-700 p-3 text-[#2D8F80]">
+                                <Info className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">About SparkHub</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Version 1.0.0 • Your development center</p>
+                            </div>
+                        </div>
+                        <div className="mt-4 space-y-4">
+                            <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3">
+                                <p className="text-sm text-slate-700 dark:text-slate-200">
+                                    <span className="font-semibold">SparkHub</span> is a comprehensive learning platform designed to connect students, mentors, tutors, and creators. Our mission is to make quality education accessible and collaborative.
+                                </p>
+                                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">Courses</span>
+                                    <span className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">Tutoring</span>
+                                    <span className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">Events</span>
+                                    <span className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">Jobs</span>
+                                    <span className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">AI Assistant</span>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2">
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Platform</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200">SparkHub Web</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2">
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Build</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200">2024.12.31</p>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* Terms of Service */}
+                    <motion.div
+                        className="mt-6 rounded-3xl border border-slate-100 dark:border-slate-700 bg-[#F9FBFF] dark:bg-slate-800/50 p-5"
+                        initial={SURFACES.lift.initial}
+                        whileInView={SURFACES.lift.animate(0.3)}
+                        viewport={{ once: true }}
+                    >
+                        <button
+                            onClick={() => setTosExpanded(!tosExpanded)}
+                            className="flex w-full items-center justify-between gap-3"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="rounded-full bg-[#E7F6F3] dark:bg-slate-700 p-3 text-[#2D8F80]">
+                                    <FileText className="h-5 w-5" />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">Terms of Service</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Legal terms and conditions for using SparkHub</p>
+                                </div>
+                            </div>
+                            <motion.div
+                                animate={{ rotate: tosExpanded ? 180 : 0 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <ChevronDown className="h-5 w-5 text-slate-400" />
+                            </motion.div>
+                        </button>
+
+                        <motion.div
+                            initial={false}
+                            animate={{
+                                height: tosExpanded ? "auto" : 0,
+                                opacity: tosExpanded ? 1 : 0,
+                            }}
+                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                            className="overflow-hidden"
+                        >
+                            <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-5 py-4 text-sm text-slate-700 dark:text-slate-200 max-h-[400px] overflow-y-auto">
+                                <h3 className="font-bold text-base mb-3">SparkHub Terms of Service</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">Last updated: December 31, 2024</p>
+
+                                <div className="space-y-4 text-xs leading-relaxed">
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">1. Acceptance of Terms</h4>
+                                        <p>By accessing or using SparkHub (&quot;the Platform&quot;), you agree to be bound by these Terms of Service (&quot;Terms&quot;). If you disagree with any part of these terms, you may not access the Platform. These Terms apply to all visitors, users, students, tutors, creators, and others who access or use the Platform.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">2. Description of Service</h4>
+                                        <p>SparkHub is an educational platform that provides:</p>
+                                        <ul className="list-disc ml-4 mt-1 space-y-0.5">
+                                            <li>Online courses and learning materials</li>
+                                            <li>Tutor and mentor matching services</li>
+                                            <li>Educational events and workshops</li>
+                                            <li>Job and opportunity postings</li>
+                                            <li>AI-powered learning assistance</li>
+                                            <li>Resource sharing and collaboration tools</li>
+                                        </ul>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">3. User Accounts</h4>
+                                        <p>3.1. <strong>Registration:</strong> You must provide accurate, complete, and current information during registration. You are responsible for maintaining the confidentiality of your account credentials.</p>
+                                        <p className="mt-1">3.2. <strong>Account Security:</strong> You are responsible for all activities that occur under your account. Notify us immediately of any unauthorized use or security breach.</p>
+                                        <p className="mt-1">3.3. <strong>Age Requirements:</strong> You must be at least 13 years old to use SparkHub. Users under 18 must have parental or guardian consent.</p>
+                                        <p className="mt-1">3.4. <strong>One Account Per Person:</strong> Each individual may only maintain one active account. Creating multiple accounts may result in suspension.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">4. User Conduct</h4>
+                                        <p>You agree NOT to:</p>
+                                        <ul className="list-disc ml-4 mt-1 space-y-0.5">
+                                            <li>Post false, misleading, defamatory, or offensive content</li>
+                                            <li>Harass, bully, or intimidate other users</li>
+                                            <li>Share copyrighted material without authorization</li>
+                                            <li>Attempt to gain unauthorized access to other accounts or systems</li>
+                                            <li>Use the Platform for any illegal or unauthorized purpose</li>
+                                            <li>Interfere with or disrupt the Platform&apos;s operation</li>
+                                            <li>Collect user information without consent</li>
+                                            <li>Impersonate any person or entity</li>
+                                            <li>Use automated systems to access the Platform without permission</li>
+                                        </ul>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">5. Content and Intellectual Property</h4>
+                                        <p>5.1. <strong>Your Content:</strong> You retain ownership of content you create on SparkHub. By posting content, you grant SparkHub a non-exclusive, worldwide, royalty-free license to use, display, and distribute your content within the Platform.</p>
+                                        <p className="mt-1">5.2. <strong>Platform Content:</strong> SparkHub and its licensors own all content, features, and functionality of the Platform. This includes but is not limited to software, text, graphics, logos, and course materials.</p>
+                                        <p className="mt-1">5.3. <strong>Copyright Policy:</strong> We respect intellectual property rights and expect users to do the same. Content that infringes copyrights will be removed and may result in account termination.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">6. Tutoring and Educational Services</h4>
+                                        <p>6.1. <strong>Tutor Verification:</strong> While we work to verify tutor qualifications, we cannot guarantee the accuracy of all tutor profiles. Users should exercise judgment when selecting tutors.</p>
+                                        <p className="mt-1">6.2. <strong>Session Conduct:</strong> Both tutors and students must conduct sessions professionally and respectfully. Recording sessions without consent is prohibited.</p>
+                                        <p className="mt-1">6.3. <strong>No Academic Dishonesty:</strong> Using SparkHub to complete assignments on behalf of students, share exam answers, or facilitate academic dishonesty is strictly prohibited.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">7. AI Assistant Usage</h4>
+                                        <p>7.1. <strong>Educational Purpose:</strong> The AI Assistant is designed to support learning, not replace it. It provides guidance and explanations rather than direct answers to assignments.</p>
+                                        <p className="mt-1">7.2. <strong>Accuracy:</strong> While we strive for accuracy, AI responses may contain errors. Users should verify important information from authoritative sources.</p>
+                                        <p className="mt-1">7.3. <strong>Appropriate Use:</strong> Do not use the AI Assistant to generate harmful, illegal, or inappropriate content.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">8. Privacy and Data</h4>
+                                        <p>Your use of SparkHub is also governed by our Privacy Policy. By using the Platform, you consent to our collection and use of data as described in that policy. We collect only necessary information and implement appropriate security measures to protect your data.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">9. Fees and Payments</h4>
+                                        <p>9.1. Certain features or services may require payment. All fees are stated in your local currency where available.</p>
+                                        <p className="mt-1">9.2. Payments are processed through secure third-party providers. SparkHub does not store complete payment information.</p>
+                                        <p className="mt-1">9.3. Refund policies vary by service type and are detailed at the time of purchase.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">10. Termination</h4>
+                                        <p>10.1. You may terminate your account at any time through the settings page or by contacting support.</p>
+                                        <p className="mt-1">10.2. We may suspend or terminate accounts that violate these Terms, without prior notice.</p>
+                                        <p className="mt-1">10.3. Upon termination, your right to use the Platform ceases immediately. Some provisions of these Terms survive termination.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">11. Disclaimers</h4>
+                                        <p>11.1. THE PLATFORM IS PROVIDED &quot;AS IS&quot; WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED.</p>
+                                        <p className="mt-1">11.2. We do not guarantee that the Platform will be uninterrupted, secure, or error-free.</p>
+                                        <p className="mt-1">11.3. Educational content is for informational purposes and should not replace professional advice.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">12. Limitation of Liability</h4>
+                                        <p>To the maximum extent permitted by law, SparkHub shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of the Platform, even if we have been advised of the possibility of such damages.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">13. Indemnification</h4>
+                                        <p>You agree to indemnify and hold harmless SparkHub, its officers, directors, employees, and agents from any claims, damages, losses, or expenses arising from your use of the Platform or violation of these Terms.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">14. Changes to Terms</h4>
+                                        <p>We reserve the right to modify these Terms at any time. We will notify users of significant changes through the Platform or email. Continued use after changes constitutes acceptance of the new Terms.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">15. Governing Law</h4>
+                                        <p>These Terms are governed by the laws of the jurisdiction where SparkHub is operated. Any disputes shall be resolved in the courts of that jurisdiction.</p>
+                                    </section>
+
+                                    <section>
+                                        <h4 className="font-semibold text-sm mb-1">16. Contact Information</h4>
+                                        <p>For questions about these Terms of Service, please contact us through the Contact page on our Platform or email us at support@sparkhub.com.</p>
+                                    </section>
+
+                                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-600">
+                                        <p className="text-slate-500 dark:text-slate-400">By using SparkHub, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
                     </motion.div>
                 </motion.section>
             </main>

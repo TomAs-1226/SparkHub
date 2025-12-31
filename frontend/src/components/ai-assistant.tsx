@@ -8,7 +8,7 @@ import {
     Send,
     Sparkles,
     Loader2,
-    ChevronDown,
+    RotateCcw,
     Lightbulb,
     BookOpen,
     Calendar,
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { EASE, SPRING, DURATIONS } from "@/lib/motion-presets";
+import MarkdownRenderer from "@/components/markdown-renderer";
 
 interface Message {
     id: string;
@@ -176,21 +177,21 @@ export default function AIAssistant() {
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        className="fixed bottom-6 right-6 z-50 flex h-[520px] w-[380px] flex-col overflow-hidden rounded-[24px] border border-[#CFE3E0]/60 bg-white shadow-2xl shadow-slate-900/10"
+                        className="fixed bottom-6 right-6 z-50 flex h-[520px] w-[380px] flex-col overflow-hidden rounded-[24px] border border-[#CFE3E0]/60 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl shadow-slate-900/10"
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
                         transition={SPRING.snappy}
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between border-b border-slate-100 bg-gradient-to-r from-[#E7F6F3] to-[#F0F9FF] px-4 py-3">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-gradient-to-r from-[#E7F6F3] to-[#F0F9FF] dark:from-slate-700 dark:to-slate-800 px-4 py-3">
                             <div className="flex items-center gap-3">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#63C0B9] to-[#2D8F80] text-white">
                                     <Sparkles className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <h3 className="text-sm font-semibold text-slate-800">SparkHub AI</h3>
-                                    <p className="text-xs text-slate-500">Your learning assistant</p>
+                                    <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">SparkHub AI</h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Your learning assistant</p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -199,16 +200,16 @@ export default function AIAssistant() {
                                         setMessages([]);
                                         setShowPrompts(true);
                                     }}
-                                    className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                                    className="rounded-full p-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
                                     whileHover={{ scale: 1.1 }}
                                     whileTap={{ scale: 0.9 }}
                                     title="Clear chat"
                                 >
-                                    <ChevronDown className="h-4 w-4" />
+                                    <RotateCcw className="h-4 w-4" />
                                 </motion.button>
                                 <motion.button
                                     onClick={() => setIsOpen(false)}
-                                    className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                                    className="rounded-full p-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
                                     whileHover={{ scale: 1.1 }}
                                     whileTap={{ scale: 0.9 }}
                                 >
@@ -227,14 +228,14 @@ export default function AIAssistant() {
                                     className="space-y-4"
                                 >
                                     <div className="text-center">
-                                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#E7F6F3] to-[#F0F9FF]">
-                                            <MessageCircle className="h-6 w-6 text-[#2D8F80]" />
+                                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#E7F6F3] to-[#F0F9FF] dark:from-slate-700 dark:to-slate-600">
+                                            <MessageCircle className="h-6 w-6 text-[#2D8F80] dark:text-[#63C0B9]" />
                                         </div>
-                                        <h4 className="mt-3 text-sm font-semibold text-slate-800">
+                                        <h4 className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
                                             How can I help you today?
                                         </h4>
-                                        <p className="mt-1 text-xs text-slate-500">
-                                            Ask me anything about learning, courses, or career advice
+                                        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                            I guide your learning - ask me anything!
                                         </p>
                                     </div>
 
@@ -243,14 +244,14 @@ export default function AIAssistant() {
                                             <motion.button
                                                 key={idx}
                                                 onClick={() => handleQuickPrompt(prompt.prompt)}
-                                                className="flex items-center gap-2 rounded-xl border border-slate-100 bg-white p-3 text-left text-xs text-slate-600 shadow-sm transition-all hover:border-[#CFE3E0] hover:bg-[#F9FEFD] hover:shadow"
+                                                className="flex items-center gap-2 rounded-xl border border-slate-100 dark:border-slate-600 bg-white dark:bg-slate-700 p-3 text-left text-xs text-slate-600 dark:text-slate-300 shadow-sm transition-all hover:border-[#CFE3E0] dark:hover:border-slate-500 hover:bg-[#F9FEFD] dark:hover:bg-slate-600 hover:shadow"
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: idx * 0.05, duration: DURATIONS.fast }}
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
-                                                <span className="text-[#2D8F80]">{prompt.icon}</span>
+                                                <span className="text-[#2D8F80] dark:text-[#63C0B9]">{prompt.icon}</span>
                                                 <span className="font-medium">{prompt.label}</span>
                                             </motion.button>
                                         ))}
@@ -270,13 +271,17 @@ export default function AIAssistant() {
                                                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
                                                     message.role === "user"
                                                         ? "bg-gradient-to-br from-[#63C0B9] to-[#2D8F80] text-white"
-                                                        : "border border-slate-100 bg-[#F9FBFF] text-slate-700"
+                                                        : "border border-slate-100 dark:border-slate-600 bg-[#F9FBFF] dark:bg-slate-700 text-slate-700 dark:text-slate-200"
                                                 }`}
                                             >
-                                                <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                                                {message.role === "assistant" ? (
+                                                    <MarkdownRenderer content={message.content} className="text-sm" />
+                                                ) : (
+                                                    <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                                                )}
                                                 <p
                                                     className={`mt-1 text-[10px] ${
-                                                        message.role === "user" ? "text-white/70" : "text-slate-400"
+                                                        message.role === "user" ? "text-white/70" : "text-slate-400 dark:text-slate-500"
                                                     }`}
                                                 >
                                                     {message.timestamp.toLocaleTimeString([], {
@@ -293,9 +298,9 @@ export default function AIAssistant() {
                                             animate={{ opacity: 1 }}
                                             className="flex justify-start"
                                         >
-                                            <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-[#F9FBFF] px-4 py-3">
-                                                <Loader2 className="h-4 w-4 animate-spin text-[#2D8F80]" />
-                                                <span className="text-xs text-slate-500">Thinking...</span>
+                                            <div className="flex items-center gap-2 rounded-2xl border border-slate-100 dark:border-slate-600 bg-[#F9FBFF] dark:bg-slate-700 px-4 py-3">
+                                                <Loader2 className="h-4 w-4 animate-spin text-[#2D8F80] dark:text-[#63C0B9]" />
+                                                <span className="text-xs text-slate-500 dark:text-slate-400">Thinking...</span>
                                             </div>
                                         </motion.div>
                                     )}
@@ -305,15 +310,15 @@ export default function AIAssistant() {
                         </div>
 
                         {/* Input area */}
-                        <form onSubmit={handleSubmit} className="border-t border-slate-100 p-3">
-                            <div className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 focus-within:border-[#63C0B9] focus-within:ring-2 focus-within:ring-[#63C0B9]/20">
+                        <form onSubmit={handleSubmit} className="border-t border-slate-100 dark:border-slate-700 p-3 bg-white dark:bg-slate-800">
+                            <div className="flex items-end gap-2 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 focus-within:border-[#63C0B9] focus-within:ring-2 focus-within:ring-[#63C0B9]/20">
                                 <textarea
                                     ref={inputRef}
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     onKeyDown={handleKeyDown}
                                     placeholder="Ask me anything..."
-                                    className="max-h-24 min-h-[40px] flex-1 resize-none bg-transparent text-sm text-slate-700 placeholder-slate-400 focus:outline-none"
+                                    className="max-h-24 min-h-[40px] flex-1 resize-none bg-transparent text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
                                     rows={1}
                                     disabled={isLoading}
                                 />
@@ -327,8 +332,8 @@ export default function AIAssistant() {
                                     <Send className="h-4 w-4" />
                                 </motion.button>
                             </div>
-                            <p className="mt-2 text-center text-[10px] text-slate-400">
-                                SparkHub AI is here to help with learning and career guidance
+                            <p className="mt-2 text-center text-[10px] text-slate-400 dark:text-slate-500">
+                                I guide your learning - never just give answers
                             </p>
                         </form>
                     </motion.div>

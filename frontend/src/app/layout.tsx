@@ -21,7 +21,7 @@ export default function RootLayout({
     // NOTE: do NOT add "use client" in this file
     return (
         <html lang="en" suppressHydrationWarning>
-        <body className="min-h-dvh bg-white text-slate-800 antialiased dark:bg-slate-900 dark:text-slate-100">
+        <body className="min-h-dvh antialiased" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
         <Providers>
             {children}
         </Providers>

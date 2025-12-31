@@ -1,5 +1,112 @@
-
-// Prisma 客户端
+// Prisma client with connection management and error recovery
 const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
-module.exports = { prisma }
+
+// Configure Prisma with logging and error handling
+const prisma = new PrismaClient({
+    log: [
+        { level: 'error', emit: 'stdout' },
+        { level: 'warn', emit: 'stdout' },
+    ],
+    errorFormat: 'pretty',
+})
+
+// Track connection state
+let isConnected = false
+let connectionAttempts = 0
+const MAX_RECONNECT_ATTEMPTS = 5
+const RECONNECT_DELAY = 1000
+
+// Initialize connection
+async function connect() {
+    try {
+        await prisma.$connect()
+        isConnected = true
+        connectionAttempts = 0
+        console.log('Database connected successfully')
+    } catch (error) {
+        isConnected = false
+        console.error('Database connection failed:', error.message)
+
+        if (connectionAttempts < MAX_RECONNECT_ATTEMPTS) {
+            connectionAttempts++
+            console.log(`Retrying connection (attempt ${connectionAttempts}/${MAX_RECONNECT_ATTEMPTS})...`)
+            setTimeout(connect, RECONNECT_DELAY * connectionAttempts)
+        } else {
+            console.error('Max reconnection attempts reached. Database unavailable.')
+        }
+    }
+}
+
+// Graceful disconnect
+async function disconnect() {
+    try {
+        await prisma.$disconnect()
+        isConnected = false
+        console.log('Database disconnected')
+    } catch (error) {
+        console.error('Error disconnecting from database:', error.message)
+    }
+}
+
+// Health check function
+async function healthCheck() {
+    try {
+        await prisma.$queryRaw`SELECT 1`
+        return { ok: true, connected: true }
+    } catch (error) {
+        isConnected = false
+        // Try to reconnect
+        connect().catch(() => {})
+        return { ok: false, connected: false, error: error.message }
+    }
+}
+
+// Wrapper for safe database operations with automatic retry
+async function withRetry(operation, maxRetries = 3) {
+    let lastError
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await operation()
+        } catch (error) {
+            lastError = error
+
+            // Check if it's a connection error
+            const isConnectionError =
+                error.message?.includes('Can\'t reach database') ||
+                error.message?.includes('Connection') ||
+                error.message?.includes('ECONNREFUSED') ||
+                error.message?.includes('SQLITE_BUSY') ||
+                error.code === 'P1001' ||
+                error.code === 'P1002' ||
+                error.code === 'P1008' ||
+                error.code === 'P1017'
+
+            if (isConnectionError && attempt < maxRetries) {
+                console.warn(`Database operation failed (attempt ${attempt}/${maxRetries}), retrying...`)
+                await new Promise(resolve => setTimeout(resolve, 100 * attempt))
+                // Try to reconnect
+                await connect().catch(() => {})
+            } else {
+                throw error
+            }
+        }
+    }
+    throw lastError
+}
+
+// Initialize connection on module load
+connect().catch(console.error)
+
+// Handle process termination
+process.on('beforeExit', async () => {
+    await disconnect()
+})
+
+module.exports = {
+    prisma,
+    connect,
+    disconnect,
+    healthCheck,
+    withRetry,
+    isConnected: () => isConnected
+}
