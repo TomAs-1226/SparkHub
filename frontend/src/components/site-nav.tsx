@@ -16,37 +16,26 @@ type RoleAwareLink = { href: string; label: string; roles?: string[] };
 
 const NAV_LINKS: RoleAwareLink[] = [
     { href: "/courses", label: "Courses" },
-    { href: "/courses/join", label: "Join" },
     { href: "/events", label: "Events" },
-    { href: "/tutors", label: "Find a tutor", roles: ["ANON", "STUDENT"] },
+    { href: "/tutors", label: "Tutoring" },
     { href: "/resources", label: "Resources" },
     { href: "/opportunities", label: "Opportunities" },
-    { href: "/about", label: "About" },
     { href: "/contact", label: "Contact" },
-    { href: "/mentors", label: "Mentors" },
 ];
 
 const ROLE_LINKS: Record<string, RoleAwareLink[]> = {
     ADMIN: [
         { href: "/admin", label: "Admin" },
-        { href: "/courses/studio", label: "Course studio" },
-        { href: "/tutors/dashboard", label: "Publishing" },
+        { href: "/courses/studio", label: "Studio" },
     ],
     TUTOR: [
-        { href: "/tutors/dashboard", label: "Tutor workspace" },
-        { href: "/courses/studio", label: "Course studio" },
+        { href: "/tutors/dashboard", label: "Dashboard" },
     ],
     CREATOR: [
-        { href: "/tutors/dashboard", label: "Creator workspace" },
-        { href: "/courses/studio", label: "Course studio" },
+        { href: "/courses/studio", label: "Studio" },
     ],
-    STUDENT: [
-        { href: "/courses#catalog", label: "My courses" },
-        { href: "/courses#assignments", label: "Assignments" },
-    ],
-    RECRUITER: [
-        { href: "/opportunities", label: "Hire students" },
-    ],
+    STUDENT: [],
+    RECRUITER: [],
 };
 
 export default function Navbar() {

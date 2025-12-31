@@ -51,7 +51,7 @@ export default function LoginPage() {
     }
 
     return (
-        <main className="min-h-dvh flex items-start lg:items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
+        <main className="min-h-dvh flex items-start lg:items-center justify-center px-4 sm:px-6 lg:px-8 py-8 bg-gradient-to-br from-[#F4F7FB] via-[#F0F9F8] to-[#EEF5FA]">
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -177,13 +177,14 @@ export default function LoginPage() {
                                 </motion.p>
                             )}
 
-                            <div className="pt-2">
+                            <div className="pt-2 flex justify-center lg:justify-end">
                                 <motion.button
                                     whileTap={{ scale: 0.98 }}
+                                    whileHover={{ scale: 1.02 }}
                                     type="submit"
                                     disabled={loading}
-                                    className="ml-auto block w-[260px] h-[48px] rounded-full bg-[#69BFBA] text-white text-[15px] font-semibold
-                             hover:bg-[#5bb2ad] disabled:opacity-60 transition-colors"
+                                    className="w-full sm:w-[260px] h-[48px] rounded-full bg-[#69BFBA] text-white text-[15px] font-semibold
+                             hover:bg-[#5bb2ad] disabled:opacity-60 transition-colors shadow-md"
                                 >
                                     {loading ? "Logging in…" : "Login"}
                                 </motion.button>
