@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
@@ -17,7 +17,30 @@ async function safeJson(res: Response) {
     }
 }
 
+function VerifyEmailLoading() {
+    return (
+        <main className="min-h-dvh flex items-center justify-center px-4 bg-[#F4F7FB]">
+            <div className="w-full max-w-md rounded-[32px] bg-white p-8 shadow-lg text-center">
+                <div className="animate-pulse space-y-4">
+                    <div className="h-12 w-12 bg-slate-200 rounded-full mx-auto" />
+                    <div className="h-6 bg-slate-200 rounded w-3/4 mx-auto" />
+                    <div className="h-4 bg-slate-100 rounded w-1/2 mx-auto" />
+                    <div className="h-32 bg-slate-100 rounded-2xl" />
+                </div>
+            </div>
+        </main>
+    );
+}
+
 export default function VerifyEmailPage() {
+    return (
+        <Suspense fallback={<VerifyEmailLoading />}>
+            <VerifyEmailContent />
+        </Suspense>
+    );
+}
+
+function VerifyEmailContent() {
     const params = useSearchParams();
     const router = useRouter();
     const token = params.get("token");

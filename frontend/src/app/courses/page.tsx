@@ -162,12 +162,13 @@ export default function CoursesPage() {
         if (!activeInterest) return catalog;
         return catalog.filter((course) => course.tags?.some((tag) => tag.slug === activeInterest));
     }, [catalog, activeInterest]);
-    const interestOptions = useMemo(() => {
+    const interestOptions: CourseTag[] = useMemo(() => {
         if (interestTags.length > 0) return interestTags;
         return categories.map((category) => ({
             label: category.title,
             slug: category.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
             description: category.description,
+            count: undefined,
         }));
     }, [interestTags]);
 
@@ -424,7 +425,7 @@ export default function CoursesPage() {
                                     key={course.title}
                                     initial={SURFACES.lift.initial}
                                     animate={SURFACES.lift.animate(idx * 0.08)}
-                                    whileHover={SURFACES.lift.withHover ?? SURFACES.lift.whileHover}
+                                    whileHover={SURFACES.lift.whileHover}
                                     className="rounded-3xl border border-slate-100 bg-[#F9FBFF] p-4"
                                 >
                                     <div className="flex items-center gap-3">
