@@ -1,12 +1,17 @@
 /* src/app/globals.css */
-/* Tailwind v4 entry */
+/* Tailwind v4 entry with dark mode support */
 @import "tailwindcss";
+
+/* Dark mode configuration - using class strategy */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer utilities {
     *:focus-visible { @apply outline-hidden ring-2 ring-offset-2 ring-indigo-500; }
 }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Light mode (default) CSS variables */
 :root {
     --sh-accent: #2b2e83;
     --sh-accent-soft: #eef0ff;
@@ -17,4 +22,82 @@
     --sh-accent-veil: #2b2e8312;
     --sh-glass-border: #2b2e832b;
     --sh-glass-edge: #2b2e830f;
+
+    /* Theme colors */
+    --background: #ffffff;
+    --foreground: #1e293b;
+    --card: #ffffff;
+    --card-foreground: #1e293b;
+    --primary: #63C0B9;
+    --primary-foreground: #ffffff;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #1e293b;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #63C0B9;
+    --accent: #f1f5f9;
+    --accent-foreground: #1e293b;
+}
+
+/* Dark mode CSS variables */
+.dark {
+    --sh-accent: #7b7ecd;
+    --sh-accent-soft: #1e1f33;
+    --sh-accent-glass: #7b7ecd20;
+    --sh-accent-ink: #b5b7ef;
+    --sh-accent-contrast: #0f172a;
+    --sh-card-glow: 0 10px 50px -24px rgba(123, 126, 205, 0.35);
+    --sh-accent-veil: #7b7ecd15;
+    --sh-glass-border: #7b7ecd40;
+    --sh-glass-edge: #7b7ecd15;
+
+    /* Theme colors */
+    --background: #0f172a;
+    --foreground: #f1f5f9;
+    --card: #1e293b;
+    --card-foreground: #f1f5f9;
+    --primary: #63C0B9;
+    --primary-foreground: #0f172a;
+    --secondary: #334155;
+    --secondary-foreground: #f1f5f9;
+    --muted: #334155;
+    --muted-foreground: #94a3b8;
+    --border: #334155;
+    --input: #334155;
+    --ring: #63C0B9;
+    --accent: #334155;
+    --accent-foreground: #f1f5f9;
+}
+
+/* Apply theme colors */
+body {
+    background-color: var(--background);
+    color: var(--foreground);
+}
+
+/* Global input dark mode styles */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.dark textarea,
+.dark select {
+    background-color: var(--card);
+    border-color: var(--border);
+    color: var(--foreground);
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: var(--muted-foreground);
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+    border-color: var(--ring);
+}
+
+/* Smooth transitions for theme changes */
+*, *::before, *::after {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
 }

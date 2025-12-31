@@ -162,12 +162,13 @@ export default function CoursesPage() {
         if (!activeInterest) return catalog;
         return catalog.filter((course) => course.tags?.some((tag) => tag.slug === activeInterest));
     }, [catalog, activeInterest]);
-    const interestOptions = useMemo(() => {
+    const interestOptions: CourseTag[] = useMemo(() => {
         if (interestTags.length > 0) return interestTags;
         return categories.map((category) => ({
             label: category.title,
             slug: category.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
             description: category.description,
+            count: undefined,
         }));
     }, [interestTags]);
 
@@ -370,7 +371,7 @@ export default function CoursesPage() {
     const isStudent = user?.role === "STUDENT";
 
     return (
-        <div className="min-h-dvh bg-[#F6F8FC] text-slate-800">
+        <div className="min-h-dvh bg-[#F6F8FC] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-10">
                 <motion.div {...FADES.gentleUp} className="flex items-center gap-2 text-sm font-semibold text-[#2D8F80]">
@@ -424,7 +425,7 @@ export default function CoursesPage() {
                                     key={course.title}
                                     initial={SURFACES.lift.initial}
                                     animate={SURFACES.lift.animate(idx * 0.08)}
-                                    whileHover={SURFACES.lift.withHover ?? SURFACES.lift.whileHover}
+                                    whileHover={SURFACES.lift.whileHover}
                                     className="rounded-3xl border border-slate-100 bg-[#F9FBFF] p-4"
                                 >
                                     <div className="flex items-center gap-3">
@@ -796,20 +797,20 @@ function CourseBuilderCard({ onCreated }: { onCreated: (course: LiveCourse) => v
 }
 
 export function CourseDetailPanel({
-    detail,
-    viewer,
-    userRole,
-    isBusy,
-    onClose,
-    onEnroll,
-    managerEnrollments,
-    assignmentDrafts,
-    onAssignmentDraftChange,
-    onAssignmentSubmit,
-    assignmentBusy,
-    onOpenFullPage,
-    showCloseButton = true,
-}: {
+                                      detail,
+                                      viewer,
+                                      userRole,
+                                      isBusy,
+                                      onClose,
+                                      onEnroll,
+                                      managerEnrollments,
+                                      assignmentDrafts,
+                                      onAssignmentDraftChange,
+                                      onAssignmentSubmit,
+                                      assignmentBusy,
+                                      onOpenFullPage,
+                                      showCloseButton = true,
+                                  }: {
     detail: CourseDetail;
     viewer: ViewerState | null;
     userRole?: string;
@@ -1071,8 +1072,8 @@ export function CourseDetailPanel({
                                         record.status === "APPROVED"
                                             ? "bg-[#E8F7F4] text-[#1F6C62]"
                                             : record.status === "REJECTED"
-                                            ? "bg-[#FDECEC] text-[#B6483D]"
-                                            : "bg-[#FFF4E5] text-[#9C6200]"
+                                                ? "bg-[#FDECEC] text-[#B6483D]"
+                                                : "bg-[#FFF4E5] text-[#9C6200]"
                                     }`}
                                 >
                                     {record.status}
@@ -1436,8 +1437,8 @@ function CourseApplicationTimeline({ status }: { status?: string | null }) {
                                     complete
                                         ? "bg-[#2D8F80]"
                                         : active
-                                        ? "border-2 border-[#2D8F80]"
-                                        : "border-2 border-slate-200"
+                                            ? "border-2 border-[#2D8F80]"
+                                            : "border-2 border-slate-200"
                                 }`}
                             />
                             <div>
@@ -1459,10 +1460,10 @@ function CourseApplicationTimeline({ status }: { status?: string | null }) {
 }
 
 function CourseTeamChannel({
-    detail,
-    viewer,
-    pendingEnrollments,
-}: {
+                               detail,
+                               viewer,
+                               pendingEnrollments,
+                           }: {
     detail: CourseDetail;
     viewer: ViewerState | null;
     pendingEnrollments: EnrollmentRecord[];
@@ -1762,9 +1763,9 @@ function CourseTeamChannel({
 }
 
 function CourseChatBoard({
-    detail,
-    viewer,
-}: {
+                             detail,
+                             viewer,
+                         }: {
     detail: CourseDetail;
     viewer: ViewerState | null;
 }) {
@@ -2002,11 +2003,11 @@ function resolveAssetUrl(url?: string | null, assetHost?: string) {
 }
 
 function InlineDeckViewer({
-    url,
-    contentType,
-    title,
-    height = 256,
-}: {
+                              url,
+                              contentType,
+                              title,
+                              height = 256,
+                          }: {
     url?: string | null;
     contentType?: string | null;
     title: string;

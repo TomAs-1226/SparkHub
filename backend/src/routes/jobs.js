@@ -35,7 +35,7 @@ const postJobSchema = z.object({
         endTime: optionalDateInput,
         duration: optionalTrimmedField(120),
         benefits: optionalTrimmedField(1000),
-        photos: z.array(z.string().min(1)).optional().default([]),
+        photos: z.array(z.string()).optional().default([]),
         files: z.array(z.string()).optional().default([]),
         contact: contactField,
     }),

@@ -41,6 +41,9 @@ model User {
   assignmentsAuthored CourseAssignment[] @relation("AssignmentCreator")
   courseSubmissions  CourseSubmission[]  @relation("SubmissionStudent")
   sessions        UserSession[]
+  mentorAvailabilities MentorAvailability[]
+  matchRequestsFrom MatchRequest[] @relation("MatchRequestsFrom")
+  matchRequestsTo   MatchRequest[] @relation("MatchRequestsTo")
 }
 
 model Course {
@@ -452,4 +455,35 @@ model AuditLog {
   // small JSON-like payload as string for SQLite safety
   data       String?
   createdAt  DateTime @default(now())
+}
+
+model MentorAvailability {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  role      String   // TUTOR or STUDENT
+  subjects  String?
+  bio       String?
+  matched   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([date, role])
+}
+
+model MatchRequest {
+  id          String   @id @default(cuid())
+  fromUserId  String
+  fromUser    User     @relation("MatchRequestsFrom", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId    String
+  toUser      User     @relation("MatchRequestsTo", fields: [toUserId], references: [id], onDelete: Cascade)
+  date        DateTime
+  message     String?
+  status      String   @default("PENDING") // PENDING, ACCEPTED, DECLINED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([fromUserId])
+  @@index([toUserId])
 }

@@ -419,9 +419,14 @@ router.post("/verify-email/confirm", async (req, res) => {
 
 /** GET /auth/me  (Authorization: Bearer <token>) */
 router.get("/me", requireAuth, async (req, res) => {
-    const user = await runUserQuery("findUnique", { where: { id: req.user.id } });
-    if (!user) return res.status(404).json({ ok: false, msg: "User not found." });
-    return res.json({ ok: true, user });
+    try {
+        const user = await runUserQuery("findUnique", { where: { id: req.user.id } });
+        if (!user) return res.status(404).json({ ok: false, msg: "User not found." });
+        return res.json({ ok: true, user });
+    } catch (err) {
+        console.error("GET ME ERROR:", err);
+        return res.status(500).json({ ok: false, msg: "Server error." });
+    }
 });
 
 

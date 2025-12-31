@@ -44,7 +44,7 @@ export default function ResourcesPage() {
     }, []);
 
     return (
-        <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
                 <motion.section
@@ -52,9 +52,9 @@ export default function ResourcesPage() {
                     initial="initial"
                     animate="animate"
                     transition={{ ease: EASE.lift }}
-                    className="rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-10"
+                    className="rounded-[32px] border border-white/60 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 p-6 shadow-2xl md:p-10"
                 >
-                    <div className="relative overflow-hidden rounded-2xl border border-[#E8F2F1] bg-[#FDFEFE] p-4">
+                    <div className="relative overflow-hidden rounded-2xl border border-[#E8F2F1] dark:border-slate-700 bg-[#FDFEFE] dark:bg-slate-800 p-4">
                         <motion.div
                             className="pointer-events-none absolute -inset-8 rounded-[32px] bg-[radial-gradient(circle_at_18%_22%,rgba(99,192,185,0.16),transparent_34%),radial-gradient(circle_at_82%_8%,rgba(45,46,131,0.14),transparent_36%)] blur-3xl"
                             aria-hidden
@@ -63,9 +63,9 @@ export default function ResourcesPage() {
                         />
                         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
                             <div>
-                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">SparkHub resources</p>
-                                <h1 className="mt-2 text-2xl font-semibold">Resources curated by admins</h1>
-                                <p className="mt-1 text-sm text-slate-500">
+                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80] dark:text-[#63C0B9]">SparkHub resources</p>
+                                <h1 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">Resources curated by admins</h1>
+                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                     Every guide and toolkit here is curated by admins and refreshed automatically.
                                 </p>
                             </div>
@@ -74,7 +74,7 @@ export default function ResourcesPage() {
                                     <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
                                         <Link
                                             href="/admin"
-                                            className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                            className="inline-flex rounded-full border border-[#CFE3E0] dark:border-slate-600 px-4 py-2 text-sm font-semibold text-[#2B2B2B] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
                                         >
                                             Admin panel
                                         </Link>
@@ -83,7 +83,7 @@ export default function ResourcesPage() {
                                     <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
                                         <Link
                                             href="/tutors/dashboard"
-                                            className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                            className="inline-flex rounded-full border border-[#CFE3E0] dark:border-slate-600 px-4 py-2 text-sm font-semibold text-[#2B2B2B] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
                                         >
                                             Share a resource
                                         </Link>
@@ -93,7 +93,7 @@ export default function ResourcesPage() {
                                 <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
                                     <Link
                                         href="/login?from=/admin"
-                                        className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                        className="inline-flex rounded-full border border-[#CFE3E0] dark:border-slate-600 px-4 py-2 text-sm font-semibold text-[#2B2B2B] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
                                     >
                                         Sign in for tools
                                     </Link>
@@ -111,10 +111,10 @@ export default function ResourcesPage() {
                     >
                         {loading ? (
                             Array.from({ length: 4 }).map((_, idx) => (
-                                <div key={idx} className="h-[120px] animate-pulse rounded-2xl bg-slate-100" />
+                                <div key={idx} className="h-[120px] animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-700" />
                             ))
                         ) : resources.length === 0 ? (
-                            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-6 text-sm text-slate-600">
+                            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50/70 dark:bg-slate-800/70 p-6 text-sm text-slate-600 dark:text-slate-400">
                                 There are currently no resources in the system.
                             </div>
                         ) : (
@@ -126,30 +126,30 @@ export default function ResourcesPage() {
                                     viewport={{ once: true, amount: 0.35 }}
                                     whileHover={SURFACES.lift.whileHover}
                                     transition={{ duration: 0.5, ease: EASE.emphasized }}
-                                    className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white to-[#F7FBFF] p-6 shadow-xl"
+                                    className="rounded-3xl border border-slate-100 dark:border-slate-700 bg-gradient-to-br from-white to-[#F7FBFF] dark:from-slate-800 dark:to-slate-800/90 p-6 shadow-xl"
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <p className="text-xs font-semibold uppercase tracking-wide text-[#2D8F80]">{resource.kind}</p>
-                                            <h2 className="mt-1 text-xl font-semibold text-slate-900">{resource.title}</h2>
+                                            <p className="text-xs font-semibold uppercase tracking-wide text-[#2D8F80] dark:text-[#63C0B9]">{resource.kind}</p>
+                                            <h2 className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">{resource.title}</h2>
                                         </div>
-                                        <div className="rounded-full bg-[#E7F6F3] p-2 text-[#2D8F80]">
+                                        <div className="rounded-full bg-[#E7F6F3] dark:bg-slate-700 p-2 text-[#2D8F80] dark:text-[#63C0B9]">
                                             <BookOpenCheck className="h-5 w-5" />
                                         </div>
                                     </div>
-                                    <p className="mt-2 text-sm text-slate-600">
+                                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                                         {resource.summary || "No description has been added for this resource."}
                                     </p>
                                     {resource.imageUrl && (
                                         <div
-                                            className="mt-3 h-40 w-full overflow-hidden rounded-2xl border border-slate-100 bg-slate-50"
+                                            className="mt-3 h-40 w-full overflow-hidden rounded-2xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-700"
                                             style={{ backgroundImage: `url(${resource.imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
                                         />
                                     )}
                                     <div className="mt-4 flex flex-wrap gap-3 text-sm">
                                         <Link
                                             href={`/resources/${resource.id}`}
-                                            className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                            className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] dark:border-slate-600 px-4 py-2 font-semibold text-[#2B2B2B] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
                                         >
                                             About this resource
                                         </Link>
@@ -164,7 +164,7 @@ export default function ResourcesPage() {
                                                 <ExternalLink className="h-4 w-4" />
                                             </a>
                                         ) : (
-                                            <span className="inline-flex items-center gap-2 rounded-full border border-dashed border-[#CFE3E0] px-4 py-2 font-semibold text-[#7A8584]">
+                                            <span className="inline-flex items-center gap-2 rounded-full border border-dashed border-[#CFE3E0] dark:border-slate-600 px-4 py-2 font-semibold text-[#7A8584] dark:text-slate-400">
                                                 Upload pending
                                             </span>
                                         )}
@@ -173,7 +173,7 @@ export default function ResourcesPage() {
                                                 href={resource.attachmentUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 font-semibold text-[#2B2B2B]"
+                                                className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] dark:border-slate-600 px-4 py-2 font-semibold text-[#2B2B2B] dark:text-slate-200"
                                             >
                                                 <Download className="h-4 w-4" /> {fileName(resource.attachmentUrl)}
                                             </a>

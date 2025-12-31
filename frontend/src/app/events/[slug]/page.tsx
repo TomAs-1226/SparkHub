@@ -71,7 +71,7 @@ export default function EventDetailPage({ params }: { params: { slug: string } }
     }, [event]);
 
     return (
-        <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 pb-4 pt-10 text-sm font-semibold text-[#2D8F80]">
                 <CheckCircle2 className="h-5 w-5" /> Event detail
@@ -204,10 +204,10 @@ function formatEventDate(iso?: string | null) {
 }
 
 function InfoCard({
-    icon,
-    label,
-    children,
-}: {
+                      icon,
+                      label,
+                      children,
+                  }: {
     icon: ReactNode;
     label: string;
     children: ReactNode;

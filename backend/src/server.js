@@ -17,12 +17,21 @@ let toobusyInstance = null
 
 ensurePrismaSync()
 
-process.on('unhandledRejection', (error) => {
-    console.error('Unhandled rejection:', error)
+// Global error handlers with recovery
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+    // Don't exit - just log and continue
 })
 
 process.on('uncaughtException', (error) => {
-    console.error('Uncaught exception:', error)
+    console.error('Uncaught Exception:', error)
+    // For critical errors, attempt graceful shutdown
+    if (error.code === 'EADDRINUSE' || error.code === 'EACCES') {
+        console.error('Fatal error, shutting down...')
+        process.exit(1)
+    }
+    // For other errors, log but don't crash
+    console.error('Continuing after error...')
 })
 
 const app = express()
@@ -69,6 +78,25 @@ wireSecurity(app, {
 const uploadDir = process.env.UPLOAD_DIR || './uploads'
 app.use('/uploads', express.static(path.resolve(uploadDir)))
 
+// Request timeout middleware - prevents hung requests from blocking server
+const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT_MS || '30000', 10)
+app.use((req, res, next) => {
+    // Set a timeout for all requests
+    req.setTimeout(REQUEST_TIMEOUT, () => {
+        if (!res.headersSent) {
+            console.warn(`Request timeout: ${req.method} ${req.url}`)
+            res.status(408).json({ ok: false, msg: 'Request timeout' })
+        }
+    })
+    next()
+})
+
+// Async error wrapper helper - catches unhandled promise rejections in routes
+const asyncHandler = (fn) => (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next)
+}
+app.locals.asyncHandler = asyncHandler
+
 // Routes
 app.use('/testing', require('./routes/testing'))
 app.use('/auth', require('./routes/auth'))
@@ -83,11 +111,40 @@ app.use('/resources', require('./routes/resources'))
 app.use('/admin', require('./routes/admin'))
 app.use('/upload', require('./routes/upload'))
 app.use('/emails', require('./routes/emails'))
+app.use('/ai', require('./routes/ai'))
+app.use('/matching', require('./routes/matching'))
 
-// Health
+// Health checks with database verification
+const { healthCheck, isConnected } = require('./prisma')
+
 app.get('/', (_req, res) => res.json({ ok: true, name: 'SparkHub API' }))
-app.get('/healthz', (_req, res) => res.json({ ok: true, status: 'healthy' }))
-app.get('/readyz', (_req, res) => res.json({ ok: true, status: 'ready' }))
+
+app.get('/healthz', async (_req, res) => {
+    try {
+        const dbHealth = await healthCheck()
+        res.json({
+            ok: dbHealth.ok,
+            status: dbHealth.ok ? 'healthy' : 'degraded',
+            database: dbHealth.connected ? 'connected' : 'disconnected',
+            uptime: process.uptime()
+        })
+    } catch (error) {
+        res.status(503).json({ ok: false, status: 'unhealthy', error: error.message })
+    }
+})
+
+app.get('/readyz', async (_req, res) => {
+    try {
+        const dbHealth = await healthCheck()
+        if (dbHealth.ok) {
+            res.json({ ok: true, status: 'ready' })
+        } else {
+            res.status(503).json({ ok: false, status: 'not ready', reason: 'database unavailable' })
+        }
+    } catch (error) {
+        res.status(503).json({ ok: false, status: 'not ready', error: error.message })
+    }
+})
 
 // JSON 404 + error (keep JSON only)
 app.use((req, res) => res.status(404).json({ ok: false, msg: 'Not found', path: req.originalUrl }))

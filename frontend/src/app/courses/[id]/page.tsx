@@ -180,15 +180,15 @@ export default function CourseWorkspacePage() {
     }
 
     return (
-        <div className="min-h-dvh bg-[#F6F8FC] text-slate-800">
+        <div className="min-h-dvh bg-[#F6F8FC] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 pb-24 pt-10 lg:flex-row">
                 <aside className="lg:w-64">
-                    <Link href="/courses" className="inline-flex items-center gap-2 text-xs font-semibold text-[#2B2E83]">
+                    <Link href="/courses" className="inline-flex items-center gap-2 text-xs font-semibold text-[#2B2E83] dark:text-[#63C0B9]">
                         <Sparkles className="h-4 w-4" /> Back to catalog
                     </Link>
-                    <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <p className="text-sm font-semibold text-slate-900">Workspace navigation</p>
+                    <div className="mt-6 rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Workspace navigation</p>
                         <div className="mt-4 space-y-1 text-sm">
                             {sectionItems.map((item) => (
                                 <button
@@ -199,7 +199,9 @@ export default function CourseWorkspacePage() {
                                         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
                                     }}
                                     className={`w-full rounded-2xl px-3 py-2 text-left font-semibold ${
-                                        activeSection === item.id ? "bg-[#EEF2FF] text-[#2B2E83]" : "text-slate-500 hover:bg-slate-50"
+                                        activeSection === item.id
+                                            ? "bg-[#EEF2FF] dark:bg-slate-700 text-[#2B2E83] dark:text-[#63C0B9]"
+                                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
                                     }`}
                                 >
                                     {item.label}
@@ -211,7 +213,7 @@ export default function CourseWorkspacePage() {
                 <section className="flex-1">
                     {status && <p className="mb-4 text-sm text-[#2D8F80]">{status}</p>}
                     {initializing ? (
-                        <div className="flex min-h-[420px] items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/70">
+                        <div className="flex min-h-[420px] items-center justify-center rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 bg-white/70 dark:bg-slate-800/70">
                             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
                         </div>
                     ) : detail ? (
@@ -227,11 +229,10 @@ export default function CourseWorkspacePage() {
                             onAssignmentDraftChange={handleAssignmentDraftChange}
                             onAssignmentSubmit={handleAssignmentSubmit}
                             assignmentBusy={assignmentBusy}
-                            currentUser={user || undefined}
                             showCloseButton={false}
                         />
                     ) : (
-                        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm text-red-700">
+                        <div className="rounded-3xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-6 text-sm text-red-700 dark:text-red-400">
                             Unable to load the course workspace.
                         </div>
                     )}

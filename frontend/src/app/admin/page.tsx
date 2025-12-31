@@ -169,11 +169,11 @@ export default function AdminPage() {
                             ? Array.isArray(json?.updates)
                                 ? json.updates
                                 : Array.isArray(json?.list)
-                                  ? json.list
-                                  : []
+                                    ? json.list
+                                    : []
                             : Array.isArray(json?.list)
-                              ? json.list
-                              : [];
+                                ? json.list
+                                : [];
                     return { key: endpoint.key, list };
                 } catch (err) {
                     return {
@@ -194,12 +194,13 @@ export default function AdminPage() {
         };
         const errors: string[] = [];
         settled.forEach((result) => {
-            if ("error" in result) {
+            if ("error" in result && result.error) {
                 errors.push(result.error);
                 return;
             }
-            // @ts-expect-error dynamic assignment
-            next[result.key] = result.list;
+            if ("list" in result) {
+                (next as Record<string, unknown>)[result.key] = result.list;
+            }
         });
         return { data: next, errors };
     }, []);
@@ -475,10 +476,10 @@ export default function AdminPage() {
 
     if (bootstrap) {
         return (
-            <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+            <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                 <SiteNav />
                 <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
-                    <div className="h-[420px] animate-pulse rounded-[32px] bg-white" />
+                    <div className="h-[420px] animate-pulse rounded-[32px] bg-white dark:bg-slate-800" />
                 </main>
             </div>
         );
@@ -486,11 +487,11 @@ export default function AdminPage() {
 
     if (denied || !user || user.role !== "ADMIN") {
         return (
-            <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+            <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                 <SiteNav />
                 <main className="mx-auto w-full max-w-4xl px-4 pb-16 pt-10">
-                    <div className="rounded-[32px] border border-white/60 bg-white/95 p-8 text-center shadow-2xl">
-                        <p className="text-sm text-slate-600">You do not have admin permissions.</p>
+                    <div className="rounded-[32px] border border-white/60 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 p-8 text-center shadow-2xl">
+                        <p className="text-sm text-slate-600 dark:text-slate-400">You do not have admin permissions.</p>
                         <Link
                             href="/register"
                             className="mt-4 inline-flex items-center justify-center rounded-full bg-[#63C0B9] px-5 py-2 text-sm font-semibold text-white"
@@ -504,7 +505,7 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
                 <motion.section
@@ -1169,62 +1170,62 @@ export default function AdminPage() {
                         <div className="mt-4 overflow-x-auto">
                             <table className="w-full min-w-[480px] text-left text-sm">
                                 <thead>
-                                    <tr className="text-xs uppercase tracking-wide text-slate-500">
-                                        <th className="px-3 py-2">Name</th>
-                                        <th className="px-3 py-2">Email</th>
-                                        <th className="px-3 py-2">Role</th>
-                                        <th className="px-3 py-2 text-right">Actions</th>
-                                    </tr>
+                                <tr className="text-xs uppercase tracking-wide text-slate-500">
+                                    <th className="px-3 py-2">Name</th>
+                                    <th className="px-3 py-2">Email</th>
+                                    <th className="px-3 py-2">Role</th>
+                                    <th className="px-3 py-2 text-right">Actions</th>
+                                </tr>
                                 </thead>
                                 <tbody>
-                                    {users.length === 0 ? (
-                                        <tr>
-                                            <td className="px-3 py-4 text-sm text-slate-500" colSpan={4}>
-                                                No users found.
+                                {users.length === 0 ? (
+                                    <tr>
+                                        <td className="px-3 py-4 text-sm text-slate-500" colSpan={4}>
+                                            No users found.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    users.map((account) => (
+                                        <tr key={account.id} className="border-t border-slate-100">
+                                            <td className="px-3 py-3 font-semibold text-slate-800">{account.name || "Unknown"}</td>
+                                            <td className="px-3 py-3 text-slate-500">{account.email}</td>
+                                            <td className="px-3 py-3">
+                                                <select
+                                                    className="rounded-full border border-slate-200 px-3 py-1 text-sm"
+                                                    value={account.role}
+                                                    onChange={async (e) => {
+                                                        try {
+                                                            await handleRoleChange(account.id, e.target.value);
+                                                        } catch (err) {
+                                                            setStatusMsg(getErrorMessage(err));
+                                                        }
+                                                    }}
+                                                >
+                                                    {roleOptions.map((option) => (
+                                                        <option key={option} value={option}>
+                                                            {option}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </td>
+                                            <td className="px-3 py-3 text-right">
+                                                <button
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        try {
+                                                            await handleDeleteUser(account.id);
+                                                        } catch (err) {
+                                                            setStatusMsg(getErrorMessage(err));
+                                                        }
+                                                    }}
+                                                    className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" /> Remove
+                                                </button>
                                             </td>
                                         </tr>
-                                    ) : (
-                                        users.map((account) => (
-                                            <tr key={account.id} className="border-t border-slate-100">
-                                                <td className="px-3 py-3 font-semibold text-slate-800">{account.name || "Unknown"}</td>
-                                                <td className="px-3 py-3 text-slate-500">{account.email}</td>
-                                                <td className="px-3 py-3">
-                                                    <select
-                                                        className="rounded-full border border-slate-200 px-3 py-1 text-sm"
-                                                        value={account.role}
-                                                        onChange={async (e) => {
-                                                            try {
-                                                                await handleRoleChange(account.id, e.target.value);
-                                                            } catch (err) {
-                                                                setStatusMsg(getErrorMessage(err));
-                                                            }
-                                                        }}
-                                                    >
-                                                        {roleOptions.map((option) => (
-                                                            <option key={option} value={option}>
-                                                                {option}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </td>
-                                                <td className="px-3 py-3 text-right">
-                                                    <button
-                                                        type="button"
-                                                        onClick={async () => {
-                                                            try {
-                                                                await handleDeleteUser(account.id);
-                                                            } catch (err) {
-                                                                setStatusMsg(getErrorMessage(err));
-                                                            }
-                                                        }}
-                                                        className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" /> Remove
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
+                                    ))
+                                )}
                                 </tbody>
                             </table>
                         </div>
@@ -1238,11 +1239,11 @@ export default function AdminPage() {
 const roleOptions = ["ADMIN", "STUDENT", "CREATOR", "TUTOR", "RECRUITER"];
 
 function DataCard({
-    title,
-    icon,
-    rows,
-    onDelete,
-}: {
+                      title,
+                      icon,
+                      rows,
+                      onDelete,
+                  }: {
     title: string;
     icon: ReactNode;
     rows: { id: string; title: string; subtitle?: string; attachments?: string[]; link?: string }[];

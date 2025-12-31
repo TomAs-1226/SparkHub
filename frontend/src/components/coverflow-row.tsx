@@ -9,9 +9,11 @@ import {
     motion,
     AnimatePresence,
     LayoutGroup,
+    useReducedMotion,
     type PanInfo,
     type Transition as FMTransition,
 } from "framer-motion";
+import { EASE } from "@/lib/motion-presets";
 
 export type ContentItem = {
     id: string | number;
@@ -51,7 +53,9 @@ const gradients = [
     "from-[#ece1ff] via-[#d2c0ff] to-[#b8a0ff]",
 ];
 
+// Use centralized spring from motion-presets with slight customization for coverflow
 const spring: FMTransition = { type: "spring", mass: 0.6, stiffness: 280, damping: 24 };
+const springReduced: FMTransition = { type: "tween", duration: 0.2, ease: EASE.swift };
 const book3dStyle: CSSProperties = { perspective: 1200, transformStyle: "preserve-3d" };
 
 function dimsFor(viewW: number) {
@@ -63,6 +67,7 @@ function dimsFor(viewW: number) {
 export default function CoverflowRow({ title, slug, items }: RowProps) {
     const all = (items || []).slice(0, 10);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const prefersReducedMotion = useReducedMotion();
 
     const [containerW, setContainerW] = useState(1180);
     const [dims, setDims] = useState(() => dimsFor(typeof window !== "undefined" ? window.innerWidth : 1280));
@@ -72,6 +77,9 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
 
     // Expanded card (null = none)
     const [expandedId, setExpandedId] = useState<string | number | null>(null);
+
+    // Select appropriate transition based on motion preference
+    const activeSpring = prefersReducedMotion ? springReduced : spring;
 
     // measure container
     useEffect(() => {
@@ -288,7 +296,7 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                             dragMomentum={false}
                             onDragEnd={onDragEnd}
                             animate={{ x: railX }}
-                            transition={{ layout: { duration: 0.36, ease: [0.2, 0.8, 0.2, 1] }, default: spring }}
+                            transition={{ layout: { duration: prefersReducedMotion ? 0.15 : 0.36, ease: EASE.drift }, default: activeSpring }}
                             className="flex select-none items-end cursor-grab active:cursor-grabbing [touch-action:pan-y] will-change-transform"
                             style={{ gap }}
                         >
@@ -313,7 +321,7 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                                     <motion.div
                                         key={String(it.id)}
                                         layout
-                                        transition={{ layout: { duration: 0.36, ease: [0.2, 0.8, 0.2, 1] } }}
+                                        transition={{ layout: { duration: prefersReducedMotion ? 0.15 : 0.36, ease: EASE.drift } }}
                                         className="relative shrink-0"
                                         style={{ width: w, zIndex: z }}
                                         onMouseEnter={() => {
@@ -331,8 +339,8 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                                             style={{ height: h, transformOrigin: "bottom center", willChange: "transform, box-shadow, opacity" }}
                                             className="group relative cursor-pointer overflow-visible rounded-[14px] ring-1 ring-black/10 bg-white shadow-[0_10px_28px_rgba(0,0,0,0.14)]"
                                             animate={{
-                                                x: pushX,
-                                                scale: isExpanded ? 1.0 : (isSelected ? 1.16 : 0.92),
+                                                x: prefersReducedMotion ? 0 : pushX,
+                                                scale: prefersReducedMotion ? 1 : (isExpanded ? 1.0 : (isSelected ? 1.16 : 0.92)),
                                                 opacity: isExpanded ? 1 : isSelected ? 1 : 0.92,
                                                 borderRadius: isExpanded ? 18 : 14,
                                                 boxShadow: isExpanded
@@ -342,7 +350,7 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                                                         : "0 10px 28px rgba(0,0,0,0.14)",
                                                 filter: (isSelected || isExpanded) ? "brightness(1)" : "brightness(0.98)",
                                             }}
-                                            transition={spring}
+                                            transition={activeSpring}
                                         >
                                             {/* Small cover */}
                                             {!isExpanded && (
@@ -388,10 +396,10 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                                                         <div className="absolute inset-0 grid grid-cols-2">
                                                             {/* LEFT PAGE */}
                                                             <motion.div
-                                                                initial={{ rotateY: -12, opacity: 0.9 }}
-                                                                animate={{ rotateY: -3, opacity: 1 }}
-                                                                exit={{ rotateY: -12, opacity: 0.9 }}
-                                                                transition={spring}
+                                                                initial={{ rotateY: prefersReducedMotion ? 0 : -12, opacity: 0.9 }}
+                                                                animate={{ rotateY: prefersReducedMotion ? 0 : -3, opacity: 1 }}
+                                                                exit={{ rotateY: prefersReducedMotion ? 0 : -12, opacity: 0.9 }}
+                                                                transition={activeSpring}
                                                                 style={{ transformOrigin: "right center" }}
                                                                 className="relative h-full rounded-l-[18px] bg-white"
                                                             >
@@ -417,10 +425,10 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
 
                                                             {/* RIGHT PAGE */}
                                                             <motion.div
-                                                                initial={{ rotateY: 12, opacity: 0.9 }}
-                                                                animate={{ rotateY: 3, opacity: 1 }}
-                                                                exit={{ rotateY: 12, opacity: 0.9 }}
-                                                                transition={spring}
+                                                                initial={{ rotateY: prefersReducedMotion ? 0 : 12, opacity: 0.9 }}
+                                                                animate={{ rotateY: prefersReducedMotion ? 0 : 3, opacity: 1 }}
+                                                                exit={{ rotateY: prefersReducedMotion ? 0 : 12, opacity: 0.9 }}
+                                                                transition={activeSpring}
                                                                 style={{ transformOrigin: "left center" }}
                                                                 className="relative h-full rounded-r-[18px] bg-white"
                                                             >

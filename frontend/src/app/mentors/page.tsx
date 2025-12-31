@@ -35,14 +35,14 @@ export default function MentorsPage() {
     const canPost = Boolean(user && ["ADMIN", "CREATOR", "TUTOR"].includes(user.role));
 
     return (
-        <div className="min-h-dvh bg-[#F5F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F5F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[#2D8F80]">
                     <CheckCircle2 className="h-5 w-5" /> 1-On-1 Mentor Application
                 </div>
 
-                <section className="mt-6 grid gap-8 rounded-[36px] bg-white/95 p-6 shadow-2xl md:grid-cols-2 md:p-10">
+                <section className="mt-6 grid gap-8 rounded-[36px] bg-white/95 dark:bg-slate-800/95 dark:border dark:border-slate-700 p-6 shadow-2xl md:grid-cols-2 md:p-10">
                     <motion.div
                         initial={{ opacity: 0, y: 14 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -143,36 +143,36 @@ export default function MentorsPage() {
                             <div className="mt-4 overflow-hidden rounded-2xl border border-white/60 bg-white">
                                 <table className="w-full text-center text-sm text-slate-600">
                                     <thead className="bg-[#F4F7FB] text-xs uppercase text-slate-500">
-                                        <tr>
-                                            {"SMTWTFS".split("").map((day, index) => (
-                                                <th key={`${day}-${index}`} className="px-2 py-2 font-semibold">
-                                                    {day}
-                                                </th>
-                                            ))}
-                                        </tr>
+                                    <tr>
+                                        {"SMTWTFS".split("").map((day, index) => (
+                                            <th key={`${day}-${index}`} className="px-2 py-2 font-semibold">
+                                                {day}
+                                            </th>
+                                        ))}
+                                    </tr>
                                     </thead>
                                     <tbody>
-                                        {calendarWeeks.map((week, idx) => (
-                                            <tr key={`week-${idx}`} className="divide-x divide-slate-50">
-                                                {week.map((day, dayIdx) => (
-                                                    <td key={`cell-${idx}-${day || dayIdx}`} className="h-14 align-middle">
-                                                        {day && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setSelectedDay(day)}
-                                                                className={`mx-auto flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-semibold shadow-sm transition ${
-                                                                    selectedDay === day
-                                                                        ? "bg-[#2D8F80] text-white"
-                                                                        : "bg-[#E6F5F3] text-[#2D8F80]"
-                                                                }`}
-                                                            >
-                                                                {day}
-                                                            </button>
-                                                        )}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
+                                    {calendarWeeks.map((week, idx) => (
+                                        <tr key={`week-${idx}`} className="divide-x divide-slate-50">
+                                            {week.map((day, dayIdx) => (
+                                                <td key={`cell-${idx}-${dayIdx}`} className="h-14 align-middle">
+                                                    {day && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedDay(day)}
+                                                            className={`mx-auto flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-semibold shadow-sm transition ${
+                                                                selectedDay === day
+                                                                    ? "bg-[#2D8F80] text-white"
+                                                                    : "bg-[#E6F5F3] text-[#2D8F80]"
+                                                            }`}
+                                                        >
+                                                            {day}
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
                                     </tbody>
                                 </table>
                             </div>

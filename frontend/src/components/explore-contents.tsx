@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import CoverflowRow, { ContentItem } from "@/components/coverflow-row";
+import { FADES } from "@/lib/motion-presets";
 
 type Cat = "resources" | "opportunities" | "courses";
+type LoadingState = "loading" | "loaded" | "error";
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 
 type ApiContent = {
@@ -117,64 +120,52 @@ async function fetchCategory(cat: Cat): Promise<ContentItem[]> {
         return result;
     } catch {
         controllers.forEach((controller) => controller.abort());
+        // Return empty array - no fake data in production
+        return [];
     }
+}
 
-    const make = (titles: string[], tag: string) =>
-        titles.map((t, i) => ({
-            id: stableId(cat, t, i),
-            title: t,
-            summary: "Curated content to help you move faster.",
-            tag,
-            image: null,
-            href: `/${cat}`,
-        }));
+function LoadingSkeleton({ title }: { title: string }) {
+    return (
+        <div className="mb-14">
+            <div className="mb-4 flex items-center gap-2">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <path d="M4 8h16M4 16h16" stroke="#64748B" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                </span>
+                <h3 className="text-[18px] font-semibold text-slate-800">{title}</h3>
+            </div>
+            <div className="flex gap-3 overflow-hidden">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                    <div
+                        key={idx}
+                        className="h-[224px] w-[152px] shrink-0 animate-pulse rounded-[14px] bg-slate-200/60"
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
 
-    if (cat === "courses")
-        return make(
-            [
-                "Intro to UX",
-                "Prototyping Essentials",
-                "Design Systems 101",
-                "Web Accessibility",
-                "Portfolio Studio",
-                "Frontend for Designers",
-                "Interview Prep",
-                "Usability Testing",
-                "Figma Advanced",
-                "Responsive Web",
-            ],
-            "Course"
-        );
-    if (cat === "opportunities")
-        return make(
-            [
-                "Campus UX Challenge",
-                "AI for Good",
-                "Summer Internship",
-                "Volunteer Drive",
-                "Design Sprint",
-                "Startup Weekend",
-                "Research Assistant",
-                "Mentor Shadowing",
-                "Community Project",
-                "Open Call: Speakers",
-            ],
-            "Opportunity"
-        );
-    return make(
-        [
-            "Study Guide: UX Basics",
-            "Mentor Directory",
-            "Figma Shortcuts",
-            "Open Data Pack",
-            "Brief Template",
-            "Interview Q&A",
-            "Pitch Slides",
-            "Scholarship List",
-            "Hackathon Kit",
-            "Career Roadmap",
-        ],
-        "Resource"
+function EmptyState({ category }: { category: string }) {
+    return (
+        <motion.div
+            variants={FADES.gentleUp}
+            initial="initial"
+            animate="animate"
+            className="mb-14 rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-center"
+        >
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
+                    <path d="M19 11H5M19 11a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2M19 11V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+            </div>
+            <p className="text-sm font-medium text-slate-600">No {category} available yet</p>
+            <p className="mt-1 text-xs text-slate-400">
+                Check back soon or contact an admin to add content.
+            </p>
+        </motion.div>
     );
 }
 
@@ -182,36 +173,79 @@ export default function ExploreContents() {
     const [resources, setResources] = useState<ContentItem[] | null>(null);
     const [opps, setOpps] = useState<ContentItem[] | null>(null);
     const [courses, setCourses] = useState<ContentItem[] | null>(null);
+    const [loadingStates, setLoadingStates] = useState<Record<Cat, LoadingState>>({
+        resources: "loading",
+        opportunities: "loading",
+        courses: "loading",
+    });
 
     useEffect(() => {
         let cancelled = false;
-        fetchCategory("resources").then((items) => {
-            if (!cancelled) setResources(items);
-        });
-        fetchCategory("opportunities").then((items) => {
-            if (!cancelled) setOpps(items);
-        });
-        fetchCategory("courses").then((items) => {
-            if (!cancelled) setCourses(items);
-        });
+
+        const fetchWithState = async (cat: Cat, setter: (items: ContentItem[]) => void) => {
+            try {
+                const items = await fetchCategory(cat);
+                if (!cancelled) {
+                    setter(items);
+                    setLoadingStates((prev) => ({ ...prev, [cat]: "loaded" }));
+                }
+            } catch {
+                if (!cancelled) {
+                    setter([]);
+                    setLoadingStates((prev) => ({ ...prev, [cat]: "error" }));
+                }
+            }
+        };
+
+        fetchWithState("resources", setResources);
+        fetchWithState("opportunities", setOpps);
+        fetchWithState("courses", setCourses);
+
         return () => {
             cancelled = true;
         };
     }, []);
 
+    const isLoading = (cat: Cat) => loadingStates[cat] === "loading";
+
     return (
         <section className="bg-[#ECF4F9] py-14">
             <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6 lg:px-8">
-                <div className="mb-8">
+                <motion.div
+                    variants={FADES.gentleUp}
+                    initial="initial"
+                    animate="animate"
+                    className="mb-8"
+                >
                     <h2 className="text-[22px] md:text-[24px] font-extrabold text-slate-800">Explore the Contents</h2>
                     <p className="mt-1 text-[14px] text-slate-500">
                         Hover to preview, click to open as a book. Use arrows, drag, or scroll to browse.
                     </p>
-                </div>
+                </motion.div>
 
-                <CoverflowRow title="Resources" slug="resources" items={resources ?? []} />
-                <CoverflowRow title="Opportunities" slug="opportunities" items={opps ?? []} />
-                <CoverflowRow title="Courses & Certificates" slug="courses" items={courses ?? []} />
+                {isLoading("resources") ? (
+                    <LoadingSkeleton title="Resources" />
+                ) : resources && resources.length > 0 ? (
+                    <CoverflowRow title="Resources" slug="resources" items={resources} />
+                ) : (
+                    <EmptyState category="resources" />
+                )}
+
+                {isLoading("opportunities") ? (
+                    <LoadingSkeleton title="Opportunities" />
+                ) : opps && opps.length > 0 ? (
+                    <CoverflowRow title="Opportunities" slug="opportunities" items={opps} />
+                ) : (
+                    <EmptyState category="opportunities" />
+                )}
+
+                {isLoading("courses") ? (
+                    <LoadingSkeleton title="Courses & Certificates" />
+                ) : courses && courses.length > 0 ? (
+                    <CoverflowRow title="Courses & Certificates" slug="courses" items={courses} />
+                ) : (
+                    <EmptyState category="courses" />
+                )}
             </div>
         </section>
     );

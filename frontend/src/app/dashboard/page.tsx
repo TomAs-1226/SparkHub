@@ -204,438 +204,438 @@ export default function DashboardPage() {
     const Skeleton = ({ className = "" }: { className?: string }) => (
         <div
             className={
-                "animate-pulse rounded-[12px] bg-slate-200/50 " + className
+                "animate-pulse rounded-[12px] bg-slate-200/50 dark:bg-slate-700/50 " + className
             }
         />
     );
 
     // ---------- RENDER ----------
     return (
-        <div className="min-h-dvh bg-white text-slate-800">
+        <div className="min-h-dvh bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto flex w-full max-w-[1280px] justify-center px-4 sm:px-6 lg:px-8 py-8">
                 <div className="w-full">
-                {/* HERO / WELCOME PANEL */}
-                <motion.section
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, ease: "easeOut" }}
-                    className="
+                    {/* HERO / WELCOME PANEL */}
+                    <motion.section
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, ease: "easeOut" }}
+                        className="
                         relative overflow-hidden rounded-[24px]
-                        border border-[#CFE3E0]/60
-                        bg-[radial-gradient(circle_at_20%_20%,#E7F7F5_0%,#F8FBFC_60%)]
-                        shadow-[0_2px_24px_rgba(0,0,0,0.06)]
-                        ring-1 ring-black/5
+                        border border-[#CFE3E0]/60 dark:border-slate-700
+                        bg-[radial-gradient(circle_at_20%_20%,#E7F7F5_0%,#F8FBFC_60%)] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(99,192,185,0.1)_0%,rgba(30,41,59,1)_60%)]
+                        shadow-[0_2px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_24px_rgba(0,0,0,0.3)]
+                        ring-1 ring-black/5 dark:ring-white/10
                         px-6 py-6 sm:px-8 sm:py-8
                     "
-                >
-                    {/* soft gradient blobs */}
-                    <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-[#63C0B9]/20 blur-[60px]" />
-                    <div className="pointer-events-none absolute bottom-[-40px] left-[-40px] h-48 w-48 rounded-full bg-[#5FB4E5]/20 blur-[60px]" />
-
-                    <div className="relative flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-                        <div className="flex-1">
-                            <h1 className="text-[20px] sm:text-[22px] font-semibold text-[#1f2e2d] leading-tight">
-                                {loading
-                                    ? "Loading your dashboard…"
-                                    : `Welcome${
-                                        me?.name ? `, ${me.name}` : ""
-                                    } 👋`}
-                            </h1>
-
-                            <p className="mt-2 max-w-[600px] text-[14px] leading-relaxed text-slate-600">
-                                Track sessions, events, opportunities, and
-                                resources — all in one place. SparkHub keeps you
-                                moving.
-                            </p>
-
-                            {/* Quick actions row */}
-                            <div className="mt-5 flex flex-wrap gap-2 text-[13px] font-medium">
-                                <QuickAction
-                                    href="/courses"
-                                    icon={<GraduationCap size={16} />}
-                                    label="Browse Courses"
-                                />
-                                <QuickAction
-                                    href="/tutors"
-                                    icon={<Users size={16} />}
-                                    label="Find a Tutor"
-                                />
-                                <QuickAction
-                                    href="/events"
-                                    icon={<Calendar size={16} />}
-                                    label="Events"
-                                />
-                                <QuickAction
-                                    href="/opportunities"
-                                    icon={<BriefcaseBusiness size={16} />}
-                                    label="Opportunities"
-                                />
-                                <QuickAction
-                                    href="/resources"
-                                    icon={<BookOpen size={16} />}
-                                    label="Resources"
-                                />
-                                {me?.role === "ADMIN" && (
-                                    <QuickAction
-                                        href="/admin"
-                                        icon={<ShieldCheck size={16} />}
-                                        label="Admin panel"
-                                    />
-                                )}
-                                {(me?.role === "TUTOR" || me?.role === "ADMIN") && (
-                                    <QuickAction
-                                        href="/tutors/dashboard"
-                                        icon={<Users size={16} />}
-                                        label="Tutor tools"
-                                    />
-                                )}
-                            </div>
-                        </div>
-
-                        {/* animated mini-stats badges */}
-                        <div className="grid grid-cols-2 gap-3 min-w-[200px] max-w-[260px] text-[12px]">
-                            <StatBubble
-                                icon={<Calendar size={16} />}
-                                label="Upcoming events"
-                                value={
-                                    loading
-                                        ? "—"
-                                        : upcomingEventCount.toString()
-                                }
-                                delay={0.4}
-                                accent="#5FB4E5"
-                            />
-                            <StatBubble
-                                icon={<Clock size={16} />}
-                                label="Your sessions"
-                                value={
-                                    loading
-                                        ? "—"
-                                        : activeSessionCount.toString()
-                                }
-                                delay={0.5}
-                                accent="#63C0B9"
-                            />
-                        </div>
-                    </div>
-                </motion.section>
-
-                {/* ERROR MESSAGE */}
-                {errMsg ? (
-                    <div className="mt-4 rounded-[12px] bg-red-50 text-[13px] text-red-700 ring-1 ring-red-200 px-4 py-3">
-                        {errMsg}
-                    </div>
-                ) : null}
-
-                {/* MAIN GRID CONTENT */}
-                <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {me?.role === "ADMIN" && (
-                        <DashboardCard
-                            title="Admin tools"
-                            icon={<ShieldCheck size={16} />}
-                            className="md:col-span-2 xl:col-span-3"
-                        >
-                            <p>
-                                Publish events, resources, and opportunities using the admin control panel. Any change is
-                                reflected instantly across the site.
-                            </p>
-                            <div className="mt-3">
-                                <Link
-                                    href="/admin"
-                                    className="inline-flex items-center rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white"
-                                >
-                                    Open admin panel
-                                </Link>
-                            </div>
-                        </DashboardCard>
-                    )}
-                    {/* Sessions */}
-                    <DashboardCard
-                        title="Your tutoring sessions"
-                        icon={<Clock size={16} />}
                     >
-                        {loading ? (
-                            <div className="space-y-3">
-                                <Skeleton className="h-[40px]" />
-                                <Skeleton className="h-[40px]" />
+                        {/* soft gradient blobs */}
+                        <div className="pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-[#63C0B9]/20 blur-[60px]" />
+                        <div className="pointer-events-none absolute bottom-[-40px] left-[-40px] h-48 w-48 rounded-full bg-[#5FB4E5]/20 blur-[60px]" />
+
+                        <div className="relative flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+                            <div className="flex-1">
+                                <h1 className="text-[20px] sm:text-[22px] font-semibold text-[#1f2e2d] dark:text-slate-100 leading-tight">
+                                    {loading
+                                        ? "Loading your dashboard…"
+                                        : `Welcome${
+                                            me?.name ? `, ${me.name}` : ""
+                                        }!`}
+                                </h1>
+
+                                <p className="mt-2 max-w-[600px] text-[14px] leading-relaxed text-slate-600 dark:text-slate-400">
+                                    Track sessions, events, opportunities, and
+                                    resources — all in one place. SparkHub keeps you
+                                    moving.
+                                </p>
+
+                                {/* Quick actions row */}
+                                <div className="mt-5 flex flex-wrap gap-2 text-[13px] font-medium">
+                                    <QuickAction
+                                        href="/courses"
+                                        icon={<GraduationCap size={16} />}
+                                        label="Browse Courses"
+                                    />
+                                    <QuickAction
+                                        href="/tutors"
+                                        icon={<Users size={16} />}
+                                        label="Find a Tutor"
+                                    />
+                                    <QuickAction
+                                        href="/events"
+                                        icon={<Calendar size={16} />}
+                                        label="Events"
+                                    />
+                                    <QuickAction
+                                        href="/opportunities"
+                                        icon={<BriefcaseBusiness size={16} />}
+                                        label="Opportunities"
+                                    />
+                                    <QuickAction
+                                        href="/resources"
+                                        icon={<BookOpen size={16} />}
+                                        label="Resources"
+                                    />
+                                    {me?.role === "ADMIN" && (
+                                        <QuickAction
+                                            href="/admin"
+                                            icon={<ShieldCheck size={16} />}
+                                            label="Admin panel"
+                                        />
+                                    )}
+                                    {(me?.role === "TUTOR" || me?.role === "ADMIN") && (
+                                        <QuickAction
+                                            href="/tutors/dashboard"
+                                            icon={<Users size={16} />}
+                                            label="Tutor tools"
+                                        />
+                                    )}
+                                </div>
                             </div>
-                        ) : sessions.length === 0 ? (
-                            <p className="text-slate-500 text-[13px]">
-                                No sessions scheduled yet.{" "}
-                                <Link
-                                    href="/tutors"
-                                    className="text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
-                                >
-                                    Book a tutor
-                                </Link>
-                                .
-                            </p>
-                        ) : (
-                            <ul className="space-y-4">
-                                {sessions.slice(0, 4).map((s) => {
-                                    const partnerName = s.student?.name
-                                        ? `with ${s.student.name}`
-                                        : s.tutor
-                                            ? "with tutor"
-                                            : "";
-                                    return (
-                                        <li
-                                            key={s.id}
-                                            className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
-                                        >
-                                            <div className="flex flex-col">
-                                                <div className="font-medium text-slate-800 flex items-center gap-2">
-                                                    <Video
-                                                        size={14}
-                                                        className="shrink-0 text-[#5FB4E5]"
-                                                    />
-                                                    <span>
+
+                            {/* animated mini-stats badges */}
+                            <div className="grid grid-cols-2 gap-3 min-w-[200px] max-w-[260px] text-[12px]">
+                                <StatBubble
+                                    icon={<Calendar size={16} />}
+                                    label="Upcoming events"
+                                    value={
+                                        loading
+                                            ? "—"
+                                            : upcomingEventCount.toString()
+                                    }
+                                    delay={0.4}
+                                    accent="#5FB4E5"
+                                />
+                                <StatBubble
+                                    icon={<Clock size={16} />}
+                                    label="Your sessions"
+                                    value={
+                                        loading
+                                            ? "—"
+                                            : activeSessionCount.toString()
+                                    }
+                                    delay={0.5}
+                                    accent="#63C0B9"
+                                />
+                            </div>
+                        </div>
+                    </motion.section>
+
+                    {/* ERROR MESSAGE */}
+                    {errMsg ? (
+                        <div className="mt-4 rounded-[12px] bg-red-50 dark:bg-red-900/30 text-[13px] text-red-700 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-800 px-4 py-3">
+                            {errMsg}
+                        </div>
+                    ) : null}
+
+                    {/* MAIN GRID CONTENT */}
+                    <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                        {me?.role === "ADMIN" && (
+                            <DashboardCard
+                                title="Admin tools"
+                                icon={<ShieldCheck size={16} />}
+                                className="md:col-span-2 xl:col-span-3"
+                            >
+                                <p>
+                                    Publish events, resources, and opportunities using the admin control panel. Any change is
+                                    reflected instantly across the site.
+                                </p>
+                                <div className="mt-3">
+                                    <Link
+                                        href="/admin"
+                                        className="inline-flex items-center rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white"
+                                    >
+                                        Open admin panel
+                                    </Link>
+                                </div>
+                            </DashboardCard>
+                        )}
+                        {/* Sessions */}
+                        <DashboardCard
+                            title="Your tutoring sessions"
+                            icon={<Clock size={16} />}
+                        >
+                            {loading ? (
+                                <div className="space-y-3">
+                                    <Skeleton className="h-[40px]" />
+                                    <Skeleton className="h-[40px]" />
+                                </div>
+                            ) : sessions.length === 0 ? (
+                                <p className="text-slate-500 dark:text-slate-400 text-[13px]">
+                                    No sessions scheduled yet.{" "}
+                                    <Link
+                                        href="/tutors"
+                                        className="text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
+                                    >
+                                        Book a tutor
+                                    </Link>
+                                    .
+                                </p>
+                            ) : (
+                                <ul className="space-y-4">
+                                    {sessions.slice(0, 4).map((s) => {
+                                        const partnerName = s.student?.name
+                                            ? `with ${s.student.name}`
+                                            : s.tutor
+                                                ? "with tutor"
+                                                : "";
+                                        return (
+                                            <li
+                                                key={s.id}
+                                                className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
+                                            >
+                                                <div className="flex flex-col">
+                                                    <div className="font-medium text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                                                        <Video
+                                                            size={14}
+                                                            className="shrink-0 text-[#5FB4E5]"
+                                                        />
+                                                        <span>
                                                         {fmtDateShort(
                                                             s.startsAt
                                                         )}
                                                     </span>
-                                                </div>
-                                                <div className="text-slate-600">
-                                                    {partnerName} ·{" "}
-                                                    {s.status || "PENDING"}
-                                                </div>
-                                                {s.meetingUrl ? (
-                                                    <div className="mt-1">
-                                                        <a
-                                                            className="inline-flex items-center gap-1 text-[#5FB4E5] hover:brightness-110 underline underline-offset-2"
-                                                            href={s.meetingUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                        >
-                                                            Join call
-                                                            <ExternalLink
-                                                                size={12}
-                                                            />
-                                                        </a>
                                                     </div>
-                                                ) : null}
+                                                    <div className="text-slate-600 dark:text-slate-400">
+                                                        {partnerName} ·{" "}
+                                                        {s.status || "PENDING"}
+                                                    </div>
+                                                    {s.meetingUrl ? (
+                                                        <div className="mt-1">
+                                                            <a
+                                                                className="inline-flex items-center gap-1 text-[#5FB4E5] hover:brightness-110 underline underline-offset-2"
+                                                                href={s.meetingUrl}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                            >
+                                                                Join call
+                                                                <ExternalLink
+                                                                    size={12}
+                                                                />
+                                                            </a>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </DashboardCard>
+
+                        {/* Events */}
+                        <DashboardCard
+                            title="Upcoming events"
+                            icon={<Calendar size={16} />}
+                        >
+                            {loading ? (
+                                <div className="space-y-3">
+                                    <Skeleton className="h-[40px]" />
+                                    <Skeleton className="h-[40px]" />
+                                </div>
+                            ) : events.length === 0 ? (
+                                <p className="text-slate-500 dark:text-slate-400 text-[13px]">
+                                    No events yet. Check back soon.
+                                </p>
+                            ) : (
+                                <ul className="space-y-4">
+                                    {events.slice(0, 4).map((ev) => (
+                                        <li
+                                            key={ev.id}
+                                            className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
+                                        >
+                                            <div className="font-medium text-slate-800 dark:text-slate-100">
+                                                {ev.title}
+                                            </div>
+                                            <div className="text-slate-600 dark:text-slate-400">
+                                                {fmtDateShort(ev.startsAt)} ·{" "}
+                                                {ev.location}
                                             </div>
                                         </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                    </DashboardCard>
+                                    ))}
+                                </ul>
+                            )}
 
-                    {/* Events */}
-                    <DashboardCard
-                        title="Upcoming events"
-                        icon={<Calendar size={16} />}
-                    >
-                        {loading ? (
-                            <div className="space-y-3">
-                                <Skeleton className="h-[40px]" />
-                                <Skeleton className="h-[40px]" />
+                            <div className="mt-4 text-right">
+                                <Link
+                                    href="/events"
+                                    className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
+                                >
+                                    View all events →
+                                </Link>
                             </div>
-                        ) : events.length === 0 ? (
-                            <p className="text-slate-500 text-[13px]">
-                                No events yet. Check back soon.
-                            </p>
-                        ) : (
-                            <ul className="space-y-4">
-                                {events.slice(0, 4).map((ev) => (
-                                    <li
-                                        key={ev.id}
-                                        className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
-                                    >
-                                        <div className="font-medium text-slate-800">
-                                            {ev.title}
-                                        </div>
-                                        <div className="text-slate-600">
-                                            {fmtDateShort(ev.startsAt)} ·{" "}
-                                            {ev.location}
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+                        </DashboardCard>
 
-                        <div className="mt-4 text-right">
-                            <Link
-                                href="/events"
-                                className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
-                            >
-                                View all events →
-                            </Link>
-                        </div>
-                    </DashboardCard>
-
-                    <DashboardCard title="My courses" icon={<GraduationCap size={16} />}>
-                        {loading ? (
-                            <div className="space-y-3">
-                                <Skeleton className="h-[40px]" />
-                                <Skeleton className="h-[40px]" />
+                        <DashboardCard title="My courses" icon={<GraduationCap size={16} />}>
+                            {loading ? (
+                                <div className="space-y-3">
+                                    <Skeleton className="h-[40px]" />
+                                    <Skeleton className="h-[40px]" />
+                                </div>
+                            ) : !isStudent ? (
+                                <p className="text-slate-500 dark:text-slate-400 text-[13px]">
+                                    Switch to a student account to enroll in SparkHub courses directly from the catalog.
+                                </p>
+                            ) : latestEnrollments.length === 0 ? (
+                                <p className="text-slate-500 dark:text-slate-400 text-[13px]">
+                                    You have not enrolled in any courses yet. Explore the catalog to get started.
+                                </p>
+                            ) : (
+                                <ul className="space-y-4">
+                                    {latestEnrollments.map((enrollment) => {
+                                        const courseTitle = enrollment.course?.title || "Untitled course";
+                                        const summary = enrollment.course?.summary || "No summary yet.";
+                                        const enrolledOn = enrollment.createdAt ? fmtDateShort(enrollment.createdAt) : "Recently";
+                                        return (
+                                            <li
+                                                key={enrollment.id}
+                                                className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
+                                            >
+                                                <div className="font-medium text-slate-800 dark:text-slate-100">{courseTitle}</div>
+                                                <div className="text-slate-600 dark:text-slate-400 line-clamp-2">{summary}</div>
+                                                <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-500">Enrolled {enrolledOn}</div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                            <div className="mt-4 text-right">
+                                <Link
+                                    href="/courses#catalog"
+                                    className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
+                                >
+                                    Go to courses →
+                                </Link>
                             </div>
-                        ) : !isStudent ? (
-                            <p className="text-slate-500 text-[13px]">
-                                Switch to a student account to enroll in SparkHub courses directly from the catalog.
-                            </p>
-                        ) : latestEnrollments.length === 0 ? (
-                            <p className="text-slate-500 text-[13px]">
-                                You have not enrolled in any courses yet. Explore the catalog to get started.
-                            </p>
-                        ) : (
-                            <ul className="space-y-4">
-                                {latestEnrollments.map((enrollment) => {
-                                    const courseTitle = enrollment.course?.title || "Untitled course";
-                                    const summary = enrollment.course?.summary || "No summary yet.";
-                                    const enrolledOn = enrollment.createdAt ? fmtDateShort(enrollment.createdAt) : "Recently";
-                                    return (
+                        </DashboardCard>
+
+                        {/* Jobs / Opportunities */}
+                        <DashboardCard
+                            title="Opportunities for you"
+                            icon={<BriefcaseBusiness size={16} />}
+                        >
+                            {loading ? (
+                                <div className="space-y-3">
+                                    <Skeleton className="h-[40px]" />
+                                    <Skeleton className="h-[40px]" />
+                                </div>
+                            ) : jobs.length === 0 ? (
+                                <p className="text-slate-500 dark:text-slate-400 text-[13px]">
+                                    No active postings.
+                                </p>
+                            ) : (
+                                <ul className="space-y-4">
+                                    {jobs.slice(0, 4).map((job) => (
                                         <li
-                                            key={enrollment.id}
-                                            className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
+                                            key={job.id}
+                                            className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
                                         >
-                                            <div className="font-medium text-slate-800">{courseTitle}</div>
-                                            <div className="text-slate-600 line-clamp-2">{summary}</div>
-                                            <div className="mt-1 text-[11px] text-slate-500">Enrolled {enrolledOn}</div>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-                        <div className="mt-4 text-right">
-                            <Link
-                                href="/courses#catalog"
-                                className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
-                            >
-                                Go to courses →
-                            </Link>
-                        </div>
-                    </DashboardCard>
-
-                    {/* Jobs / Opportunities */}
-                    <DashboardCard
-                        title="Opportunities for you"
-                        icon={<BriefcaseBusiness size={16} />}
-                    >
-                        {loading ? (
-                            <div className="space-y-3">
-                                <Skeleton className="h-[40px]" />
-                                <Skeleton className="h-[40px]" />
-                            </div>
-                        ) : jobs.length === 0 ? (
-                            <p className="text-slate-500 text-[13px]">
-                                No active postings.
-                            </p>
-                        ) : (
-                            <ul className="space-y-4">
-                                {jobs.slice(0, 4).map((job) => (
-                                    <li
-                                        key={job.id}
-                                        className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
-                                    >
-                                        <div className="font-medium text-slate-800">
-                                            {job.title}
-                                        </div>
-                                        {job.skills && job.skills.length > 0 ? (
-                                            <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-slate-600">
-                                                {job.skills.slice(0, 4).map(
-                                                    (skill, i) => (
-                                                        <span
-                                                            key={i}
-                                                            className="rounded-full border border-[#CFE3E0] bg-white/70 px-2 py-[2px] text-[11px] font-medium text-[#2B2B2B]"
-                                                        >
+                                            <div className="font-medium text-slate-800 dark:text-slate-100">
+                                                {job.title}
+                                            </div>
+                                            {job.skills && job.skills.length > 0 ? (
+                                                <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-slate-600 dark:text-slate-400">
+                                                    {job.skills.slice(0, 4).map(
+                                                        (skill, i) => (
+                                                            <span
+                                                                key={i}
+                                                                className="rounded-full border border-[#CFE3E0] dark:border-slate-600 bg-white/70 dark:bg-slate-700 px-2 py-[2px] text-[11px] font-medium text-[#2B2B2B] dark:text-slate-200"
+                                                            >
                                                             {skill}
                                                         </span>
-                                                    )
-                                                )}
-                                                {job.skills.length > 4 ? (
-                                                    <span className="text-slate-500">
+                                                        )
+                                                    )}
+                                                    {job.skills.length > 4 ? (
+                                                        <span className="text-slate-500 dark:text-slate-400">
                                                         +{job.skills.length - 4}
                                                     </span>
-                                                ) : null}
+                                                    ) : null}
+                                                </div>
+                                            ) : null}
+                                            <div className="mt-1 text-slate-600 dark:text-slate-400 line-clamp-2">
+                                                {job.description}
                                             </div>
-                                        ) : null}
-                                        <div className="mt-1 text-slate-600 line-clamp-2">
-                                            {job.description}
-                                        </div>
-                                        <div className="mt-1 text-[11px] text-slate-500">
-                                            Contact: {job.contact}
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+                                            <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-500">
+                                                Contact: {job.contact}
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
 
-                        <div className="mt-4 text-right">
-                            <Link
-                                href="/opportunities"
-                                className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
-                            >
-                                View all opportunities →
-                            </Link>
-                        </div>
-                    </DashboardCard>
-
-                    {/* Learning Resources */}
-                    <DashboardCard
-                        title="New resources"
-                        icon={<BookOpen size={16} />}
-                        className="md:col-span-2 xl:col-span-1"
-                    >
-                        {loading ? (
-                            <div className="space-y-3">
-                                <Skeleton className="h-[40px]" />
-                                <Skeleton className="h-[40px]" />
+                            <div className="mt-4 text-right">
+                                <Link
+                                    href="/opportunities"
+                                    className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
+                                >
+                                    View all opportunities →
+                                </Link>
                             </div>
-                        ) : resources.length === 0 ? (
-                            <p className="text-slate-500 text-[13px]">
-                                Nothing posted yet. Come back later.
-                            </p>
-                        ) : (
-                            <ul className="space-y-4">
-                                {resources.slice(0, 4).map((r) => (
-                                    <li
-                                        key={r.id}
-                                        className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
-                                    >
-                                        <div className="font-medium text-slate-800 flex items-start justify-between gap-2">
+                        </DashboardCard>
+
+                        {/* Learning Resources */}
+                        <DashboardCard
+                            title="New resources"
+                            icon={<BookOpen size={16} />}
+                            className="md:col-span-2 xl:col-span-1"
+                        >
+                            {loading ? (
+                                <div className="space-y-3">
+                                    <Skeleton className="h-[40px]" />
+                                    <Skeleton className="h-[40px]" />
+                                </div>
+                            ) : resources.length === 0 ? (
+                                <p className="text-slate-500 dark:text-slate-400 text-[13px]">
+                                    Nothing posted yet. Come back later.
+                                </p>
+                            ) : (
+                                <ul className="space-y-4">
+                                    {resources.slice(0, 4).map((r) => (
+                                        <li
+                                            key={r.id}
+                                            className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
+                                        >
+                                            <div className="font-medium text-slate-800 dark:text-slate-100 flex items-start justify-between gap-2">
                                             <span className="flex-1">
                                                 {r.title}
                                             </span>
-                                            <span className="rounded-full border border-[#CFE3E0] bg-white/70 px-2 py-[2px] text-[10px] font-medium text-[#2B2B2B] whitespace-nowrap">
+                                                <span className="rounded-full border border-[#CFE3E0] dark:border-slate-600 bg-white/70 dark:bg-slate-700 px-2 py-[2px] text-[10px] font-medium text-[#2B2B2B] dark:text-slate-200 whitespace-nowrap">
                                                 {r.kind}
                                             </span>
-                                        </div>
-                                        {r.summary ? (
-                                            <div className="mt-1 text-slate-600 line-clamp-2">
-                                                {r.summary}
                                             </div>
-                                        ) : null}
-                                        <div className="mt-2 text-[12px]">
-                                            <a
-                                                href={r.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 text-[#5FB4E5] font-medium underline underline-offset-2 hover:brightness-110"
-                                            >
-                                                Open resource
-                                                <ExternalLink size={12} />
-                                            </a>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+                                            {r.summary ? (
+                                                <div className="mt-1 text-slate-600 dark:text-slate-400 line-clamp-2">
+                                                    {r.summary}
+                                                </div>
+                                            ) : null}
+                                            <div className="mt-2 text-[12px]">
+                                                <a
+                                                    href={r.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 text-[#5FB4E5] font-medium underline underline-offset-2 hover:brightness-110"
+                                                >
+                                                    Open resource
+                                                    <ExternalLink size={12} />
+                                                </a>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
 
-                        <div className="mt-4 text-right">
-                            <Link
-                                href="/resources"
-                                className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
-                            >
-                                Browse all resources →
-                            </Link>
-                        </div>
-                    </DashboardCard>
+                            <div className="mt-4 text-right">
+                                <Link
+                                    href="/resources"
+                                    className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
+                                >
+                                    Browse all resources →
+                                </Link>
+                            </div>
+                        </DashboardCard>
+                    </div>
                 </div>
-            </div>
-        </main>
+            </main>
         </div>
     );
 }
@@ -648,9 +648,9 @@ function QuickAction(props: { href: string; icon: React.ReactNode; label: string
             href={href}
             className="
                 inline-flex items-center gap-1.5 rounded-full
-                border border-[#CFE3E0] bg-white/70 px-3 py-1.5
-                text-[#2B2B2B] shadow-[0_2px_8px_rgba(0,0,0,0.04)]
-                hover:bg-white hover:brightness-110 transition
+                border border-[#CFE3E0] dark:border-slate-600 bg-white/70 dark:bg-slate-800/70 px-3 py-1.5
+                text-[#2B2B2B] dark:text-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none
+                hover:bg-white dark:hover:bg-slate-700 hover:brightness-110 transition
             "
         >
             <span className="text-[#5FB4E5]">{icon}</span>
@@ -680,9 +680,9 @@ function StatBubble(props: {
             }}
             className="
                 relative overflow-hidden rounded-[16px]
-                border border-[#CFE3E0]/60 bg-white/80
-                shadow-[0_8px_24px_rgba(0,0,0,0.07)]
-                ring-1 ring-black/5
+                border border-[#CFE3E0]/60 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80
+                shadow-[0_8px_24px_rgba(0,0,0,0.07)] dark:shadow-none
+                ring-1 ring-black/5 dark:ring-white/10
                 p-3
             "
         >
@@ -693,7 +693,7 @@ function StatBubble(props: {
             />
             <div className="flex items-start gap-2 relative">
                 <div
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-medium ring-1 ring-black/5"
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-medium ring-1 ring-black/5 dark:ring-white/10"
                     style={{
                         backgroundColor: accent + "1A", // ~10% alpha
                         color: "#1f2e2d",
@@ -702,10 +702,10 @@ function StatBubble(props: {
                     {icon}
                 </div>
                 <div className="flex-1 leading-tight">
-                    <div className="text-[11px] font-medium text-slate-600">
+                    <div className="text-[11px] font-medium text-slate-600 dark:text-slate-400">
                         {label}
                     </div>
-                    <div className="text-[15px] font-semibold text-slate-800">
+                    <div className="text-[15px] font-semibold text-slate-800 dark:text-slate-100">
                         {value}
                     </div>
                 </div>

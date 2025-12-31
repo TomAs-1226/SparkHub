@@ -51,7 +51,7 @@ export default function EventsPage() {
     const selected = useMemo(() => events.find((ev) => ev.id === selectedId) || null, [events, selectedId]);
 
     return (
-        <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
                 <motion.section
@@ -59,9 +59,9 @@ export default function EventsPage() {
                     initial="initial"
                     animate="animate"
                     transition={{ ease: EASE.lift }}
-                    className="rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-10"
+                    className="rounded-[32px] border border-white/60 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 p-6 shadow-2xl md:p-10"
                 >
-                    <div className="relative overflow-hidden rounded-2xl border border-[#E8F2F1] bg-[#FDFEFE] p-4">
+                    <div className="relative overflow-hidden rounded-2xl border border-[#E8F2F1] dark:border-slate-700 bg-[#FDFEFE] dark:bg-slate-800 p-4">
                         <motion.div
                             className="pointer-events-none absolute -inset-8 rounded-[32px] bg-[radial-gradient(circle_at_15%_20%,rgba(99,192,185,0.18),transparent_32%),radial-gradient(circle_at_80%_10%,rgba(45,46,131,0.16),transparent_35%)] blur-3xl"
                             aria-hidden
@@ -70,16 +70,16 @@ export default function EventsPage() {
                         />
                         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
                             <div>
-                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">SparkHub events</p>
-                                <h1 className="mt-2 text-2xl font-semibold">Upcoming events</h1>
-                                <p className="mt-1 text-sm text-slate-500">
+                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80] dark:text-[#63C0B9]">SparkHub events</p>
+                                <h1 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">Upcoming events</h1>
+                                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                                     Every event updates in real time so you can tap in for fresh details without reloading.
                                 </p>
                             </div>
                             <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }}>
                                 <Link
                                     href="/dashboard"
-                                    className="inline-flex rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B] hover:bg-slate-50"
+                                    className="inline-flex rounded-full border border-[#CFE3E0] dark:border-slate-600 px-4 py-2 text-sm font-semibold text-[#2B2B2B] dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
                                 >
                                     Back to dashboard
                                 </Link>
@@ -89,7 +89,7 @@ export default function EventsPage() {
 
                     <div className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
                         <div>
-                            <h2 className="text-sm font-semibold text-slate-600">All events</h2>
+                            <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-400">All events</h2>
                             <motion.div
                                 className="mt-4 space-y-3"
                                 variants={{ hidden: {}, visible: { transition: STAGGER.base } }}
@@ -99,10 +99,10 @@ export default function EventsPage() {
                             >
                                 {loading ? (
                                     Array.from({ length: 4 }).map((_, idx) => (
-                                        <div key={idx} className="h-[72px] animate-pulse rounded-2xl bg-slate-100" />
+                                        <div key={idx} className="h-[72px] animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-700" />
                                     ))
                                 ) : events.length === 0 ? (
-                                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-600">
+                                    <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50/80 dark:bg-slate-800/70 p-4 text-sm text-slate-600 dark:text-slate-400">
                                         There are currently no events in the database.
                                     </div>
                                 ) : (
@@ -115,10 +115,10 @@ export default function EventsPage() {
                                                 onClick={() => setSelectedId(event.id)}
                                                 className={`w-full rounded-2xl border px-4 py-4 text-left transition shadow-sm
                             ${
-                                isActive
-                                    ? "border-[#63C0B9] bg-[#E9F7F5]"
-                                    : "border-slate-200 bg-white hover:border-[#CFE3E0]"
-                            }
+                                                    isActive
+                                                        ? "border-[#63C0B9] bg-[#E9F7F5] dark:bg-[#63C0B9]/20"
+                                                        : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-[#CFE3E0] dark:hover:border-slate-600"
+                                                }
                         `}
                                                 initial={SURFACES.lift.initial}
                                                 whileInView={SURFACES.lift.animate(idx * 0.04)}
@@ -126,8 +126,8 @@ export default function EventsPage() {
                                                 whileHover={SURFACES.lift.whileHover}
                                                 transition={{ duration: 0.4, ease: EASE.lift }}
                                             >
-                                                <div className="text-sm font-semibold text-slate-800">{event.title}</div>
-                                                <div className="mt-1 text-xs text-slate-500">
+                                                <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{event.title}</div>
+                                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                                                     {formatEventDate(event.startsAt)} · {event.location || "Location TBD"}
                                                 </div>
                                             </motion.button>
@@ -138,7 +138,7 @@ export default function EventsPage() {
                         </div>
 
                         <motion.div
-                            className="rounded-3xl border border-slate-100 bg-[#F9FBFF] p-6"
+                            className="rounded-3xl border border-slate-100 dark:border-slate-700 bg-[#F9FBFF] dark:bg-slate-800 p-6"
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.4, ease: EASE.emphasized, delay: 0.05 }}
@@ -146,9 +146,9 @@ export default function EventsPage() {
                             {selected ? (
                                 <div className="space-y-4">
                                     <div>
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-[#2D8F80]">Selected event</p>
-                                        <h3 className="mt-1 text-xl font-semibold text-slate-900">{selected.title}</h3>
-                                        <p className="mt-2 text-sm text-slate-600">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-[#2D8F80] dark:text-[#63C0B9]">Selected event</p>
+                                        <h3 className="mt-1 text-xl font-semibold text-slate-900 dark:text-slate-100">{selected.title}</h3>
+                                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                                             {selected.description || "No description has been provided for this event yet."}
                                         </p>
                                     </div>
@@ -181,7 +181,7 @@ export default function EventsPage() {
                                                 });
                                                 const json = await res.json();
                                                 if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to RSVP");
-                                                setSignupStatus("You’re signed up for this event.");
+                                                setSignupStatus("You're signed up for this event.");
                                             } catch (err) {
                                                 setSignupStatus(err instanceof Error ? err.message : "Unable to RSVP.");
                                             } finally {
@@ -191,9 +191,9 @@ export default function EventsPage() {
                                     />
                                 </div>
                             ) : loading ? (
-                                <div className="h-64 animate-pulse rounded-2xl bg-slate-100" />
+                                <div className="h-64 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-700" />
                             ) : (
-                                <div className="text-sm text-slate-600">Select an event to view its information.</div>
+                                <div className="text-sm text-slate-600 dark:text-slate-400">Select an event to view its information.</div>
                             )}
                         </motion.div>
                     </div>
@@ -204,13 +204,13 @@ export default function EventsPage() {
 }
 
 function RoleCallout({
-    role,
-    event,
-    userId,
-    signingUp,
-    signupStatus,
-    onSignup,
-}: {
+                         role,
+                         event,
+                         userId,
+                         signingUp,
+                         signupStatus,
+                         onSignup,
+                     }: {
     role?: string;
     event: EventRow;
     userId?: string;
@@ -221,8 +221,8 @@ function RoleCallout({
     const calendarUrl = createCalendarLink(event);
     if (role === "ADMIN") {
         return (
-            <div className="rounded-2xl border border-dashed border-[#CFE3E0] bg-white/80 p-4 text-sm text-slate-600">
-                <p className="font-semibold text-slate-900">Admin shortcut</p>
+            <div className="rounded-2xl border border-dashed border-[#CFE3E0] dark:border-slate-600 bg-white/80 dark:bg-slate-700/80 p-4 text-sm text-slate-600 dark:text-slate-400">
+                <p className="font-semibold text-slate-900 dark:text-slate-100">Admin shortcut</p>
                 <p>Jump into the control panel to edit, duplicate, or delete this event.</p>
                 <Link
                     href={`/admin?event=${event.id}`}
@@ -236,12 +236,12 @@ function RoleCallout({
 
     if (role && ["TUTOR", "CREATOR"].includes(role)) {
         return (
-            <div className="rounded-2xl border border-dashed border-[#CFE3E0] bg-white/80 p-4 text-sm text-slate-600">
-                <p className="font-semibold text-slate-900">Need to host something similar?</p>
+            <div className="rounded-2xl border border-dashed border-[#CFE3E0] dark:border-slate-600 bg-white/80 dark:bg-slate-700/80 p-4 text-sm text-slate-600 dark:text-slate-400">
+                <p className="font-semibold text-slate-900 dark:text-slate-100">Need to host something similar?</p>
                 <p>Head to the publishing workspace to duplicate this format or attach new assets.</p>
                 <Link
                     href="/tutors/dashboard"
-                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white"
+                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-[var(--sh-accent,#63C0B9)] px-4 py-2 text-sm font-semibold text-white"
                 >
                     Open workspace
                 </Link>
@@ -250,17 +250,17 @@ function RoleCallout({
     }
 
     return (
-        <div className="space-y-3 rounded-2xl border border-dashed border-[#CFE3E0] bg-white/80 p-4 text-sm text-slate-600">
+        <div className="space-y-3 rounded-2xl border border-dashed border-[#CFE3E0] dark:border-slate-600 bg-white/80 dark:bg-slate-700/80 p-4 text-sm text-slate-600 dark:text-slate-400">
             <div>
-                <p className="font-semibold text-slate-900">Add to your calendar</p>
-                <p>Save the invite and optionally RSVP so hosts know you’re coming.</p>
+                <p className="font-semibold text-slate-900 dark:text-slate-100">Add to your calendar</p>
+                <p>Save the invite and optionally RSVP so hosts know you're coming.</p>
             </div>
             <div className="flex flex-wrap gap-3">
                 <a
                     href={calendarUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] px-4 py-2 text-sm font-semibold text-[#2B2B2B]"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#CFE3E0] dark:border-slate-600 px-4 py-2 text-sm font-semibold text-[#2B2B2B] dark:text-slate-200"
                 >
                     Add to calendar
                 </a>
@@ -269,7 +269,7 @@ function RoleCallout({
                         type="button"
                         onClick={onSignup}
                         disabled={signingUp}
-                        className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
+                        className="inline-flex items-center gap-2 rounded-full bg-[var(--sh-accent,#63C0B9)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
                     >
                         {signingUp ? "Saving..." : "Save me a seat"}
                     </button>
@@ -282,10 +282,10 @@ function RoleCallout({
                     </Link>
                 )}
             </div>
-            {signupStatus && <p className="text-xs text-[#2D8F80]">{signupStatus}</p>}
+            {signupStatus && <p className="text-xs text-[#2D8F80] dark:text-[#63C0B9]">{signupStatus}</p>}
             <Link
                 href={`/events/${event.id}`}
-                className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#2D8F80]"
+                className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#2D8F80] dark:text-[#63C0B9]"
             >
                 <NotebookPen className="h-3.5 w-3.5" /> View full details
             </Link>
@@ -326,20 +326,20 @@ function formatEventDate(iso?: string | null) {
 }
 
 function DetailRow({
-    icon,
-    label,
-    children,
-}: {
+                       icon,
+                       label,
+                       children,
+                   }: {
     icon: ReactNode;
     label: string;
     children: ReactNode;
 }) {
     return (
-        <div className="flex items-start gap-3 rounded-2xl border border-white bg-white/80 p-4 text-sm text-slate-600">
-            <div className="rounded-full bg-[#E7F6F3] p-2 text-[#2D8F80]">{icon}</div>
+        <div className="flex items-start gap-3 rounded-2xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-700/80 p-4 text-sm text-slate-600 dark:text-slate-400">
+            <div className="rounded-full bg-[#E7F6F3] dark:bg-slate-600 p-2 text-[#2D8F80] dark:text-[#63C0B9]">{icon}</div>
             <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-                <p className="text-sm text-slate-800">{children}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+                <p className="text-sm text-slate-800 dark:text-slate-200">{children}</p>
             </div>
         </div>
     );
