@@ -120,7 +120,7 @@ function parseMarkdown(text: string): React.ReactNode[] {
 
             // Check for bold **text**
             const boldMatch = current.match(/\*\*([^*]+)\*\*/);
-            if (boldMatch && boldMatch.index !== undefined) {
+            if (boldMatch && typeof boldMatch.index === "number") {
                 if (!earliestMatch || boldMatch.index < earliestMatch.index) {
                     earliestMatch = {
                         index: boldMatch.index,
@@ -133,7 +133,7 @@ function parseMarkdown(text: string): React.ReactNode[] {
 
             // Check for italic *text* (but not inside bold)
             const italicMatch = current.match(/(?<!\*)\*([^*]+)\*(?!\*)/);
-            if (italicMatch && italicMatch.index !== undefined) {
+            if (italicMatch && typeof italicMatch.index === "number") {
                 if (!earliestMatch || italicMatch.index < earliestMatch.index) {
                     earliestMatch = {
                         index: italicMatch.index,
@@ -146,7 +146,7 @@ function parseMarkdown(text: string): React.ReactNode[] {
 
             // Check for code `text`
             const codeMatch = current.match(/`([^`]+)`/);
-            if (codeMatch && codeMatch.index !== undefined) {
+            if (codeMatch && typeof codeMatch.index === "number") {
                 if (!earliestMatch || codeMatch.index < earliestMatch.index) {
                     earliestMatch = {
                         index: codeMatch.index,
