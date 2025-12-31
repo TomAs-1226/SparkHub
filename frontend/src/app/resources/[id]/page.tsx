@@ -13,7 +13,6 @@ import {
     Film,
     Image as ImageIcon,
     Maximize2,
-    Minimize2,
     File,
     X,
 } from "lucide-react";

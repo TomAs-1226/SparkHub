@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Wrench,
@@ -25,10 +25,8 @@ import {
     ChevronRight,
     ArrowRightLeft,
     Shuffle,
-    Check,
-    ChevronDown,
 } from "lucide-react";
-import { EASE, SPRING } from "@/lib/motion-presets";
+import { SPRING } from "@/lib/motion-presets";
 
 // ============== TYPES ==============
 type ToolId = "timer" | "notes" | "graphing" | "converter" | "flashcards" | "grades";
@@ -418,8 +416,6 @@ function NotesTool() {
 
 // ============== GRAPHING CALCULATOR (DESMOS) ==============
 function GraphingTool() {
-    const [showFullscreen, setShowFullscreen] = useState(false);
-
     return (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="p-4">
             <div className="flex items-center justify-between mb-3">

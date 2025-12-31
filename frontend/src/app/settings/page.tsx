@@ -17,8 +17,6 @@ import {
     Info,
     FileText,
     ChevronDown,
-    ChevronUp,
-    ExternalLink,
 } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
