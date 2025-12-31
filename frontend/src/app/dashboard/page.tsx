@@ -20,6 +20,7 @@ import { api } from "@/lib/api";
 import DashboardCard from "@/components/DashboardCard";
 import SiteNav from "@/components/site-nav";
 import AIAssistant from "@/components/ai-assistant";
+import StudyTimer from "@/components/study-timer";
 
 // ---------- types that match your backend responses ----------
 type User = {
@@ -637,6 +638,7 @@ export default function DashboardPage() {
                 </div>
             </div>
         </main>
+        <StudyTimer />
         <AIAssistant />
         </div>
     );
