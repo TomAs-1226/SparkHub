@@ -77,6 +77,26 @@ body {
     color: var(--foreground);
 }
 
+/* Global input dark mode styles */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.dark textarea,
+.dark select {
+    background-color: var(--card);
+    border-color: var(--border);
+    color: var(--foreground);
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: var(--muted-foreground);
+}
+
+.dark input:focus,
+.dark textarea:focus,
+.dark select:focus {
+    border-color: var(--ring);
+}
+
 /* Smooth transitions for theme changes */
 *, *::before, *::after {
     transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;

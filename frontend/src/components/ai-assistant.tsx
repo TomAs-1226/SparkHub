@@ -68,6 +68,7 @@ export default function AIAssistant() {
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [showPrompts, setShowPrompts] = useState(true);
+    const [scrollTopVisible, setScrollTopVisible] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -84,6 +85,16 @@ export default function AIAssistant() {
             inputRef.current.focus();
         }
     }, [isOpen]);
+
+    // Track scroll position to move AI button when scroll-to-top appears
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrollTopVisible(window.scrollY > 320);
+        };
+        handleScroll();
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
 
     async function sendMessage(content: string) {
         if (!content.trim() || isLoading) return;
@@ -158,12 +169,16 @@ export default function AIAssistant() {
         sendMessage(prompt);
     }
 
+    // Calculate bottom position based on scroll-to-top button visibility
+    const buttonBottomClass = scrollTopVisible ? "bottom-20" : "bottom-6";
+    const windowBottomClass = scrollTopVisible ? "bottom-20" : "bottom-6";
+
     return (
         <>
             {/* Floating button */}
             <motion.button
                 onClick={() => setIsOpen(true)}
-                className={`fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#63C0B9] to-[#2D8F80] text-white shadow-lg shadow-[#63C0B9]/30 ${isOpen ? "hidden" : ""}`}
+                className={`fixed ${buttonBottomClass} right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[var(--sh-accent,#63C0B9)] to-[#2D8F80] text-white shadow-lg shadow-[var(--sh-accent,#63C0B9)]/30 transition-all duration-300 ${isOpen ? "hidden" : ""}`}
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -177,7 +192,7 @@ export default function AIAssistant() {
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        className="fixed bottom-6 right-6 z-50 flex h-[520px] w-[380px] flex-col overflow-hidden rounded-[24px] border border-[#CFE3E0]/60 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl shadow-slate-900/10"
+                        className={`fixed ${windowBottomClass} right-6 z-50 flex h-[520px] w-[380px] flex-col overflow-hidden rounded-[24px] border border-[#CFE3E0]/60 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xl shadow-slate-900/10 transition-all duration-300`}
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -186,7 +201,7 @@ export default function AIAssistant() {
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-gradient-to-r from-[#E7F6F3] to-[#F0F9FF] dark:from-slate-700 dark:to-slate-800 px-4 py-3">
                             <div className="flex items-center gap-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#63C0B9] to-[#2D8F80] text-white">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[var(--sh-accent,#63C0B9)] to-[#2D8F80] text-white">
                                     <Sparkles className="h-5 w-5" />
                                 </div>
                                 <div>
@@ -229,7 +244,7 @@ export default function AIAssistant() {
                                 >
                                     <div className="text-center">
                                         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#E7F6F3] to-[#F0F9FF] dark:from-slate-700 dark:to-slate-600">
-                                            <MessageCircle className="h-6 w-6 text-[#2D8F80] dark:text-[#63C0B9]" />
+                                            <MessageCircle className="h-6 w-6 text-[var(--sh-accent,#2D8F80)] dark:text-[var(--sh-accent,#63C0B9)]" />
                                         </div>
                                         <h4 className="mt-3 text-sm font-semibold text-slate-800 dark:text-slate-100">
                                             How can I help you today?
@@ -244,14 +259,14 @@ export default function AIAssistant() {
                                             <motion.button
                                                 key={idx}
                                                 onClick={() => handleQuickPrompt(prompt.prompt)}
-                                                className="flex items-center gap-2 rounded-xl border border-slate-100 dark:border-slate-600 bg-white dark:bg-slate-700 p-3 text-left text-xs text-slate-600 dark:text-slate-300 shadow-sm transition-all hover:border-[#CFE3E0] dark:hover:border-slate-500 hover:bg-[#F9FEFD] dark:hover:bg-slate-600 hover:shadow"
+                                                className="flex items-center gap-2 rounded-xl border border-slate-100 dark:border-slate-600 bg-white dark:bg-slate-700 p-3 text-left text-xs text-slate-600 dark:text-slate-300 shadow-sm transition-all hover:border-[var(--sh-accent-soft,#CFE3E0)] dark:hover:border-slate-500 hover:bg-[#F9FEFD] dark:hover:bg-slate-600 hover:shadow"
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                                 transition={{ delay: idx * 0.05, duration: DURATIONS.fast }}
                                                 whileHover={{ scale: 1.02 }}
                                                 whileTap={{ scale: 0.98 }}
                                             >
-                                                <span className="text-[#2D8F80] dark:text-[#63C0B9]">{prompt.icon}</span>
+                                                <span className="text-[var(--sh-accent,#2D8F80)] dark:text-[var(--sh-accent,#63C0B9)]">{prompt.icon}</span>
                                                 <span className="font-medium">{prompt.label}</span>
                                             </motion.button>
                                         ))}
@@ -270,7 +285,7 @@ export default function AIAssistant() {
                                             <div
                                                 className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
                                                     message.role === "user"
-                                                        ? "bg-gradient-to-br from-[#63C0B9] to-[#2D8F80] text-white"
+                                                        ? "bg-gradient-to-br from-[var(--sh-accent,#63C0B9)] to-[#2D8F80] text-white"
                                                         : "border border-slate-100 dark:border-slate-600 bg-[#F9FBFF] dark:bg-slate-700 text-slate-700 dark:text-slate-200"
                                                 }`}
                                             >
@@ -299,7 +314,7 @@ export default function AIAssistant() {
                                             className="flex justify-start"
                                         >
                                             <div className="flex items-center gap-2 rounded-2xl border border-slate-100 dark:border-slate-600 bg-[#F9FBFF] dark:bg-slate-700 px-4 py-3">
-                                                <Loader2 className="h-4 w-4 animate-spin text-[#2D8F80] dark:text-[#63C0B9]" />
+                                                <Loader2 className="h-4 w-4 animate-spin text-[var(--sh-accent,#2D8F80)] dark:text-[var(--sh-accent,#63C0B9)]" />
                                                 <span className="text-xs text-slate-500 dark:text-slate-400">Thinking...</span>
                                             </div>
                                         </motion.div>
@@ -311,21 +326,21 @@ export default function AIAssistant() {
 
                         {/* Input area */}
                         <form onSubmit={handleSubmit} className="border-t border-slate-100 dark:border-slate-700 p-3 bg-white dark:bg-slate-800">
-                            <div className="flex items-end gap-2 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 focus-within:border-[#63C0B9] focus-within:ring-2 focus-within:ring-[#63C0B9]/20">
+                            <div className="flex items-end gap-2 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 focus-within:border-[var(--sh-accent,#63C0B9)] focus-within:ring-2 focus-within:ring-[var(--sh-accent,#63C0B9)]/20">
                                 <textarea
                                     ref={inputRef}
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
                                     onKeyDown={handleKeyDown}
                                     placeholder="Ask me anything..."
-                                    className="max-h-24 min-h-[40px] flex-1 resize-none bg-transparent text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
+                                    className="max-h-24 min-h-[40px] flex-1 resize-none bg-transparent text-sm text-slate-700 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
                                     rows={1}
                                     disabled={isLoading}
                                 />
                                 <motion.button
                                     type="submit"
                                     disabled={!input.trim() || isLoading}
-                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#63C0B9] to-[#2D8F80] text-white disabled:opacity-50"
+                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[var(--sh-accent,#63C0B9)] to-[#2D8F80] text-white disabled:opacity-50"
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                 >
