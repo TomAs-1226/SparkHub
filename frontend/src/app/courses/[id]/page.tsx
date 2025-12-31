@@ -6,7 +6,6 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader2, Sparkles } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
-import AIAssistant from "@/components/ai-assistant";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { api } from "@/lib/api";
 import { CourseDetailPanel } from "../page";
@@ -239,7 +238,6 @@ export default function CourseWorkspacePage() {
                     )}
                 </section>
             </main>
-            <AIAssistant />
         </div>
     );
 }

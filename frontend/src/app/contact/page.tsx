@@ -82,7 +82,7 @@ export default function ContactPage() {
     }
 
     return (
-        <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10">
                 <motion.section

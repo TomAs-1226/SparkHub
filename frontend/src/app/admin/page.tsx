@@ -476,10 +476,10 @@ export default function AdminPage() {
 
     if (bootstrap) {
         return (
-            <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+            <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                 <SiteNav />
                 <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
-                    <div className="h-[420px] animate-pulse rounded-[32px] bg-white" />
+                    <div className="h-[420px] animate-pulse rounded-[32px] bg-white dark:bg-slate-800" />
                 </main>
             </div>
         );
@@ -487,11 +487,11 @@ export default function AdminPage() {
 
     if (denied || !user || user.role !== "ADMIN") {
         return (
-            <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+            <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                 <SiteNav />
                 <main className="mx-auto w-full max-w-4xl px-4 pb-16 pt-10">
-                    <div className="rounded-[32px] border border-white/60 bg-white/95 p-8 text-center shadow-2xl">
-                        <p className="text-sm text-slate-600">You do not have admin permissions.</p>
+                    <div className="rounded-[32px] border border-white/60 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 p-8 text-center shadow-2xl">
+                        <p className="text-sm text-slate-600 dark:text-slate-400">You do not have admin permissions.</p>
                         <Link
                             href="/register"
                             className="mt-4 inline-flex items-center justify-center rounded-full bg-[#63C0B9] px-5 py-2 text-sm font-semibold text-white"
@@ -505,7 +505,7 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
                 <motion.section

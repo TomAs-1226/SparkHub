@@ -103,7 +103,7 @@ export default function HomePage() {
     }
 
     return (
-        <main className="min-h-dvh">
+        <main className="min-h-dvh bg-white dark:bg-slate-900">
             {/* HERO */}
             <section className="relative overflow-hidden">
                 <div className="relative bg-[#63C0B9]">

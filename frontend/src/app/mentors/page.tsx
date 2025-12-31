@@ -35,7 +35,7 @@ export default function MentorsPage() {
     const canPost = Boolean(user && ["ADMIN", "CREATOR", "TUTOR"].includes(user.role));
 
     return (
-        <div className="min-h-dvh bg-[#F5F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F5F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[#2D8F80]">

@@ -459,12 +459,12 @@ export default function CourseStudioPage() {
 
     if (!canManage) {
         return (
-            <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+            <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                 <SiteNav />
                 <main className="mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 py-16 text-center">
-                    <ShieldCheck className="h-12 w-12 text-[#2B2E83]" />
+                    <ShieldCheck className="h-12 w-12 text-[#2B2E83] dark:text-[#63C0B9]" />
                     <h1 className="text-2xl font-semibold">Course studio</h1>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
                         {loading
                             ? "Checking your permissions..."
                             : "Only admins, tutors, and creators can access the course studio."}
@@ -483,7 +483,7 @@ export default function CourseStudioPage() {
     }
 
     return (
-        <div className="min-h-dvh bg-[#F4F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-16 pt-10">
                 <motion.section

@@ -188,11 +188,11 @@ export default function TutorWorkspacePage() {
 
     if (denied) {
         return (
-            <div className="min-h-dvh bg-[#F5F7FB] text-slate-800">
+            <div className="min-h-dvh bg-[#F5F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
                 <SiteNav />
                 <main className="mx-auto w-full max-w-3xl px-4 pb-16 pt-10">
-                    <div className="rounded-[32px] border border-white/60 bg-white/95 p-8 text-center shadow-2xl">
-                        <p className="text-sm text-slate-600">Only tutors, creators, or admins can access this workspace.</p>
+                    <div className="rounded-[32px] border border-white/60 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 p-8 text-center shadow-2xl">
+                        <p className="text-sm text-slate-600 dark:text-slate-400">Only tutors, creators, or admins can access this workspace.</p>
                         <Link href="/mentors" className="mt-4 inline-flex items-center justify-center rounded-full bg-[#63C0B9] px-5 py-2 text-sm font-semibold text-white">
                             Become a tutor
                         </Link>
@@ -203,7 +203,7 @@ export default function TutorWorkspacePage() {
     }
 
     return (
-        <div className="min-h-dvh bg-[#F5F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F5F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-10">
                 <motion.section

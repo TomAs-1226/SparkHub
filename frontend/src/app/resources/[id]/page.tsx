@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
-import AIAssistant from "@/components/ai-assistant";
 
 interface ResourceDetail {
     id: string;
@@ -336,7 +335,6 @@ export default function ResourceDetailPage({ params }: { params: Promise<{ id: s
                     )}
                 </motion.section>
             </main>
-            <AIAssistant />
         </div>
     );
 }

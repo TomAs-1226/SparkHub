@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
-import AIAssistant from "@/components/ai-assistant";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { api } from "@/lib/api";
 import { FADES } from "@/lib/motion-presets";
@@ -226,7 +225,7 @@ export default function TutoringPage() {
     }, [user]);
 
     return (
-        <div className="min-h-dvh bg-[#F5F7FB] text-slate-800">
+        <div className="min-h-dvh bg-[#F5F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10">
                 <motion.section
@@ -625,7 +624,6 @@ export default function TutoringPage() {
                     </div>
                 </motion.section>
             </main>
-            <AIAssistant />
         </div>
     );
 }

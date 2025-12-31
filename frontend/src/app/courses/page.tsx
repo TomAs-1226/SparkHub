@@ -371,7 +371,7 @@ export default function CoursesPage() {
     const isStudent = user?.role === "STUDENT";
 
     return (
-        <div className="min-h-dvh bg-[#F6F8FC] text-slate-800">
+        <div className="min-h-dvh bg-[#F6F8FC] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-10">
                 <motion.div {...FADES.gentleUp} className="flex items-center gap-2 text-sm font-semibold text-[#2D8F80]">

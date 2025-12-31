@@ -19,8 +19,6 @@ import {
 import { api } from "@/lib/api";
 import DashboardCard from "@/components/DashboardCard";
 import SiteNav from "@/components/site-nav";
-import AIAssistant from "@/components/ai-assistant";
-import StudyTimer from "@/components/study-timer";
 
 // ---------- types that match your backend responses ----------
 type User = {
@@ -206,14 +204,14 @@ export default function DashboardPage() {
     const Skeleton = ({ className = "" }: { className?: string }) => (
         <div
             className={
-                "animate-pulse rounded-[12px] bg-slate-200/50 " + className
+                "animate-pulse rounded-[12px] bg-slate-200/50 dark:bg-slate-700/50 " + className
             }
         />
     );
 
     // ---------- RENDER ----------
     return (
-        <div className="min-h-dvh bg-white text-slate-800">
+        <div className="min-h-dvh bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
             <SiteNav />
             <main className="mx-auto flex w-full max-w-[1280px] justify-center px-4 sm:px-6 lg:px-8 py-8">
                 <div className="w-full">
@@ -224,10 +222,10 @@ export default function DashboardPage() {
                     transition={{ duration: 0.4, ease: "easeOut" }}
                     className="
                         relative overflow-hidden rounded-[24px]
-                        border border-[#CFE3E0]/60
-                        bg-[radial-gradient(circle_at_20%_20%,#E7F7F5_0%,#F8FBFC_60%)]
-                        shadow-[0_2px_24px_rgba(0,0,0,0.06)]
-                        ring-1 ring-black/5
+                        border border-[#CFE3E0]/60 dark:border-slate-700
+                        bg-[radial-gradient(circle_at_20%_20%,#E7F7F5_0%,#F8FBFC_60%)] dark:bg-[radial-gradient(circle_at_20%_20%,rgba(99,192,185,0.1)_0%,rgba(30,41,59,1)_60%)]
+                        shadow-[0_2px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_24px_rgba(0,0,0,0.3)]
+                        ring-1 ring-black/5 dark:ring-white/10
                         px-6 py-6 sm:px-8 sm:py-8
                     "
                 >
@@ -237,15 +235,15 @@ export default function DashboardPage() {
 
                     <div className="relative flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
                         <div className="flex-1">
-                            <h1 className="text-[20px] sm:text-[22px] font-semibold text-[#1f2e2d] leading-tight">
+                            <h1 className="text-[20px] sm:text-[22px] font-semibold text-[#1f2e2d] dark:text-slate-100 leading-tight">
                                 {loading
                                     ? "Loading your dashboard…"
                                     : `Welcome${
                                         me?.name ? `, ${me.name}` : ""
-                                    } 👋`}
+                                    }!`}
                             </h1>
 
-                            <p className="mt-2 max-w-[600px] text-[14px] leading-relaxed text-slate-600">
+                            <p className="mt-2 max-w-[600px] text-[14px] leading-relaxed text-slate-600 dark:text-slate-400">
                                 Track sessions, events, opportunities, and
                                 resources — all in one place. SparkHub keeps you
                                 moving.
@@ -325,7 +323,7 @@ export default function DashboardPage() {
 
                 {/* ERROR MESSAGE */}
                 {errMsg ? (
-                    <div className="mt-4 rounded-[12px] bg-red-50 text-[13px] text-red-700 ring-1 ring-red-200 px-4 py-3">
+                    <div className="mt-4 rounded-[12px] bg-red-50 dark:bg-red-900/30 text-[13px] text-red-700 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-800 px-4 py-3">
                         {errMsg}
                     </div>
                 ) : null}
@@ -363,7 +361,7 @@ export default function DashboardPage() {
                                 <Skeleton className="h-[40px]" />
                             </div>
                         ) : sessions.length === 0 ? (
-                            <p className="text-slate-500 text-[13px]">
+                            <p className="text-slate-500 dark:text-slate-400 text-[13px]">
                                 No sessions scheduled yet.{" "}
                                 <Link
                                     href="/tutors"
@@ -384,10 +382,10 @@ export default function DashboardPage() {
                                     return (
                                         <li
                                             key={s.id}
-                                            className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
+                                            className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
                                         >
                                             <div className="flex flex-col">
-                                                <div className="font-medium text-slate-800 flex items-center gap-2">
+                                                <div className="font-medium text-slate-800 dark:text-slate-100 flex items-center gap-2">
                                                     <Video
                                                         size={14}
                                                         className="shrink-0 text-[#5FB4E5]"
@@ -398,7 +396,7 @@ export default function DashboardPage() {
                                                         )}
                                                     </span>
                                                 </div>
-                                                <div className="text-slate-600">
+                                                <div className="text-slate-600 dark:text-slate-400">
                                                     {partnerName} ·{" "}
                                                     {s.status || "PENDING"}
                                                 </div>
@@ -436,7 +434,7 @@ export default function DashboardPage() {
                                 <Skeleton className="h-[40px]" />
                             </div>
                         ) : events.length === 0 ? (
-                            <p className="text-slate-500 text-[13px]">
+                            <p className="text-slate-500 dark:text-slate-400 text-[13px]">
                                 No events yet. Check back soon.
                             </p>
                         ) : (
@@ -444,12 +442,12 @@ export default function DashboardPage() {
                                 {events.slice(0, 4).map((ev) => (
                                     <li
                                         key={ev.id}
-                                        className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
+                                        className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
                                     >
-                                        <div className="font-medium text-slate-800">
+                                        <div className="font-medium text-slate-800 dark:text-slate-100">
                                             {ev.title}
                                         </div>
-                                        <div className="text-slate-600">
+                                        <div className="text-slate-600 dark:text-slate-400">
                                             {fmtDateShort(ev.startsAt)} ·{" "}
                                             {ev.location}
                                         </div>
@@ -475,11 +473,11 @@ export default function DashboardPage() {
                                 <Skeleton className="h-[40px]" />
                             </div>
                         ) : !isStudent ? (
-                            <p className="text-slate-500 text-[13px]">
+                            <p className="text-slate-500 dark:text-slate-400 text-[13px]">
                                 Switch to a student account to enroll in SparkHub courses directly from the catalog.
                             </p>
                         ) : latestEnrollments.length === 0 ? (
-                            <p className="text-slate-500 text-[13px]">
+                            <p className="text-slate-500 dark:text-slate-400 text-[13px]">
                                 You have not enrolled in any courses yet. Explore the catalog to get started.
                             </p>
                         ) : (
@@ -491,11 +489,11 @@ export default function DashboardPage() {
                                     return (
                                         <li
                                             key={enrollment.id}
-                                            className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
+                                            className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
                                         >
-                                            <div className="font-medium text-slate-800">{courseTitle}</div>
-                                            <div className="text-slate-600 line-clamp-2">{summary}</div>
-                                            <div className="mt-1 text-[11px] text-slate-500">Enrolled {enrolledOn}</div>
+                                            <div className="font-medium text-slate-800 dark:text-slate-100">{courseTitle}</div>
+                                            <div className="text-slate-600 dark:text-slate-400 line-clamp-2">{summary}</div>
+                                            <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-500">Enrolled {enrolledOn}</div>
                                         </li>
                                     );
                                 })}
@@ -522,7 +520,7 @@ export default function DashboardPage() {
                                 <Skeleton className="h-[40px]" />
                             </div>
                         ) : jobs.length === 0 ? (
-                            <p className="text-slate-500 text-[13px]">
+                            <p className="text-slate-500 dark:text-slate-400 text-[13px]">
                                 No active postings.
                             </p>
                         ) : (
@@ -530,34 +528,34 @@ export default function DashboardPage() {
                                 {jobs.slice(0, 4).map((job) => (
                                     <li
                                         key={job.id}
-                                        className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
+                                        className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
                                     >
-                                        <div className="font-medium text-slate-800">
+                                        <div className="font-medium text-slate-800 dark:text-slate-100">
                                             {job.title}
                                         </div>
                                         {job.skills && job.skills.length > 0 ? (
-                                            <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-slate-600">
+                                            <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-slate-600 dark:text-slate-400">
                                                 {job.skills.slice(0, 4).map(
                                                     (skill, i) => (
                                                         <span
                                                             key={i}
-                                                            className="rounded-full border border-[#CFE3E0] bg-white/70 px-2 py-[2px] text-[11px] font-medium text-[#2B2B2B]"
+                                                            className="rounded-full border border-[#CFE3E0] dark:border-slate-600 bg-white/70 dark:bg-slate-700 px-2 py-[2px] text-[11px] font-medium text-[#2B2B2B] dark:text-slate-200"
                                                         >
                                                             {skill}
                                                         </span>
                                                     )
                                                 )}
                                                 {job.skills.length > 4 ? (
-                                                    <span className="text-slate-500">
+                                                    <span className="text-slate-500 dark:text-slate-400">
                                                         +{job.skills.length - 4}
                                                     </span>
                                                 ) : null}
                                             </div>
                                         ) : null}
-                                        <div className="mt-1 text-slate-600 line-clamp-2">
+                                        <div className="mt-1 text-slate-600 dark:text-slate-400 line-clamp-2">
                                             {job.description}
                                         </div>
-                                        <div className="mt-1 text-[11px] text-slate-500">
+                                        <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-500">
                                             Contact: {job.contact}
                                         </div>
                                     </li>
@@ -587,7 +585,7 @@ export default function DashboardPage() {
                                 <Skeleton className="h-[40px]" />
                             </div>
                         ) : resources.length === 0 ? (
-                            <p className="text-slate-500 text-[13px]">
+                            <p className="text-slate-500 dark:text-slate-400 text-[13px]">
                                 Nothing posted yet. Come back later.
                             </p>
                         ) : (
@@ -595,18 +593,18 @@ export default function DashboardPage() {
                                 {resources.slice(0, 4).map((r) => (
                                     <li
                                         key={r.id}
-                                        className="rounded-[12px] border border-slate-200/60 bg-white p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)]"
+                                        className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
                                     >
-                                        <div className="font-medium text-slate-800 flex items-start justify-between gap-2">
+                                        <div className="font-medium text-slate-800 dark:text-slate-100 flex items-start justify-between gap-2">
                                             <span className="flex-1">
                                                 {r.title}
                                             </span>
-                                            <span className="rounded-full border border-[#CFE3E0] bg-white/70 px-2 py-[2px] text-[10px] font-medium text-[#2B2B2B] whitespace-nowrap">
+                                            <span className="rounded-full border border-[#CFE3E0] dark:border-slate-600 bg-white/70 dark:bg-slate-700 px-2 py-[2px] text-[10px] font-medium text-[#2B2B2B] dark:text-slate-200 whitespace-nowrap">
                                                 {r.kind}
                                             </span>
                                         </div>
                                         {r.summary ? (
-                                            <div className="mt-1 text-slate-600 line-clamp-2">
+                                            <div className="mt-1 text-slate-600 dark:text-slate-400 line-clamp-2">
                                                 {r.summary}
                                             </div>
                                         ) : null}
@@ -638,8 +636,6 @@ export default function DashboardPage() {
                 </div>
             </div>
         </main>
-        <StudyTimer />
-        <AIAssistant />
         </div>
     );
 }
@@ -652,9 +648,9 @@ function QuickAction(props: { href: string; icon: React.ReactNode; label: string
             href={href}
             className="
                 inline-flex items-center gap-1.5 rounded-full
-                border border-[#CFE3E0] bg-white/70 px-3 py-1.5
-                text-[#2B2B2B] shadow-[0_2px_8px_rgba(0,0,0,0.04)]
-                hover:bg-white hover:brightness-110 transition
+                border border-[#CFE3E0] dark:border-slate-600 bg-white/70 dark:bg-slate-800/70 px-3 py-1.5
+                text-[#2B2B2B] dark:text-slate-200 shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none
+                hover:bg-white dark:hover:bg-slate-700 hover:brightness-110 transition
             "
         >
             <span className="text-[#5FB4E5]">{icon}</span>
@@ -684,9 +680,9 @@ function StatBubble(props: {
             }}
             className="
                 relative overflow-hidden rounded-[16px]
-                border border-[#CFE3E0]/60 bg-white/80
-                shadow-[0_8px_24px_rgba(0,0,0,0.07)]
-                ring-1 ring-black/5
+                border border-[#CFE3E0]/60 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80
+                shadow-[0_8px_24px_rgba(0,0,0,0.07)] dark:shadow-none
+                ring-1 ring-black/5 dark:ring-white/10
                 p-3
             "
         >
@@ -697,7 +693,7 @@ function StatBubble(props: {
             />
             <div className="flex items-start gap-2 relative">
                 <div
-                    className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-medium ring-1 ring-black/5"
+                    className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-medium ring-1 ring-black/5 dark:ring-white/10"
                     style={{
                         backgroundColor: accent + "1A", // ~10% alpha
                         color: "#1f2e2d",
@@ -706,10 +702,10 @@ function StatBubble(props: {
                     {icon}
                 </div>
                 <div className="flex-1 leading-tight">
-                    <div className="text-[11px] font-medium text-slate-600">
+                    <div className="text-[11px] font-medium text-slate-600 dark:text-slate-400">
                         {label}
                     </div>
-                    <div className="text-[15px] font-semibold text-slate-800">
+                    <div className="text-[15px] font-semibold text-slate-800 dark:text-slate-100">
                         {value}
                     </div>
                 </div>

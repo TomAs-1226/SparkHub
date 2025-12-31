@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
-import AIAssistant from "@/components/ai-assistant";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
@@ -607,7 +606,6 @@ export default function SettingsPage() {
                     </motion.div>
                 </motion.section>
             </main>
-            <AIAssistant />
         </div>
     );
 }
