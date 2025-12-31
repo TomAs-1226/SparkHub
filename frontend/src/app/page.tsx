@@ -45,15 +45,15 @@ async function fetchEvents(limit = 4, signal?: AbortSignal): Promise<EventItem[]
         if (!res.ok) return [];
         const json = await res.json();
         const arr = Array.isArray(json?.list) ? json.list : Array.isArray(json) ? json : [];
-        return arr.slice(0, limit).map((e) => ({
+        return arr.slice(0, limit).map((e: Record<string, unknown>) => ({
             id: String(e.id ?? ""),
-            title: e.title ?? e.name ?? "Untitled event",
+            title: (e.title ?? e.name ?? "Untitled event") as string,
             summary: pickSummary(e),
-            image: e.image ?? e.cover ?? e.thumbnail ?? null,
-            type: e.type ?? e.category ?? e.kind ?? null,
-            startsAt: e.startsAt ?? e.startTime ?? null,
-            endsAt: e.endsAt ?? e.endTime ?? null,
-            location: e.location ?? null,
+            image: (e.image ?? e.cover ?? e.thumbnail ?? null) as string | null,
+            type: (e.type ?? e.category ?? e.kind ?? null) as string | null,
+            startsAt: (e.startsAt ?? e.startTime ?? null) as string | null,
+            endsAt: (e.endsAt ?? e.endTime ?? null) as string | null,
+            location: (e.location ?? null) as string | null,
         }));
     } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return [];

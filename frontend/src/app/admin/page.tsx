@@ -194,12 +194,13 @@ export default function AdminPage() {
         };
         const errors: string[] = [];
         settled.forEach((result) => {
-            if ("error" in result) {
+            if ("error" in result && result.error) {
                 errors.push(result.error);
                 return;
             }
-            // @ts-expect-error dynamic assignment
-            next[result.key] = result.list;
+            if ("list" in result) {
+                (next as Record<string, unknown>)[result.key] = result.list;
+            }
         });
         return { data: next, errors };
     }, []);

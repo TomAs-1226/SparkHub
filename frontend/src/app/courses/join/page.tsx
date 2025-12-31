@@ -131,7 +131,7 @@ export default function JoinCoursePage() {
                             key={card.title}
                             initial={SURFACES.lift.initial}
                             animate={SURFACES.lift.animate(idx * 0.05)}
-                            whileHover={SURFACES.lift.withHover ?? SURFACES.lift.whileHover}
+                            whileHover={SURFACES.lift.whileHover}
                             className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm"
                         >
                             <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">

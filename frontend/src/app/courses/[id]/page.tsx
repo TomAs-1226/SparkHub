@@ -227,7 +227,6 @@ export default function CourseWorkspacePage() {
                             onAssignmentDraftChange={handleAssignmentDraftChange}
                             onAssignmentSubmit={handleAssignmentSubmit}
                             assignmentBusy={assignmentBusy}
-                            currentUser={user || undefined}
                             showCloseButton={false}
                         />
                     ) : (
