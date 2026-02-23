@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage,
-    limits: { fileSize: 15 * 1024 * 1024 } // 15MB cap to support large lesson decks
+    limits: { fileSize: 50 * 1024 * 1024 } // 50 MB cap to support large lesson decks, videos, and slide files
 })
 
 router.post('/', requireAuth, (req, res) => {

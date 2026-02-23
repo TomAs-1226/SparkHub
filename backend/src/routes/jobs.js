@@ -89,8 +89,8 @@ function presentJob(row) {
     }
 }
 
-// 发布职位（招聘者/管理员/导师）
-router.post('/', requireAuth, requireRole(['RECRUITER', 'ADMIN', 'TUTOR', 'CREATOR']), validate(postJobSchema), async (req, res) => {
+// 发布职位（管理员/导师/创作者）
+router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR', 'CREATOR']), validate(postJobSchema), async (req, res) => {
     const { title, description, skills = [], startTime, endTime, duration, benefits, photos = [], files = [], contact } = req.body
     const actor = await prisma.user.findUnique({ where: { id: req.user.id }, select: { email: true } })
     const normalizedSkills = Array.isArray(skills) ? skills : csvToArray(skills)
@@ -165,8 +165,8 @@ router.post('/:id/apply', requireAuth, async (req, res) => {
     res.json({ ok: true, application: app })
 })
 
-// 查看申请（招聘者）
-router.get('/:id/applications', requireAuth, requireRole(['RECRUITER', 'ADMIN']), async (req, res) => {
+// 查看申请（导师/管理员）
+router.get('/:id/applications', requireAuth, requireRole(['ADMIN', 'TUTOR', 'CREATOR']), async (req, res) => {
     const job = await prisma.jobPosting.findUnique({ where: { id: req.params.id } })
     if (!job) return res.status(404).json({ ok: false, msg: '职位不存在' })
     if (req.user.role !== 'ADMIN' && job.recruiterId !== req.user.id) return res.status(403).json({ ok: false, msg: '无权限' })

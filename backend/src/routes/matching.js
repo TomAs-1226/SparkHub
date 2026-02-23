@@ -86,6 +86,24 @@ router.get('/find-matches', requireAuth, async (req, res) => {
             }
         })
 
+        // Tokenize a subject string into individual words for precise matching
+        function tokenizeSubjects(subjectStr) {
+            if (!subjectStr) return []
+            return subjectStr
+                .toLowerCase()
+                .split(/[,;\s]+/)
+                .map((s) => s.trim())
+                .filter((s) => s.length > 1) // skip single chars
+        }
+
+        // Word-level subject overlap: avoids "Java" matching "JavaScript"
+        function countSubjectOverlap(myTokens, theirTokens) {
+            if (myTokens.length === 0 || theirTokens.length === 0) return 0
+            return myTokens.filter((t) => theirTokens.includes(t)).length
+        }
+
+        const myTokens = tokenizeSubjects(myAvailability[0].subjects || '')
+
         // Group by user and calculate match score
         const userMatches = new Map()
         for (const match of potentialMatches) {
@@ -97,30 +115,40 @@ router.get('/find-matches', requireAuth, async (req, res) => {
                     subjects: match.subjects,
                     bio: match.bio,
                     matchingDates: [],
-                    score: 0
+                    score: 0,
                 })
             }
             const dateStr = match.date.toISOString().split('T')[0]
             userMatches.get(userId).matchingDates.push(dateStr)
         }
 
-        // Calculate scores based on date overlap and subject match
+        // Calculate scores with improved algorithm
+        const MAX_SCORE = 100
         const matches = []
         for (const [userId, data] of userMatches) {
-            const theirSubjects = data.subjects?.toLowerCase().split(',').map(s => s.trim()).filter(Boolean) || []
-            const subjectOverlap = mySubjects.filter(s => theirSubjects.some(t => t.includes(s) || s.includes(t))).length
+            const theirTokens = tokenizeSubjects(data.subjects || '')
+            const subjectOverlap = countSubjectOverlap(myTokens, theirTokens)
 
-            data.score = data.matchingDates.length * 10 + subjectOverlap * 5
+            // Bio keyword boost: check if bio mentions any of my subjects
+            const bioText = (data.bio || '').toLowerCase()
+            const bioBoost = myTokens.filter((t) => bioText.includes(t)).length
+
+            // Availability density bonus: more matching dates = higher priority
+            const dateScore = data.matchingDates.length * 10
+            const subjectScore = subjectOverlap * 8
+            const bioScore = Math.min(bioBoost * 2, 10) // cap bio boost at 10
+
+            const rawScore = dateScore + subjectScore + bioScore
+            data.score = rawScore
+            data.matchPercent = Math.min(Math.round((rawScore / MAX_SCORE) * 100), 100)
             data.subjectMatch = subjectOverlap > 0
+            data.subjectOverlap = subjectOverlap
 
-            matches.push({
-                userId,
-                ...data,
-            })
+            matches.push({ userId, ...data })
         }
 
-        // Sort by score descending
-        matches.sort((a, b) => b.score - a.score)
+        // Sort by score descending, then by date count as tiebreaker
+        matches.sort((a, b) => b.score - a.score || b.matchingDates.length - a.matchingDates.length)
 
         res.json({ ok: true, matches: matches.slice(0, 20), myRole })
     } catch (err) {

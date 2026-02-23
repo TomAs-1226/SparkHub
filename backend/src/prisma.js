@@ -1,6 +1,10 @@
 // Prisma client with connection management and error recovery
 const { PrismaClient } = require('@prisma/client')
 
+// For SQLite under heavy concurrency, enable WAL mode to allow concurrent reads
+// while serialising writes — dramatically better throughput at 1000 concurrent users.
+// This is executed once when the process starts.
+
 // Configure Prisma with logging and error handling
 const prisma = new PrismaClient({
     log: [
@@ -8,6 +12,8 @@ const prisma = new PrismaClient({
         { level: 'warn', emit: 'stdout' },
     ],
     errorFormat: 'pretty',
+    // datasourceUrl can be set via env; connection_limit controls the pool size.
+    // SQLite is single-writer so we keep pool small to avoid write contention.
 })
 
 // Track connection state
@@ -94,8 +100,24 @@ async function withRetry(operation, maxRetries = 3) {
     throw lastError
 }
 
+// Enable WAL mode for SQLite — allows concurrent reads alongside writes.
+// PRAGMA journal_mode=WAL returns a result set, so we use $queryRawUnsafe.
+async function enableWAL() {
+    try {
+        // These PRAGMAs return rows, so use queryRaw (not executeRaw)
+        await prisma.$queryRawUnsafe('PRAGMA journal_mode=WAL')
+        await prisma.$queryRawUnsafe('PRAGMA synchronous=NORMAL')
+        await prisma.$queryRawUnsafe('PRAGMA cache_size=-64000')  // 64 MB page cache
+        await prisma.$queryRawUnsafe('PRAGMA temp_store=MEMORY')
+        await prisma.$queryRawUnsafe('PRAGMA mmap_size=268435456') // 256 MB mmap
+        console.log('SQLite WAL mode + performance pragmas enabled')
+    } catch (err) {
+        console.warn('Could not enable WAL mode:', err.message)
+    }
+}
+
 // Initialize connection on module load
-connect().catch(console.error)
+connect().then(() => enableWAL()).catch(console.error)
 
 // Handle process termination
 process.on('beforeExit', async () => {

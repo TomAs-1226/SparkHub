@@ -17,8 +17,15 @@ import {
     Info,
     FileText,
     ChevronDown,
-    ChevronUp,
-    ExternalLink,
+    History,
+    Zap,
+    BookOpen,
+    MessageCircle,
+    BarChart2,
+    Star,
+    Megaphone,
+    Server,
+    SlidersHorizontal,
 } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
@@ -51,6 +58,7 @@ export default function SettingsPage() {
     const [productUpdates, setProductUpdates] = useState(true);
     const [marketing, setMarketing] = useState(false);
     const [tosExpanded, setTosExpanded] = useState(false);
+    const [changelogExpanded, setChangelogExpanded] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -412,7 +420,7 @@ export default function SettingsPage() {
                             </div>
                             <div>
                                 <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">About SparkHub</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Version 1.0.0 • Your development center</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Version 2.2.0 • Production Release</p>
                             </div>
                         </div>
                         <div className="mt-4 space-y-4">
@@ -421,11 +429,9 @@ export default function SettingsPage() {
                                     <span className="font-semibold">SparkHub</span> is a comprehensive learning platform designed to connect students, mentors, tutors, and creators. Our mission is to make quality education accessible and collaborative.
                                 </p>
                                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                                    <span className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">Courses</span>
-                                    <span className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">Tutoring</span>
-                                    <span className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">Events</span>
-                                    <span className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">Jobs</span>
-                                    <span className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">AI Assistant</span>
+                                    {["Courses", "Tutoring", "Events", "Jobs", "AI Assistant", "Discussions", "Progress Tracking", "Slide Viewer", "Ratings", "Announcements", "Inbox", "Matching", "Weekly Digest"].map((tag) => (
+                                        <span key={tag} className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">{tag}</span>
+                                    ))}
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -435,10 +441,336 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2">
                                     <p className="text-xs text-slate-500 dark:text-slate-400">Build</p>
-                                    <p className="font-medium text-slate-700 dark:text-slate-200">2024.12.31</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200">2026.02.23</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2">
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Version</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200">2.2.0 Production</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2">
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">Capacity</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200">1,000+ users</p>
                                 </div>
                             </div>
                         </div>
+                    </motion.div>
+
+                    {/* Update Logs / Changelog */}
+                    <motion.div
+                        className="mt-6 rounded-3xl border border-slate-100 dark:border-slate-700 bg-[#F9FBFF] dark:bg-slate-800/50 p-5"
+                        initial={SURFACES.lift.initial}
+                        whileInView={SURFACES.lift.animate(0.27)}
+                        viewport={{ once: true }}
+                    >
+                        <button
+                            onClick={() => setChangelogExpanded(!changelogExpanded)}
+                            className="flex w-full items-center justify-between gap-3"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="rounded-full bg-[#E7F6F3] dark:bg-slate-700 p-3 text-[#2D8F80]">
+                                    <History className="h-5 w-5" />
+                                </div>
+                                <div className="text-left">
+                                    <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">Update Logs</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">See what&apos;s new in SparkHub</p>
+                                </div>
+                            </div>
+                            <motion.div
+                                animate={{ rotate: changelogExpanded ? 180 : 0 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <ChevronDown className="h-5 w-5 text-slate-400" />
+                            </motion.div>
+                        </button>
+
+                        <motion.div
+                            initial={false}
+                            animate={{ height: changelogExpanded ? "auto" : 0, opacity: changelogExpanded ? 1 : 0 }}
+                            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                            className="overflow-hidden"
+                        >
+                            <div className="mt-4 space-y-6 text-sm">
+                                {/* v2.2.0 */}
+                                <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v2.2.0</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">February 23, 2026</span>
+                                        <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400">Latest</span>
+                                    </div>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Production Release — Inbox, Onboarding &amp; More</p>
+                                    <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Bell className="h-3.5 w-3.5 text-[#2D8F80]" /> In-App Inbox &amp; Messaging
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Full in-app inbox replaces email digest delivery</li>
+                                                <li>Three tabs: All · Unread · Digests with live unread badge in the nav</li>
+                                                <li>AI-generated weekly digest powered by OpenAI gpt-4o-mini</li>
+                                                <li>Admin broadcast: send platform-wide or targeted messages instantly</li>
+                                                <li>Mark all read, per-message delete, expand-to-read UX</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Sparkles className="h-3.5 w-3.5 text-[#2D8F80]" /> Enhanced Onboarding (OOBE)
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>4-step onboarding modal on first login — Welcome · Features · Quick Start · Done</li>
+                                                <li>Role-aware quick-start cards (Student, Creator, Tutor, Admin)</li>
+                                                <li>Confetti finish animation, spring-physics throughout</li>
+                                                <li>Triggered on first visit or via <code className="bg-slate-100 dark:bg-slate-600 px-1 rounded">?welcome=1</code></li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Shield className="h-3.5 w-3.5 text-[#2D8F80]" /> Instant Registration (No Email)
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Registration completes in-browser — no email verification step</li>
+                                                <li>Browser-token verification proves real session without sending email</li>
+                                                <li>5-minute one-time token consumed automatically in same JS context</li>
+                                                <li>Shows "Securing your account…" spinner during verification</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <UploadCloud className="h-3.5 w-3.5 text-[#2D8F80]" /> Upload Fix (50 MB)
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Fixed "Failed to fetch" and "File too large" upload errors</li>
+                                                <li>Uploads now go directly to backend — bypasses Next.js Turbopack entirely</li>
+                                                <li>File size limit raised from 15 MB → 50 MB</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <BookOpen className="h-3.5 w-3.5 text-[#2D8F80]" /> Tutor Publishing &amp; Matching
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Tutors can now save bio, subjects, rate info and publish their public profile</li>
+                                                <li>One-click publish/unpublish toggle with live status indicator</li>
+                                                <li>Matching engine uses word-level subject tokenization (Java no longer matches JavaScript)</li>
+                                                <li>New <code className="bg-slate-100 dark:bg-slate-600 px-1 rounded">matchPercent</code> score field returned on all match results</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Server className="h-3.5 w-3.5 text-[#2D8F80]" /> One-Command Deployment
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li><code className="bg-slate-100 dark:bg-slate-600 px-1 rounded">bash deploy.sh</code> — one-command setup for macOS &amp; Linux</li>
+                                                <li><code className="bg-slate-100 dark:bg-slate-600 px-1 rounded">deploy.ps1</code> — PowerShell equivalent for Windows</li>
+                                                <li>Auto-installs PM2, runs prisma db push, builds frontend, starts both servers</li>
+                                                <li><code className="bg-slate-100 dark:bg-slate-600 px-1 rounded">--dev</code> flag for development mode with hot reload</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* v2.1.0 */}
+                                <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v2.1.0</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">February 22, 2026</span>
+                                    </div>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Platform Hardening &amp; AI Safety</p>
+                                    <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Shield className="h-3.5 w-3.5 text-[#2D8F80]" /> AI Content Moderation
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Two-tier moderation system for all user-generated content</li>
+                                                <li>Tier 1: Instant keyword &amp; pattern filtering — blocks hate speech, doxxing, self-harm content, and spam</li>
+                                                <li>Mild profanity is auto-cleaned (replaced with ***) rather than blocked</li>
+                                                <li>Tier 2: Optional Claude AI moderation for nuanced context — only active when <code className="bg-slate-100 dark:bg-slate-600 px-1 rounded">ANTHROPIC_API_KEY</code> is set</li>
+                                                <li>Permissive by design — educational debate, mild frustration, and idea criticism are always allowed</li>
+                                                <li>5-second AI timeout with automatic fallback to tier-1 to never block requests</li>
+                                                <li>Moderation applied to: course chat messages, discussion posts &amp; replies, course reviews</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <UploadCloud className="h-3.5 w-3.5 text-[#2D8F80]" /> File Upload Fix
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Fixed upload failures for files larger than 10 MB</li>
+                                                <li>Dedicated streaming upload route bypasses Next.js proxy buffer entirely</li>
+                                                <li>Upload size limit raised to 20 MB end-to-end</li>
+                                                <li>Eliminates ECONNRESET errors on large PPTX, PDF, and image uploads</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-[#2D8F80]" /> Enrollment Approval
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Instructors can now approve or reject enrollment requests directly from the course panel</li>
+                                                <li>Approve / Reject buttons appear in the pending enrollment queue</li>
+                                                <li>Status updates immediately — approved students gain full course access instantly</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <SlidersHorizontal className="h-3.5 w-3.5 text-[#2D8F80]" /> Slide &amp; Deck Viewer Improvements
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>PDF files now render reliably in the browser with an absolute-URL iframe</li>
+                                                <li>PPTX files on localhost show a clear download fallback (Office Online requires a public URL)</li>
+                                                <li>Relative upload URLs are automatically resolved to absolute before embedding</li>
+                                                <li>Graceful error states with Google Docs Viewer alternative link</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Zap className="h-3.5 w-3.5 text-[#2D8F80]" /> Opportunity Posting Fix
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Fixed "bad request" error when publishing job/opportunity postings</li>
+                                                <li>Removed invalid RECRUITER role from the posting permission check</li>
+                                                <li>Contact field is now correctly optional — defaults to poster&apos;s email if left blank</li>
+                                                <li>Clearer per-field validation error messages in the post form</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* v2.0.0 */}
+                                <div className="rounded-2xl border border-[#63C0B9]/30 bg-white dark:bg-slate-700 px-5 py-4">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v2.0.0</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">February 22, 2026</span>
+                                        <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">Major Release</span>
+                                    </div>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">LMS Edition — Full Platform Upgrade</p>
+                                    <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <SlidersHorizontal className="h-3.5 w-3.5 text-[#2D8F80]" /> Slide &amp; Presentation Viewer
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Embedded slide player for PDF, PPTX, and Office files directly in the browser</li>
+                                                <li>Google Docs viewer integration for PowerPoint presentations</li>
+                                                <li>Fullscreen mode with keyboard shortcut (Escape to exit)</li>
+                                                <li>Loading states, error recovery, and external open/download buttons</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <BarChart2 className="h-3.5 w-3.5 text-[#2D8F80]" /> Course Progress Tracking
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Per-lesson completion checkboxes — mark lessons done as you learn</li>
+                                                <li>Visual progress bar showing % completion for each course</li>
+                                                <li>Time-spent tracking per lesson</li>
+                                                <li>My Progress overview across all enrolled courses</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Megaphone className="h-3.5 w-3.5 text-[#2D8F80]" /> Course Announcements
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Instructors can post pinned or regular announcements to enrolled students</li>
+                                                <li>Expandable announcement cards with formatted body text</li>
+                                                <li>Manage (edit, pin, delete) from the course workspace</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <MessageCircle className="h-3.5 w-3.5 text-[#2D8F80]" /> Discussion Forums
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Threaded discussion boards per course and per lesson</li>
+                                                <li>Students and instructors can post and reply</li>
+                                                <li>Instructor replies are highlighted for easy identification</li>
+                                                <li>Mark discussions as resolved; pin important threads</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Star className="h-3.5 w-3.5 text-[#2D8F80]" /> Course Ratings &amp; Reviews
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Enrolled students can rate courses 1–5 stars and write reviews</li>
+                                                <li>Rating distribution chart and average score displayed</li>
+                                                <li>All reviews shown publicly on the course workspace</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <BookOpen className="h-3.5 w-3.5 text-[#2D8F80]" /> Student Notes &amp; Bookmarks
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Quick note widget in the course sidebar (auto-saved locally)</li>
+                                                <li>Per-course and per-lesson notes API (backend)</li>
+                                                <li>Course bookmark system — save courses for later</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Server className="h-3.5 w-3.5 text-[#2D8F80]" /> Backend Scalability (1,000+ Users)
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>SQLite WAL (Write-Ahead Logging) mode for high-concurrency reads</li>
+                                                <li>64 MB page cache + 256 MB memory-mapped I/O for SQLite</li>
+                                                <li>Rate limiting tuned: 3,000 req/IP/15min globally; separate upload &amp; auth limiters</li>
+                                                <li>CORS pre-flight cached 24 h to reduce OPTIONS overhead</li>
+                                                <li>Body size limit increased to 2 MB to support richer content payloads</li>
+                                                <li>Cluster mode support (multi-CPU) via ENABLE_CLUSTER env flag</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Zap className="h-3.5 w-3.5 text-[#2D8F80]" /> CSP &amp; Security Improvements
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>Content Security Policy updated to allow Google Docs Viewer and Office Online embeds</li>
+                                                <li>YouTube and Vimeo iframes now permitted for video lessons</li>
+                                                <li>Upload rate limiter added (30 uploads/min per IP)</li>
+                                                <li>Referrer policy tightened to strict-origin-when-cross-origin</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Info className="h-3.5 w-3.5 text-[#2D8F80]" /> New Database Models
+                                            </div>
+                                            <ul className="list-disc ml-4 space-y-0.5">
+                                                <li>LessonProgress — tracks completion per student per lesson</li>
+                                                <li>CourseAnnouncement — instructor announcements with pin support</li>
+                                                <li>CourseRating — 1–5 star ratings with optional text review</li>
+                                                <li>CourseDiscussion + DiscussionReply — threaded Q&amp;A</li>
+                                                <li>CourseBookmark — save courses to revisit</li>
+                                                <li>StudentNote — per-lesson notes stored server-side</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* v1.0.0 */}
+                                <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-5 py-4">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="rounded-full bg-slate-600 px-3 py-1 text-xs font-bold text-white">v1.0.0</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">December 31, 2024</span>
+                                        <span className="rounded-full bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:text-blue-400">Initial Release</span>
+                                    </div>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100 mb-2">Initial Platform Launch</p>
+                                    <ul className="list-disc ml-4 space-y-0.5 text-xs text-slate-600 dark:text-slate-300">
+                                        <li>Course creation, enrollment workflow, and lesson management</li>
+                                        <li>Quiz system with auto-grading and certificate generation</li>
+                                        <li>Tutor matching, session scheduling, and mentoring</li>
+                                        <li>Job opportunities board with application system</li>
+                                        <li>Events management with calendar export (ICS)</li>
+                                        <li>AI assistant (Sparky) for learning guidance</li>
+                                        <li>Resource library with inline PDF/image viewer</li>
+                                        <li>Study tools: Pomodoro timer, flashcards, grade calculator</li>
+                                        <li>Role-based access control (STUDENT, CREATOR, TUTOR, ADMIN)</li>
+                                        <li>Dark/light mode with system preference detection</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </motion.div>
                     </motion.div>
 
                     {/* Terms of Service */}

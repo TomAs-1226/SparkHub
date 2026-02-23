@@ -253,7 +253,7 @@ function RoleCallout({
         <div className="space-y-3 rounded-2xl border border-dashed border-[#CFE3E0] dark:border-slate-600 bg-white/80 dark:bg-slate-700/80 p-4 text-sm text-slate-600 dark:text-slate-400">
             <div>
                 <p className="font-semibold text-slate-900 dark:text-slate-100">Add to your calendar</p>
-                <p>Save the invite and optionally RSVP so hosts know you're coming.</p>
+                <p>Save the invite and optionally RSVP so hosts know you&apos;re coming.</p>
             </div>
             <div className="flex flex-wrap gap-3">
                 <a

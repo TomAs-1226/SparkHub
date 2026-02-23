@@ -302,6 +302,28 @@ export default function CoursesPage() {
         }
     }
 
+    async function handleEnrollAction(enrollmentId: string, status: "APPROVED" | "REJECTED") {
+        if (!detail) return;
+        try {
+            const res = await api(`/courses/${detail.id}/enrollments/${enrollmentId}`, {
+                method: "PATCH",
+                body: JSON.stringify({ status }),
+            });
+            const json = await res.json();
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to update enrollment");
+            if (Array.isArray(json?.enrollments)) {
+                setManagerEnrollments(json.enrollments as EnrollmentRecord[]);
+            } else {
+                setManagerEnrollments((prev) =>
+                    prev.map((e) => (e.id === enrollmentId ? { ...e, status } : e)),
+                );
+            }
+            setStatus(status === "APPROVED" ? "Student approved — they now have full course access." : "Enrollment rejected.");
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to update enrollment");
+        }
+    }
+
     async function handleEnrollSubmit(payload: { answers: Record<string, string>; joinCode?: string }) {
         if (!detail) return;
         if (!user) {
@@ -662,6 +684,7 @@ export default function CoursesPage() {
                                     onClose={() => setDrawerOpen(false)}
                                     onEnroll={handleEnrollSubmit}
                                     managerEnrollments={managerEnrollments}
+                                    onEnrollAction={handleEnrollAction}
                                     assignmentDrafts={assignmentDrafts}
                                     onAssignmentDraftChange={handleAssignmentDraftChange}
                                     onAssignmentSubmit={handleAssignmentSubmit}
@@ -804,6 +827,7 @@ export function CourseDetailPanel({
                                       onClose,
                                       onEnroll,
                                       managerEnrollments,
+                                      onEnrollAction,
                                       assignmentDrafts,
                                       onAssignmentDraftChange,
                                       onAssignmentSubmit,
@@ -818,6 +842,7 @@ export function CourseDetailPanel({
     onClose: () => void;
     onEnroll: (payload: { answers: Record<string, string>; joinCode?: string }) => Promise<void>;
     managerEnrollments: EnrollmentRecord[];
+    onEnrollAction?: (enrollmentId: string, status: "APPROVED" | "REJECTED") => Promise<void>;
     assignmentDrafts: Record<string, { note: string; attachmentUrl?: string }>;
     onAssignmentDraftChange: (assignmentId: string, patch: Partial<{ note: string; attachmentUrl?: string }>) => void;
     onAssignmentSubmit: (assignmentId: string) => Promise<void>;
@@ -829,6 +854,7 @@ export function CourseDetailPanel({
     const [joinCodeInput, setJoinCodeInput] = useState("");
     const [copyStatus, setCopyStatus] = useState<string | null>(null);
     const [lessonPreview, setLessonPreview] = useState<CourseLesson | null>(null);
+    const [enrollActionBusy, setEnrollActionBusy] = useState<string | null>(null);
 
     useEffect(() => {
         setAnswers(viewer?.formAnswers || {});
@@ -1041,43 +1067,66 @@ export function CourseDetailPanel({
                         <h3 className="text-lg font-semibold text-slate-900">Enrollment queue</h3>
                         <span className="text-xs text-slate-500">{pendingCount} pending</span>
                     </div>
-                    <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                    <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
                         {pendingEnrollments.map((record) => (
                             <div
                                 key={record.id}
-                                className="flex items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-sm shadow-sm"
+                                className="rounded-2xl border border-slate-100 bg-white p-3 text-sm shadow-sm space-y-2"
                             >
-                                <div className="flex items-center gap-3">
-                                    {record.user?.avatarUrl ? (
-                                        <Image
-                                            src={record.user.avatarUrl}
-                                            alt={record.user?.name || "Student avatar"}
-                                            width={40}
-                                            height={40}
-                                            className="h-10 w-10 rounded-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
-                                            {record.user?.name?.charAt(0) || "?"}
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-3">
+                                        {record.user?.avatarUrl ? (
+                                            <Image
+                                                src={record.user.avatarUrl}
+                                                alt={record.user?.name || "Student avatar"}
+                                                width={40}
+                                                height={40}
+                                                className="h-10 w-10 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500">
+                                                {record.user?.name?.charAt(0) || "?"}
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="font-semibold text-slate-900">{record.user?.name || "Awaiting profile"}</p>
+                                            <p className="text-xs text-slate-500">{record.user?.email || "No email"}</p>
+                                            <p className="text-xs text-slate-400">{formatDate(record.createdAt)}</p>
                                         </div>
-                                    )}
-                                    <div>
-                                        <p className="font-semibold text-slate-900">{record.user?.name || "Awaiting profile"}</p>
-                                        <p className="text-xs text-slate-500">{record.user?.email || "No email"}</p>
-                                        <p className="text-xs text-slate-400">{formatDate(record.createdAt)}</p>
                                     </div>
+                                    <span className="rounded-full bg-[#FFF4E5] px-3 py-1 text-xs font-semibold text-[#9C6200]">
+                                        {record.status}
+                                    </span>
                                 </div>
-                                <span
-                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                        record.status === "APPROVED"
-                                            ? "bg-[#E8F7F4] text-[#1F6C62]"
-                                            : record.status === "REJECTED"
-                                                ? "bg-[#FDECEC] text-[#B6483D]"
-                                                : "bg-[#FFF4E5] text-[#9C6200]"
-                                    }`}
-                                >
-                                    {record.status}
-                                </span>
+                                {record.formAnswers?.intent && (
+                                    <p className="text-xs text-slate-500 italic pl-1 line-clamp-2">&ldquo;{record.formAnswers.intent}&rdquo;</p>
+                                )}
+                                {onEnrollAction && (
+                                    <div className="flex gap-2 pt-1">
+                                        <button
+                                            type="button"
+                                            disabled={enrollActionBusy === record.id}
+                                            onClick={async () => {
+                                                setEnrollActionBusy(record.id);
+                                                try { await onEnrollAction(record.id, "APPROVED"); } finally { setEnrollActionBusy(null); }
+                                            }}
+                                            className="flex-1 rounded-full bg-[#E8F7F4] px-3 py-1.5 text-xs font-semibold text-[#1F6C62] hover:bg-[#C5EDEA] disabled:opacity-50 transition-colors"
+                                        >
+                                            {enrollActionBusy === record.id ? "…" : "✓ Approve"}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={enrollActionBusy === record.id}
+                                            onClick={async () => {
+                                                setEnrollActionBusy(record.id);
+                                                try { await onEnrollAction(record.id, "REJECTED"); } finally { setEnrollActionBusy(null); }
+                                            }}
+                                            className="flex-1 rounded-full bg-[#FDECEC] px-3 py-1.5 text-xs font-semibold text-[#B6483D] hover:bg-[#FAD5D5] disabled:opacity-50 transition-colors"
+                                        >
+                                            {enrollActionBusy === record.id ? "…" : "✕ Reject"}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -2006,7 +2055,7 @@ function InlineDeckViewer({
                               url,
                               contentType,
                               title,
-                              height = 256,
+                              height = 400,
                           }: {
     url?: string | null;
     contentType?: string | null;
@@ -2015,8 +2064,19 @@ function InlineDeckViewer({
 }) {
     const assetHost = useAssetHost();
     const resolved = useMemo(() => resolveAssetUrl(url, assetHost), [url, assetHost]);
+    const [officeError, setOfficeError] = useState(false);
+
     if (!url || !resolved) return null;
-    const extension = (contentType || resolved.split("?")[0]?.split(".").pop() || "").toLowerCase();
+
+    // Detect extension from MIME hint or URL
+    const rawExt = (contentType?.includes("pdf") ? "pdf"
+        : contentType?.includes("presentationml") || contentType?.includes("powerpoint") ? "pptx"
+        : contentType?.includes("wordprocessing") || contentType?.includes("msword") ? "docx"
+        : resolved.split("?")[0]?.split(".").pop() || "").toLowerCase();
+
+    const extension = rawExt;
+
+    // Images
     if (IMAGE_EXTENSIONS.has(extension)) {
         return (
             // eslint-disable-next-line @next/next/no-img-element
@@ -2028,29 +2088,62 @@ function InlineDeckViewer({
             />
         );
     }
+
+    // PDF — native browser rendering; works for any accessible URL
     if (extension === "pdf") {
         return (
             <iframe
-                src={`${resolved}#toolbar=0`}
+                src={resolved}
                 title={`${title} document`}
                 className="mt-3 w-full rounded-2xl border border-slate-100 bg-white"
                 style={{ height }}
             />
         );
     }
-    const officeEmbed = OFFICE_EXTENSIONS.has(extension)
-        ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(resolved)}`
-        : null;
-    if (officeEmbed) {
+
+    // Office files — use Office Online viewer; requires a publicly reachable URL.
+    // Localhost URLs are shown as a download fallback instead.
+    const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(resolved);
+    if (OFFICE_EXTENSIONS.has(extension)) {
+        if (isLocalhost || officeError) {
+            // Can't embed localhost in Office Online — show download fallback
+            return (
+                <div className="mt-3 flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
+                    <p className="text-xs text-slate-500 max-w-xs">
+                        Slide preview requires a publicly accessible URL. Download to view in your browser or office app.
+                    </p>
+                    <a
+                        href={resolved}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download
+                        className="inline-flex items-center gap-2 rounded-full bg-[#63C0B9] px-4 py-2 text-xs font-semibold text-white hover:bg-[#2D8F80] transition-colors"
+                    >
+                        Download {title}
+                    </a>
+                    <a
+                        href={`https://docs.google.com/viewer?url=${encodeURIComponent(resolved)}&embedded=true`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[#2D8F80] underline"
+                    >
+                        Try Google Docs Viewer ↗
+                    </a>
+                </div>
+            );
+        }
+        const officeEmbed = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(resolved)}`;
         return (
             <iframe
                 src={officeEmbed}
                 title={`${title} slides`}
                 className="mt-3 w-full rounded-2xl border border-slate-100 bg-white"
                 style={{ height }}
+                onError={() => setOfficeError(true)}
             />
         );
     }
+
     return null;
 }
 

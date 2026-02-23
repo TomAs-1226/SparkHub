@@ -7,7 +7,6 @@ import {
     X,
     Plus,
     Trash2,
-    Check,
     ChevronDown,
     ChevronUp,
     Pin,

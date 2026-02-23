@@ -1,309 +1,237 @@
 /**
- * Weekly Digest Email Scheduler
+ * Weekly Digest Scheduler — SparkHub v2.2
  *
- * This script generates and sends weekly digest emails to users who have opted in.
- * Run this via cron job: 0 9 * * 1 (every Monday at 9 AM)
+ * Generates an AI-written weekly digest using OpenAI (gpt-4o-mini),
+ * then delivers it to each opted-in user's in-app inbox.
+ * Falls back to a template digest if OpenAI is unavailable.
  *
- * Usage:
- *   node src/scheduler/weekly-digest.js
- *   NODE_ENV=production node src/scheduler/weekly-digest.js
+ * Schedule: every Monday at 09:00 (configured in server.js via node-cron)
+ * Manual run: node src/scheduler/weekly-digest.js
  */
 
 const path = require('path')
 const dotenv = require('dotenv')
-
-// Load environment variables
-const backendEnvPath = path.resolve(__dirname, '..', '..', '.env')
-dotenv.config({ path: backendEnvPath })
-const repoEnvPath = path.resolve(__dirname, '..', '..', '..', '.env')
-dotenv.config({ path: repoEnvPath, override: false })
+dotenv.config({ path: path.resolve(__dirname, '..', '..', '.env') })
+dotenv.config({ path: path.resolve(__dirname, '..', '..', '..', '.env'), override: false })
 
 const { prisma } = require('../prisma')
-const { sendWeeklyUpdateEmail, resolveFrontendUrl } = require('../utils/email')
 
-const BRAND = {
-    primary: '#4F46E5',
-    primaryDark: '#4338CA',
-    background: '#f6f8fb',
-    border: '#e2e8f0',
-    text: '#0f172a',
-    muted: '#475569'
-}
+// ── Stats collector ────────────────────────────────────────────────────────────
 
 async function getWeeklyStats() {
     const oneWeekAgo = new Date()
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
 
-    const [
-        newCourses,
-        upcomingEvents,
-        newJobs,
-        newResources,
-        totalUsers,
-        totalEnrollments,
-    ] = await Promise.all([
-        prisma.course.findMany({
-            where: {
-                isPublished: true,
-                createdAt: { gte: oneWeekAgo }
-            },
-            select: { id: true, title: true, summary: true },
-            take: 5
-        }),
-        prisma.event.findMany({
-            where: {
-                startsAt: { gte: new Date() }
-            },
-            select: { id: true, title: true, location: true, startsAt: true },
-            orderBy: { startsAt: 'asc' },
-            take: 5
-        }),
-        prisma.jobPosting.findMany({
-            where: {
-                createdAt: { gte: oneWeekAgo }
-            },
-            select: { id: true, title: true, description: true },
-            take: 5
-        }),
-        prisma.resource.findMany({
-            where: {
-                createdAt: { gte: oneWeekAgo }
-            },
-            select: { id: true, title: true, kind: true },
-            take: 5
-        }),
-        prisma.user.count(),
-        prisma.enrollment.count({
-            where: { createdAt: { gte: oneWeekAgo } }
-        }),
-    ])
+    const [newCourses, upcomingEvents, newJobs, newResources, totalUsers, newEnrollments] =
+        await Promise.all([
+            prisma.course.findMany({
+                where: { isPublished: true, createdAt: { gte: oneWeekAgo } },
+                select: { id: true, title: true, summary: true },
+                take: 5,
+            }),
+            prisma.event.findMany({
+                where: { startsAt: { gte: new Date() } },
+                select: { id: true, title: true, location: true, startsAt: true },
+                orderBy: { startsAt: 'asc' },
+                take: 5,
+            }),
+            prisma.jobPosting.findMany({
+                where: { createdAt: { gte: oneWeekAgo } },
+                select: { id: true, title: true, description: true },
+                take: 5,
+            }),
+            prisma.resource.findMany({
+                where: { createdAt: { gte: oneWeekAgo } },
+                select: { id: true, title: true, kind: true },
+                take: 5,
+            }),
+            prisma.user.count(),
+            prisma.enrollment.count({ where: { createdAt: { gte: oneWeekAgo } } }),
+        ])
 
-    return {
-        newCourses,
-        upcomingEvents,
-        newJobs,
-        newResources,
-        totalUsers,
-        totalEnrollments,
-        weekStart: oneWeekAgo,
-    }
+    return { newCourses, upcomingEvents, newJobs, newResources, totalUsers, newEnrollments, weekStart: oneWeekAgo }
 }
 
-function formatDate(date) {
-    return new Date(date).toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit'
-    })
-}
+// ── AI-generated digest body ───────────────────────────────────────────────────
 
-function generateDigestHtml(stats, recipientName) {
-    const greeting = recipientName ? `Hi ${recipientName},` : 'Hi there,'
-    const frontendUrl = resolveFrontendUrl('')
-
-    const coursesList = stats.newCourses.length > 0
-        ? stats.newCourses.map(c => `<li><a href="${frontendUrl}/courses/${c.id}" style="color:${BRAND.primary};text-decoration:none;font-weight:600;">${c.title}</a><br/><span style="color:${BRAND.muted};font-size:13px;">${c.summary?.slice(0, 100) || 'New course available'}...</span></li>`).join('')
-        : '<li style="color:#64748b;">No new courses this week</li>'
-
-    const eventsList = stats.upcomingEvents.length > 0
-        ? stats.upcomingEvents.map(e => `<li><a href="${frontendUrl}/events" style="color:${BRAND.primary};text-decoration:none;font-weight:600;">${e.title}</a><br/><span style="color:${BRAND.muted};font-size:13px;">${formatDate(e.startsAt)} · ${e.location}</span></li>`).join('')
-        : '<li style="color:#64748b;">No upcoming events</li>'
-
-    const jobsList = stats.newJobs.length > 0
-        ? stats.newJobs.map(j => `<li><a href="${frontendUrl}/opportunities/${j.id}" style="color:${BRAND.primary};text-decoration:none;font-weight:600;">${j.title}</a><br/><span style="color:${BRAND.muted};font-size:13px;">${j.description?.slice(0, 80) || 'New opportunity'}...</span></li>`).join('')
-        : '<li style="color:#64748b;">No new opportunities this week</li>'
-
-    const resourcesList = stats.newResources.length > 0
-        ? stats.newResources.map(r => `<li><span style="font-weight:600;">${r.title}</span> <span style="background:#e2e8f0;padding:2px 8px;border-radius:12px;font-size:11px;">${r.kind}</span></li>`).join('')
-        : '<li style="color:#64748b;">No new resources this week</li>'
-
-    const summaryHighlights = []
-    if (stats.newCourses.length > 0) summaryHighlights.push(`${stats.newCourses.length} new course${stats.newCourses.length > 1 ? 's' : ''}`)
-    if (stats.upcomingEvents.length > 0) summaryHighlights.push(`${stats.upcomingEvents.length} upcoming event${stats.upcomingEvents.length > 1 ? 's' : ''}`)
-    if (stats.newJobs.length > 0) summaryHighlights.push(`${stats.newJobs.length} new opportunit${stats.newJobs.length > 1 ? 'ies' : 'y'}`)
-    if (stats.totalEnrollments > 0) summaryHighlights.push(`${stats.totalEnrollments} new enrollment${stats.totalEnrollments > 1 ? 's' : ''}`)
-
-    const summaryText = summaryHighlights.length > 0
-        ? `This week: ${summaryHighlights.join(', ')}.`
-        : 'Explore what\'s happening on SparkHub this week.'
-
-    const body = `
-        <p>${greeting}</p>
-        <p style="margin:0 0 16px;">${summaryText}</p>
-
-        <div style="margin:20px 0;padding:16px;background:linear-gradient(135deg,#f0fdf4 0%,#ecfeff 100%);border-radius:16px;border:1px solid #d1fae5;">
-            <p style="margin:0 0 4px;font-size:12px;color:#059669;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Quick Stats</p>
-            <p style="margin:0;font-size:14px;color:#0f172a;">
-                <strong>${stats.totalUsers}</strong> community members ·
-                <strong>${stats.totalEnrollments}</strong> enrollments this week
-            </p>
-        </div>
-
-        <h2 style="margin:24px 0 12px;font-size:16px;color:${BRAND.text};">New Courses</h2>
-        <ul style="margin:0;padding-left:20px;line-height:1.8;">${coursesList}</ul>
-
-        <h2 style="margin:24px 0 12px;font-size:16px;color:${BRAND.text};">Upcoming Events</h2>
-        <ul style="margin:0;padding-left:20px;line-height:1.8;">${eventsList}</ul>
-
-        <h2 style="margin:24px 0 12px;font-size:16px;color:${BRAND.text};">New Opportunities</h2>
-        <ul style="margin:0;padding-left:20px;line-height:1.8;">${jobsList}</ul>
-
-        <h2 style="margin:24px 0 12px;font-size:16px;color:${BRAND.text};">Fresh Resources</h2>
-        <ul style="margin:0;padding-left:20px;line-height:1.8;">${resourcesList}</ul>
-
-        <div style="margin:28px 0 0;text-align:center;">
-            <a href="${frontendUrl}/dashboard" style="display:inline-block;background:${BRAND.primary};color:#fff;padding:12px 24px;border-radius:12px;text-decoration:none;font-weight:600;">
-                Explore Your Dashboard
-            </a>
-        </div>
-    `
-
-    const text = `${greeting}
-
-${summaryText}
-
-Quick Stats: ${stats.totalUsers} community members · ${stats.totalEnrollments} enrollments this week
-
-New Courses:
-${stats.newCourses.map(c => `- ${c.title}`).join('\n') || '- No new courses this week'}
-
-Upcoming Events:
-${stats.upcomingEvents.map(e => `- ${e.title} (${formatDate(e.startsAt)} · ${e.location})`).join('\n') || '- No upcoming events'}
-
-New Opportunities:
-${stats.newJobs.map(j => `- ${j.title}`).join('\n') || '- No new opportunities this week'}
-
-Fresh Resources:
-${stats.newResources.map(r => `- ${r.title} (${r.kind})`).join('\n') || '- No new resources this week'}
-
-Visit your dashboard: ${frontendUrl}/dashboard
-`
-
-    return { body, text, summary: summaryText }
-}
-
-async function getEligibleRecipients() {
-    // Get users who have opted in to weekly updates
-    const users = await prisma.user.findMany({
-        where: {
-            emailVerified: true,
-            OR: [
-                { emailPreference: { weeklyUpdates: true } },
-                { emailPreference: null } // Default to opted-in if no preference set
-            ]
-        },
-        select: { id: true, email: true, name: true }
-    })
-
-    // Get newsletter subscribers
-    const subscribers = await prisma.newsletterSubscriber.findMany({
-        where: { active: true },
-        select: { email: true, name: true }
-    })
-
-    // Deduplicate by email
-    const deduped = new Map()
-    for (const user of users) {
-        if (user?.email) {
-            deduped.set(user.email.toLowerCase(), { ...user })
-        }
-    }
-    for (const sub of subscribers) {
-        if (sub?.email && !deduped.has(sub.email.toLowerCase())) {
-            deduped.set(sub.email.toLowerCase(), { email: sub.email, name: sub.name || null })
-        }
+async function generateAiDigestBody(stats) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+        console.log('[Digest] No OPENAI_API_KEY — using template digest.')
+        return generateTemplateDigest(stats)
     }
 
-    return Array.from(deduped.values())
-}
-
-async function sendWeeklyDigests() {
-    console.log('Starting weekly digest generation...')
-    console.log('Timestamp:', new Date().toISOString())
+    const statsText = [
+        `Community members: ${stats.totalUsers}`,
+        `New enrollments this week: ${stats.newEnrollments}`,
+        stats.newCourses.length > 0
+            ? `New courses: ${stats.newCourses.map((c) => `"${c.title}"`).join(', ')}`
+            : 'No new courses this week.',
+        stats.upcomingEvents.length > 0
+            ? `Upcoming events: ${stats.upcomingEvents.map((e) => `"${e.title}" on ${new Date(e.startsAt).toDateString()}`).join(', ')}`
+            : 'No upcoming events.',
+        stats.newJobs.length > 0
+            ? `New opportunities: ${stats.newJobs.map((j) => `"${j.title}"`).join(', ')}`
+            : 'No new opportunities.',
+        stats.newResources.length > 0
+            ? `New resources: ${stats.newResources.map((r) => `"${r.title}" (${r.kind})`).join(', ')}`
+            : 'No new resources.',
+    ].join('\n')
 
     try {
-        // Get weekly stats
+        const { OpenAI } = require('openai')
+        const openai = new OpenAI({ apiKey })
+
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            max_tokens: 600,
+            messages: [
+                {
+                    role: 'system',
+                    content: `You are a warm, engaging community newsletter writer for SparkHub — an educational learning platform.
+Write a weekly digest that feels personal and motivating. Use Markdown formatting (## headings, bullet points, bold text).
+Keep it under 350 words. Be encouraging, highlight what's exciting, and end with a motivational note.
+Do NOT include a subject line or email headers — just the body content.`,
+                },
+                {
+                    role: 'user',
+                    content: `Write this week's SparkHub digest using these stats:\n\n${statsText}`,
+                },
+            ],
+        })
+
+        const body = completion.choices[0]?.message?.content?.trim()
+        if (body && body.length > 50) {
+            console.log('[Digest] AI digest generated successfully.')
+            return body
+        }
+    } catch (err) {
+        console.warn('[Digest] OpenAI call failed, falling back to template:', err?.message)
+    }
+
+    return generateTemplateDigest(stats)
+}
+
+function generateTemplateDigest(stats) {
+    const lines = [
+        `## This Week on SparkHub 🚀`,
+        ``,
+        `Here's what's been happening in our learning community:`,
+        ``,
+        `**Community:** ${stats.totalUsers} members · ${stats.newEnrollments} new enrollments this week`,
+        ``,
+    ]
+
+    if (stats.newCourses.length > 0) {
+        lines.push(`## New Courses`)
+        stats.newCourses.forEach((c) => lines.push(`- **${c.title}** — ${c.summary?.slice(0, 80) || 'New course available'}…`))
+        lines.push(``)
+    }
+
+    if (stats.upcomingEvents.length > 0) {
+        lines.push(`## Upcoming Events`)
+        stats.upcomingEvents.forEach((e) =>
+            lines.push(`- **${e.title}** · ${new Date(e.startsAt).toDateString()} · ${e.location}`)
+        )
+        lines.push(``)
+    }
+
+    if (stats.newJobs.length > 0) {
+        lines.push(`## New Opportunities`)
+        stats.newJobs.forEach((j) => lines.push(`- **${j.title}**`))
+        lines.push(``)
+    }
+
+    if (stats.newResources.length > 0) {
+        lines.push(`## Fresh Resources`)
+        stats.newResources.forEach((r) => lines.push(`- ${r.title} _(${r.kind})_`))
+        lines.push(``)
+    }
+
+    lines.push(`---`)
+    lines.push(`Keep learning and growing! Visit your dashboard to explore everything. 🎓`)
+
+    return lines.join('\n')
+}
+
+// ── Eligible recipients ────────────────────────────────────────────────────────
+
+async function getEligibleUsers() {
+    return prisma.user.findMany({
+        where: {
+            OR: [
+                { emailPreference: { weeklyUpdates: true } },
+                { emailPreference: null }, // default opted-in
+            ],
+        },
+        select: { id: true, name: true },
+    })
+}
+
+// ── Main entry point ──────────────────────────────────────────────────────────
+
+async function sendWeeklyDigests() {
+    console.log('[Digest] Starting weekly digest generation…', new Date().toISOString())
+
+    try {
         const stats = await getWeeklyStats()
-        console.log(`Stats collected: ${stats.newCourses.length} courses, ${stats.upcomingEvents.length} events, ${stats.newJobs.length} jobs, ${stats.newResources.length} resources`)
+        console.log(
+            `[Digest] Stats: ${stats.newCourses.length} courses, ${stats.upcomingEvents.length} events, ` +
+            `${stats.newJobs.length} jobs, ${stats.newResources.length} resources`
+        )
 
-        // Get recipients
-        const recipients = await getEligibleRecipients()
-        console.log(`Found ${recipients.length} eligible recipients`)
+        const users = await getEligibleUsers()
+        console.log(`[Digest] Eligible recipients: ${users.length}`)
 
-        if (recipients.length === 0) {
-            console.log('No recipients to send to. Exiting.')
-            return { ok: true, sent: 0, message: 'No eligible recipients' }
+        if (users.length === 0) {
+            return { ok: true, sent: 0, message: 'No eligible recipients.' }
         }
 
-        // Generate digest content
-        const { body, text, summary } = generateDigestHtml(stats)
+        const body = await generateAiDigestBody(stats)
+        const weekLabel = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        const title = `Your Weekly SparkHub Digest — ${weekLabel}`
 
-        // Create the update object for the email sender
-        const weeklyUpdate = {
-            id: `auto-digest-${Date.now()}`,
-            title: 'Your Weekly SparkHub Digest',
-            summary,
-            body,
-            attachments: []
-        }
+        // Deliver to each user's inbox in bulk
+        await prisma.inboxMessage.createMany({
+            data: users.map((u) => ({
+                userId: u.id,
+                kind: 'DIGEST',
+                fromName: 'SparkHub Weekly',
+                title,
+                body,
+            })),
+        })
 
-        // Send emails
-        const result = await sendWeeklyUpdateEmail(weeklyUpdate, recipients)
+        console.log(`[Digest] Delivered to ${users.length} inboxes.`)
 
-        console.log(`Digest sending complete: ${result.sent || 0} sent, ${result.failed?.length || 0} failed`)
-
-        if (result.failed?.length > 0) {
-            console.log('Failed deliveries:')
-            result.failed.slice(0, 10).forEach(f => {
-                console.log(`  - ${f.email}: ${f.error}`)
-            })
-            if (result.failed.length > 10) {
-                console.log(`  ... and ${result.failed.length - 10} more`)
-            }
-        }
-
-        // Log the digest to the database for tracking
+        // Log to WeeklyUpdate for admin records
         try {
             await prisma.weeklyUpdate.create({
                 data: {
-                    title: weeklyUpdate.title,
-                    summary: weeklyUpdate.summary,
-                    body: weeklyUpdate.body,
+                    title,
+                    summary: `Sent to ${users.length} users via in-app inbox.`,
+                    body,
                     status: 'PUBLISHED',
                     publishedAt: new Date(),
-                    attachmentsJson: '[]'
-                }
+                    attachmentsJson: '[]',
+                },
             })
-            console.log('Digest logged to database')
         } catch (logErr) {
-            console.warn('Failed to log digest to database:', logErr.message)
+            console.warn('[Digest] Failed to log to WeeklyUpdate:', logErr?.message)
         }
 
-        return {
-            ok: result.ok,
-            sent: result.sent || 0,
-            failed: result.failed?.length || 0,
-            totalRecipients: recipients.length
-        }
+        return { ok: true, sent: users.length }
     } catch (err) {
-        console.error('Error generating/sending weekly digest:', err)
+        console.error('[Digest] Error:', err)
         return { ok: false, error: err.message }
     }
 }
 
-// Run if executed directly
+// Run directly
 if (require.main === module) {
     sendWeeklyDigests()
-        .then((result) => {
-            console.log('Weekly digest job completed:', result)
-            process.exit(result.ok ? 0 : 1)
-        })
-        .catch((err) => {
-            console.error('Weekly digest job failed:', err)
-            process.exit(1)
-        })
+        .then((r) => { console.log('[Digest] Done:', r); process.exit(r.ok ? 0 : 1) })
+        .catch((err) => { console.error('[Digest] Fatal:', err); process.exit(1) })
 }
 
 module.exports = { sendWeeklyDigests, getWeeklyStats }

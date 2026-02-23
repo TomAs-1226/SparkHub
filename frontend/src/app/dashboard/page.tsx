@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -14,11 +14,13 @@ import {
     ExternalLink,
     Users,
     ShieldCheck,
+    Bell,
 } from "lucide-react";
 
 import { api } from "@/lib/api";
 import DashboardCard from "@/components/DashboardCard";
 import SiteNav from "@/components/site-nav";
+import OnboardingModal from "@/components/onboarding-modal";
 
 // ---------- types that match your backend responses ----------
 type User = {
@@ -96,6 +98,16 @@ type EnrollmentRow = {
     };
 };
 
+type InboxMsg = {
+    id: string;
+    kind: string;
+    fromName?: string | null;
+    title: string;
+    body: string;
+    isRead: boolean;
+    createdAt: string;
+};
+
 // ---------- utility helpers ----------
 function fmtDateShort(iso: string | undefined) {
     if (!iso) return "";
@@ -121,6 +133,7 @@ async function safeJson(res: Response) {
 // ---------- main dashboard component ----------
 export default function DashboardPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     // state
     const [loading, setLoading] = useState(true);
@@ -131,7 +144,9 @@ export default function DashboardPage() {
     const [jobs, setJobs] = useState<JobRow[]>([]);
     const [resources, setResources] = useState<ResourceRow[]>([]);
     const [enrollments, setEnrollments] = useState<EnrollmentRow[]>([]);
+    const [inboxMsgs, setInboxMsgs] = useState<InboxMsg[]>([]);
 
+    const [showOnboarding, setShowOnboarding] = useState(false);
     const [errMsg, setErrMsg] = useState<string | null>(null);
 
     // load data from backend API (which is already proxied via /api/... in next.config.ts)
@@ -158,20 +173,22 @@ export default function DashboardPage() {
             if (!cancelled) setMe(user);
 
             // 2. parallel fetch everything else
-            const [evRes, sessRes, jobRes, resRes, enrollRes] = await Promise.all([
+            const [evRes, sessRes, jobRes, resRes, enrollRes, inboxRes] = await Promise.all([
                 api("/events", { method: "GET" }),
                 api("/tutors/sessions/mine", { method: "GET" }),
                 api("/jobs", { method: "GET" }),
                 api("/resources", { method: "GET" }),
                 api("/courses/enrollments/mine", { method: "GET" }),
+                api("/inbox?limit=3&unread=true", { method: "GET" }),
             ]);
 
-            const [evJson, sessJson, jobJson, resJson, enrollJson] = await Promise.all([
+            const [evJson, sessJson, jobJson, resJson, enrollJson, inboxJson] = await Promise.all([
                 safeJson(evRes),
                 safeJson(sessRes),
                 safeJson(jobRes),
                 safeJson(resRes),
                 safeJson(enrollRes),
+                safeJson(inboxRes),
             ]);
 
             if (!cancelled) {
@@ -180,8 +197,16 @@ export default function DashboardPage() {
                 setJobs(jobJson?.list || []);
                 setResources(resJson?.list || []);
                 setEnrollments(enrollJson?.list || []);
+                setInboxMsgs(inboxJson?.messages || []);
                 setLoading(false);
                 setErrMsg(null);
+
+                // OOBE: show onboarding if first visit or ?welcome=1
+                const isWelcome = searchParams?.get("welcome") === "1";
+                const alreadyOnboarded = typeof window !== "undefined" && localStorage.getItem("sparkhub:onboarded") === "1";
+                if (isWelcome || !alreadyOnboarded) {
+                    setShowOnboarding(true);
+                }
             }
         })().catch((error) => {
             if (cancelled) return;
@@ -212,6 +237,14 @@ export default function DashboardPage() {
     // ---------- RENDER ----------
     return (
         <div className="min-h-dvh bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100">
+            <OnboardingModal
+                user={me}
+                open={showOnboarding}
+                onDismiss={() => {
+                    localStorage.setItem("sparkhub:onboarded", "1");
+                    setShowOnboarding(false);
+                }}
+            />
             <SiteNav />
             <main className="mx-auto flex w-full max-w-[1280px] justify-center px-4 sm:px-6 lg:px-8 py-8">
                 <div className="w-full">
@@ -569,6 +602,48 @@ export default function DashboardPage() {
                                     className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
                                 >
                                     View all opportunities →
+                                </Link>
+                            </div>
+                        </DashboardCard>
+
+                        {/* Inbox Preview */}
+                        <DashboardCard
+                            title="Inbox"
+                            icon={<Bell size={16} />}
+                        >
+                            {loading ? (
+                                <div className="space-y-3">
+                                    <Skeleton className="h-[40px]" />
+                                    <Skeleton className="h-[40px]" />
+                                </div>
+                            ) : inboxMsgs.length === 0 ? (
+                                <p className="text-slate-500 dark:text-slate-400 text-[13px]">
+                                    Your inbox is empty.
+                                </p>
+                            ) : (
+                                <ul className="space-y-3">
+                                    {inboxMsgs.map((msg) => (
+                                        <li
+                                            key={msg.id}
+                                            className="rounded-[12px] border border-slate-200/60 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-[13px] leading-relaxed shadow-[0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-none"
+                                        >
+                                            <div className="flex items-start gap-2">
+                                                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-[#63C0B9]" />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-medium text-slate-800 dark:text-slate-100 truncate">{msg.title}</div>
+                                                    <div className="text-slate-500 dark:text-slate-400 text-[11px]">{msg.fromName || "SparkHub"}</div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            <div className="mt-4 text-right">
+                                <Link
+                                    href="/inbox"
+                                    className="text-[12px] font-medium text-[#5FB4E5] underline underline-offset-2 hover:brightness-110"
+                                >
+                                    Open inbox →
                                 </Link>
                             </div>
                         </DashboardCard>

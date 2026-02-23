@@ -87,26 +87,38 @@ module.exports = function wireSecurity(app, opts = { frontendOrigins: [] }) {
     app.use(compression())
 
     // Strict security headers
+    // Allow Google Docs Viewer and Office Online for embedded presentation/slide viewing
     const cspDirectives = {
         "default-src": ["'self'"],
-        "script-src": ["'self'"],
+        "script-src": ["'self'", "https://docs.google.com"],
         "style-src": ["'self'", "'unsafe-inline'"],
-        "img-src": ["'self'", "data:"],
+        "img-src": ["'self'", "data:", "https:", "blob:"],
         "font-src": ["'self'", "data:"],
         "connect-src": connectSrc,
-        "frame-ancestors": ["'none'"],
+        // Allow iframes for Google Docs/Slides viewer and Office Online
+        "frame-src": [
+            "'self'",
+            "https://docs.google.com",
+            "https://view.officeapps.live.com",
+            "https://onedrive.live.com",
+            "https://drive.google.com",
+            "https://www.youtube.com",
+            "https://player.vimeo.com",
+        ],
+        "frame-ancestors": ["'self'"],
         "object-src": ["'none'"],
+        "media-src": ["'self'", "https:", "blob:"],
     }
 
     cspDirectives['upgrade-insecure-requests'] = enableHsts ? [] : null
 
     app.use(helmet({
-        crossOriginOpenerPolicy: { policy: 'same-origin' },
-        crossOriginResourcePolicy: { policy: 'same-site' },
-        referrerPolicy: { policy: 'no-referrer' },
+        crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+        referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
         hsts: enableHsts ? undefined : false,
         contentSecurityPolicy: {
-            useDefaults: true,
+            useDefaults: false,
             directives: cspDirectives,
         }
     }))
@@ -118,31 +130,40 @@ module.exports = function wireSecurity(app, opts = { frontendOrigins: [] }) {
     app.use(cors({
         origin: allowOrigin,
         methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-        allowedHeaders: ['Content-Type','Authorization'],
-        credentials: true
+        allowedHeaders: ['Content-Type','Authorization','X-Request-ID'],
+        credentials: true,
+        maxAge: 86400, // Cache pre-flight for 24h — reduces OPTIONS requests under load
     }))
 
-    // Global rate limit (memory store is fine for dev)
+    // ── Rate limiting tuned for 1000 concurrent users ──────────────────────────
+    // Global limit: generous per-IP window so 1000 distinct users aren't blocked
     const globalLimiter = rateLimit({
-        windowMs: 15 * 60 * 1000,
-        max: Number(process.env.RATE_LIMIT_MAX_REQUESTS || 1800),
+        windowMs: 15 * 60 * 1000,                                    // 15 min window
+        max: Number(process.env.RATE_LIMIT_MAX_REQUESTS || 3000),     // 3000 req/IP/window
         standardHeaders: true,
         legacyHeaders: false,
         message: { ok: false, msg: 'Too many requests. Please try again shortly.' },
-        skip: (req) => ['/healthz', '/readyz'].includes(req.path),
-        // For production at scale, prefer Redis:
-        // store: new RedisStore({
-        //   sendCommand: (...args) => new IORedis(process.env.REDIS_URL).call(...args),
-        // })
+        skip: (req) => ['/healthz', '/readyz', '/'].includes(req.path),
     })
     app.use(globalLimiter)
 
-    // Stricter auth limiter
+    // Stricter auth limiter — prevents brute-force on login/register
     const authLimiter = rateLimit({
-        windowMs: 10 * 60 * 1000,
-        max: 20,
+        windowMs: 10 * 60 * 1000, // 10 min
+        max: 30,
         standardHeaders: true,
-        legacyHeaders: false
+        legacyHeaders: false,
+        message: { ok: false, msg: 'Too many authentication attempts. Please wait.' },
     })
     app.use('/auth', authLimiter)
+
+    // Upload limiter — large payloads are expensive
+    const uploadLimiter = rateLimit({
+        windowMs: 60 * 1000, // 1 min
+        max: 30,
+        standardHeaders: true,
+        legacyHeaders: false,
+        message: { ok: false, msg: 'Upload rate limit reached. Please wait a moment.' },
+    })
+    app.use('/upload', uploadLimiter)
 }

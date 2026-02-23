@@ -26,10 +26,10 @@ export default function RegisterPage() {
     const [password, setPassword] = useState("");
     const [showPw, setShowPw] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [securing, setSecuring] = useState(false);
     const [err, setErr] = useState<string | null>(null);
     const [notice, setNotice] = useState<string | null>(null);
     const [adminSecret, setAdminSecret] = useState("");
-    const [weeklyUpdates, setWeeklyUpdates] = useState(true);
 
     async function onSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -44,16 +44,37 @@ export default function RegisterPage() {
                     password,
                     role: accountType,
                     adminSecret: accountType === "admin" ? adminSecret : undefined,
-                    weeklyUpdates,
                 }),
             });
             const data = await safeJson(res);
             if (!res.ok || data?.ok === false) throw new Error(data?.msg || `Register failed (${res.status})`);
-            if (data?.requiresVerification) {
-                setNotice(data?.msg || "Check your email for a verification link.");
-                router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+
+            if (data?.requiresBrowserVerification && data?.verifyToken) {
+                setLoading(false);
+                setSecuring(true);
+                try {
+                    const verifyRes = await fetch("/api/auth/verify-browser", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ token: data.verifyToken }),
+                    });
+                    const verifyData = await safeJson(verifyRes);
+                    if (!verifyRes.ok || !verifyData?.token)
+                        throw new Error(verifyData?.msg || "Browser verification failed.");
+                    localStorage.setItem("sparkhub:token", verifyData.token);
+                    if (verifyData.user) {
+                        localStorage.setItem("sparkhub:user", JSON.stringify(verifyData.user));
+                    }
+                    router.push("/dashboard?welcome=1");
+                } catch (verifyErr: unknown) {
+                    const message = verifyErr instanceof Error ? verifyErr.message : "Unable to verify browser.";
+                    setErr(message);
+                } finally {
+                    setSecuring(false);
+                }
                 return;
             }
+
             router.push("/login");
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : "Unable to register.";
@@ -235,19 +256,6 @@ export default function RegisterPage() {
                                 </div>
                             )}
 
-                            <label className="flex items-start gap-3 rounded-2xl border border-[#E4EFED] dark:border-slate-600 bg-[#F8FBFA] dark:bg-slate-700/50 px-4 py-3 text-[13px] text-[#3A3A3A] dark:text-slate-200 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="mt-1 h-4 w-4 rounded border-[#94C7C2] dark:border-slate-500 text-[#69BFBA] focus:ring-[#69BFBA] bg-white dark:bg-slate-600"
-                                    checked={weeklyUpdates}
-                                    onChange={(e) => setWeeklyUpdates(e.target.checked)}
-                                />
-                                <span>
-                                    Send me weekly updates, learning highlights, and new resources.
-                                    <span className="block text-[12px] text-[#6C6C6C] dark:text-slate-400">You can change this anytime in settings.</span>
-                                </span>
-                            </label>
-
                             {err && (
                                 <motion.p
                                     initial={{ opacity: 0, y: 6 }}
@@ -268,12 +276,33 @@ export default function RegisterPage() {
                                 </motion.p>
                             )}
 
+                            {securing && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="flex items-center justify-center gap-3 rounded-2xl bg-[#E9F7F5] dark:bg-teal-900/20 border border-[#63C0B9]/20 px-4 py-3"
+                                >
+                                    <svg
+                                        className="h-4 w-4 animate-spin text-[#63C0B9]"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                                    </svg>
+                                    <span className="text-[13px] font-semibold text-[#2D8F80] dark:text-teal-300">
+                                        Securing your account…
+                                    </span>
+                                </motion.div>
+                            )}
+
                             <div className="pt-2 flex justify-center lg:justify-end">
                                 <motion.button
                                     whileTap={{ scale: 0.98 }}
                                     whileHover={{ scale: 1.02 }}
                                     type="submit"
-                                    disabled={loading}
+                                    disabled={loading || securing}
                                     className="w-full sm:w-[260px] h-[48px] rounded-full bg-gradient-to-r from-[#63C0B9] to-[#2D8F80] text-white text-[15px] font-semibold
                                         hover:opacity-90 disabled:opacity-60 transition-all shadow-lg shadow-[#63C0B9]/25"
                                 >

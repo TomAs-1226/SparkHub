@@ -44,6 +44,14 @@ model User {
   mentorAvailabilities MentorAvailability[]
   matchRequestsFrom MatchRequest[] @relation("MatchRequestsFrom")
   matchRequestsTo   MatchRequest[] @relation("MatchRequestsTo")
+  lessonProgress    LessonProgress[]
+  announcements     CourseAnnouncement[] @relation("AnnouncementAuthor")
+  courseRatings     CourseRating[]       @relation("CourseRatings")
+  discussions       CourseDiscussion[]   @relation("DiscussionAuthor")
+  discussionReplies DiscussionReply[]    @relation("ReplyAuthor")
+  bookmarks         CourseBookmark[]
+  noteItems         StudentNote[]
+  inboxMessages     InboxMessage[]
 }
 
 model Course {
@@ -69,6 +77,12 @@ model Course {
   materials    CourseMaterial[]
   assignments  CourseAssignment[]
   meetingLinks CourseMeetingLink[]
+  lessonProgress LessonProgress[]
+  announcements  CourseAnnouncement[]
+  ratings        CourseRating[]
+  discussions    CourseDiscussion[]
+  bookmarks      CourseBookmark[]
+  notes          StudentNote[]
 }
 
 model Lesson {
@@ -84,6 +98,11 @@ model Lesson {
   attachmentUrl String?
   contentUrl String?
   contentType String?
+  durationSec Int?      // estimated lesson duration in seconds
+  isPreview   Boolean   @default(false) // free preview before enrollment
+  progress    LessonProgress[]
+  discussions CourseDiscussion[]
+  notes       StudentNote[]
 }
 
 model Enrollment {
@@ -223,6 +242,8 @@ model TutorProfile {
   userId      String   @unique
   bio         String
   subjectsCsv String   @default("")
+  isPublished Boolean  @default(false)
+  rateInfo    String?  // e.g. "$30/hr or Free"
   sessions    Session[]
 }
 
@@ -486,4 +507,132 @@ model MatchRequest {
 
   @@index([fromUserId])
   @@index([toUserId])
+}
+
+// ─── LMS v2 Models ────────────────────────────────────────────────────────────
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  timeSpentSec Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, lessonId])
+  @@index([userId, courseId])
+}
+
+model CourseAnnouncement {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  title     String
+  body      String
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId])
+}
+
+model CourseRating {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("CourseRatings", fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int      // 1–5
+  review    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, userId])
+  @@index([courseId])
+}
+
+model CourseDiscussion {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonId  String?
+  lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  authorId  String?
+  author    User?    @relation("DiscussionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  title     String
+  body      String
+  isPinned  Boolean  @default(false)
+  isResolved Boolean @default(false)
+  replies   DiscussionReply[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([lessonId])
+}
+
+model DiscussionReply {
+  id           String          @id @default(cuid())
+  discussion   CourseDiscussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  discussionId String
+  authorId     String?
+  author       User?           @relation("ReplyAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  body         String
+  isInstructorReply Boolean   @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([discussionId])
+}
+
+model CourseBookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([userId])
+}
+
+model StudentNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessonId  String?
+  lesson    Lesson?  @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, courseId])
+}
+
+// ─── Inbox / Messaging ────────────────────────────────────────────────────────
+
+model InboxMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String   @default("SYSTEM") // SYSTEM | DIGEST | DM | ANNOUNCEMENT
+  fromName  String?                      // sender display name
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }

@@ -13,7 +13,6 @@ import {
     Film,
     Image as ImageIcon,
     Maximize2,
-    Minimize2,
     File,
     X,
 } from "lucide-react";
@@ -31,16 +30,17 @@ interface ResourceDetail {
     attachmentUrl?: string | null;
 }
 
-type FileType = "pdf" | "image" | "video" | "audio" | "document" | "unknown";
+type FileType = "pdf" | "image" | "video" | "audio" | "presentation" | "document" | "unknown";
 
 function getFileType(url?: string | null): FileType {
     if (!url) return "unknown";
-    const ext = url.split(".").pop()?.toLowerCase() || "";
+    const ext = url.split("?")[0].split(".").pop()?.toLowerCase() || "";
     if (["pdf"].includes(ext)) return "pdf";
-    if (["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp"].includes(ext)) return "image";
-    if (["mp4", "webm", "ogg", "mov", "avi"].includes(ext)) return "video";
-    if (["mp3", "wav", "ogg", "m4a", "flac"].includes(ext)) return "audio";
-    if (["doc", "docx", "ppt", "pptx", "xls", "xlsx", "txt", "md"].includes(ext)) return "document";
+    if (["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "avif"].includes(ext)) return "image";
+    if (["mp4", "webm", "ogg", "mov", "avi", "mkv"].includes(ext)) return "video";
+    if (["mp3", "wav", "ogg", "m4a", "flac", "aac"].includes(ext)) return "audio";
+    if (["ppt", "pptx", "pps", "ppsx"].includes(ext)) return "presentation";
+    if (["doc", "docx", "xls", "xlsx", "txt", "md"].includes(ext)) return "document";
     return "unknown";
 }
 
@@ -115,6 +115,27 @@ function ResourceViewer({
                             Your browser does not support audio playback.
                         </audio>
                     </div>
+                );
+            case "presentation":
+                return (
+                    <iframe
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
+                        className="h-full w-full rounded-xl border-0"
+                        title={title}
+                        onLoad={() => setIsLoading(false)}
+                        allow="fullscreen"
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
+                    />
+                );
+            case "document":
+                return (
+                    <iframe
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
+                        className="h-full w-full rounded-xl border-0"
+                        title={title}
+                        onLoad={() => setIsLoading(false)}
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                    />
                 );
             default:
                 return (

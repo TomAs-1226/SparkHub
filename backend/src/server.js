@@ -36,9 +36,9 @@ process.on('uncaughtException', (error) => {
 
 const app = express()
 
-// Body limits (prevent big JSON bombs)
-app.use(express.json({ limit: '1mb' }))
-app.use(express.urlencoded({ extended: true, limit: '1mb' }))
+// Body limits — 2 MB for JSON (accommodates larger note/content payloads without opening bomb risk)
+app.use(express.json({ limit: '2mb' }))
+app.use(express.urlencoded({ extended: true, limit: '2mb' }))
 
 // Load-shed when the event loop is saturated to stay responsive for normal traffic
 const enableLoadShedding = process.env.ENABLE_LOAD_SHED === 'true'
@@ -113,6 +113,28 @@ app.use('/upload', require('./routes/upload'))
 app.use('/emails', require('./routes/emails'))
 app.use('/ai', require('./routes/ai'))
 app.use('/matching', require('./routes/matching'))
+// LMS v2 routes
+app.use('/progress', require('./routes/progress'))
+app.use('/announcements', require('./routes/announcements'))
+app.use('/ratings', require('./routes/ratings'))
+app.use('/discussions', require('./routes/discussions'))
+app.use('/notes', require('./routes/notes'))
+app.use('/bookmarks', require('./routes/bookmarks'))
+// Inbox / messaging
+app.use('/inbox', require('./routes/inbox'))
+
+// Weekly digest scheduler — runs every Monday at 9 AM
+try {
+    const cron = require('node-cron')
+    const { sendWeeklyDigests } = require('./scheduler/weekly-digest')
+    cron.schedule('0 9 * * 1', () => {
+        console.log('[Cron] Running weekly digest…')
+        sendWeeklyDigests().catch((err) => console.error('[Cron] Weekly digest error:', err))
+    })
+    console.log('[Cron] Weekly digest scheduled: every Monday at 09:00')
+} catch (err) {
+    console.warn('[Cron] node-cron not available, weekly digest scheduler disabled:', err?.message)
+}
 
 // Health checks with database verification
 const { healthCheck, isConnected } = require('./prisma')

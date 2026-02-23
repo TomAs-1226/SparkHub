@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BookMarked, Briefcase, CalendarDays } from "lucide-react";
+import { BookMarked, Briefcase, CalendarDays, User, Globe, GlobeLock } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -47,7 +47,11 @@ export default function TutorWorkspacePage() {
     const [resourceForm, setResourceForm] = useState({ title: "", kind: "", url: "", summary: "", details: "", imageUrl: "", attachmentUrl: "", primaryFileName: "" });
     const [jobForm, setJobForm] = useState(createJobFormState);
 
-    const [saving, setSaving] = useState({ event: false, resource: false, job: false });
+    const [tutorProfile, setTutorProfile] = useState<{ bio: string; subjects: string[]; rateInfo: string; isPublished: boolean } | null>(null);
+    const [profileForm, setProfileForm] = useState({ bio: "", subjects: "", rateInfo: "" });
+    const [profileLoaded, setProfileLoaded] = useState(false);
+
+    const [saving, setSaving] = useState({ event: false, resource: false, job: false, profile: false });
 
     useEffect(() => {
         if (loading) return;
@@ -61,20 +65,28 @@ export default function TutorWorkspacePage() {
         }
         let active = true;
         (async () => {
-            const [eventRes, resourceRes, jobRes] = await Promise.all([
+            const [eventRes, resourceRes, jobRes, profileRes] = await Promise.all([
                 api("/events/mine", { method: "GET" }),
                 api("/resources/mine", { method: "GET" }),
                 api("/jobs/mine", { method: "GET" }),
+                api("/tutors/profile", { method: "GET" }),
             ]);
-            const [eventJson, resourceJson, jobJson] = await Promise.all([
+            const [eventJson, resourceJson, jobJson, profileJson] = await Promise.all([
                 safeJson(eventRes),
                 safeJson(resourceRes),
                 safeJson(jobRes),
+                safeJson(profileRes),
             ]);
             if (!active) return;
             setEvents(Array.isArray(eventJson?.list) ? (eventJson.list as OwnedRow[]) : []);
             setResources(Array.isArray(resourceJson?.list) ? (resourceJson.list as OwnedRow[]) : []);
             setJobs(Array.isArray(jobJson?.list) ? (jobJson.list as OwnedRow[]) : []);
+            if (profileJson?.ok && profileJson.profile) {
+                const p = profileJson.profile;
+                setTutorProfile({ bio: p.bio || "", subjects: p.subjects || [], rateInfo: p.rateInfo || "", isPublished: p.isPublished || false });
+                setProfileForm({ bio: p.bio || "", subjects: (p.subjects || []).join(", "), rateInfo: p.rateInfo || "" });
+            }
+            setProfileLoaded(true);
         })();
         return () => {
             active = false;
@@ -154,8 +166,11 @@ export default function TutorWorkspacePage() {
         setSaving((s) => ({ ...s, job: true }));
         setStatus(null);
         try {
-            if (jobForm.title.trim().length < 2 || jobForm.description.trim().length < 10) {
-                throw new Error("Add a short title and at least two sentences of description before publishing.");
+            if (jobForm.title.trim().length < 2) {
+                throw new Error("Please enter a title (at least 2 characters).");
+            }
+            if (jobForm.description.trim().length < 10) {
+                throw new Error("Please add a description (at least 10 characters).");
             }
             const res = await api("/jobs", {
                 method: "POST",
@@ -183,6 +198,44 @@ export default function TutorWorkspacePage() {
             setStatus(err instanceof Error ? err.message : "Unable to post opportunity");
         } finally {
             setSaving((s) => ({ ...s, job: false }));
+        }
+    }
+
+    async function handleSaveProfile(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        setSaving((s) => ({ ...s, profile: true }));
+        setStatus(null);
+        try {
+            const subjects = profileForm.subjects.split(",").map((s) => s.trim()).filter(Boolean);
+            const res = await api("/tutors/profile", {
+                method: "POST",
+                body: JSON.stringify({ bio: profileForm.bio, subjects, rateInfo: profileForm.rateInfo }),
+            });
+            const json = await safeJson(res);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to save profile");
+            const p = json.profile;
+            setTutorProfile({ bio: p.bio || "", subjects: p.subjects || [], rateInfo: p.rateInfo || "", isPublished: p.isPublished || false });
+            setStatus("Profile saved.");
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to save profile");
+        } finally {
+            setSaving((s) => ({ ...s, profile: false }));
+        }
+    }
+
+    async function handleTogglePublish() {
+        setSaving((s) => ({ ...s, profile: true }));
+        setStatus(null);
+        try {
+            const res = await api("/tutors/publish", { method: "POST", body: JSON.stringify({}) });
+            const json = await safeJson(res);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to toggle publish");
+            setTutorProfile((prev) => prev ? { ...prev, isPublished: json.isPublished } : null);
+            setStatus(json.isPublished ? "Profile is now public!" : "Profile unpublished.");
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : "Unable to update profile");
+        } finally {
+            setSaving((s) => ({ ...s, profile: false }));
         }
     }
 
@@ -231,6 +284,76 @@ export default function TutorWorkspacePage() {
                         >
                             {status}
                         </motion.div>
+                    )}
+
+                    {/* Tutor Profile Card */}
+                    {(user?.role === "TUTOR" || user?.role === "ADMIN") && profileLoaded && (
+                        <div className="mt-8 rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                    <div className="rounded-full bg-[#E7F6F3] p-2 text-[#2D8F80]"><User className="h-5 w-5" /></div>
+                                    <span>Tutor Profile</span>
+                                </div>
+                                {tutorProfile && (
+                                    <button
+                                        type="button"
+                                        onClick={handleTogglePublish}
+                                        disabled={saving.profile}
+                                        className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                                            tutorProfile.isPublished
+                                                ? "bg-[#63C0B9] text-white hover:bg-[#2D8F80]"
+                                                : "border border-[#CFE3E0] text-slate-600 hover:bg-slate-50"
+                                        }`}
+                                    >
+                                        {tutorProfile.isPublished ? (
+                                            <><Globe className="h-3.5 w-3.5" /> Published</>
+                                        ) : (
+                                            <><GlobeLock className="h-3.5 w-3.5" /> Draft — Publish</>
+                                        )}
+                                    </button>
+                                )}
+                            </div>
+                            <form onSubmit={handleSaveProfile} className="mt-4 space-y-3 text-sm">
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-600">Bio *</label>
+                                    <textarea
+                                        placeholder="Tell students about yourself, your experience, and teaching style…"
+                                        value={profileForm.bio}
+                                        onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+                                        className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-[#63C0B9] focus:outline-none"
+                                        rows={3}
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-600">Subjects (comma-separated)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Mathematics, Python, Physics"
+                                        value={profileForm.subjects}
+                                        onChange={(e) => setProfileForm({ ...profileForm, subjects: e.target.value })}
+                                        className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-[#63C0B9] focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="mb-1 block text-xs font-medium text-slate-600">Rate / Session info</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. £30/hr, free first session"
+                                        value={profileForm.rateInfo}
+                                        onChange={(e) => setProfileForm({ ...profileForm, rateInfo: e.target.value })}
+                                        className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-[#63C0B9] focus:outline-none"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={saving.profile}
+                                    className="rounded-full bg-[#63C0B9] px-5 py-2 text-xs font-semibold text-white hover:bg-[#2D8F80] disabled:opacity-50"
+                                >
+                                    {saving.profile ? "Saving…" : "Save Profile"}
+                                </button>
+                            </form>
+                        </div>
                     )}
 
                     <div className="mt-8 grid gap-6 md:grid-cols-2">
@@ -484,11 +607,10 @@ export default function TutorWorkspacePage() {
                                 </label>
                                 <input
                                     type="text"
-                                    placeholder="Contact"
+                                    placeholder="Contact email or URL (optional)"
                                     value={jobForm.contact}
                                     onChange={(e) => setJobForm({ ...jobForm, contact: e.target.value })}
                                     className="w-full rounded-2xl border border-slate-200 px-4 py-2"
-                                    required
                                 />
                                 <label className="text-xs font-semibold text-slate-500">
                                     Photos

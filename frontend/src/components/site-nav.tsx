@@ -11,6 +11,7 @@ import { clearToken } from "@/lib/auth";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ACCENT_OPTIONS, AccentOption, applyAccent, loadAccent } from "@/lib/accent-theme";
 import { EASE } from "@/lib/motion-presets";
+import { api } from "@/lib/api";
 
 type RoleAwareLink = { href: string; label: string; roles?: string[] };
 
@@ -37,6 +38,55 @@ const ROLE_LINKS: Record<string, RoleAwareLink[]> = {
     STUDENT: [],
     RECRUITER: [],
 };
+
+function NotificationBell() {
+    const router = useRouter();
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+        let cancelled = false;
+        async function fetchCount() {
+            try {
+                const res = await api("/inbox/unread-count");
+                if (!res.ok || cancelled) return;
+                const data = await res.json();
+                if (!cancelled) setCount(data.count ?? 0);
+            } catch {
+                // silent fail
+            }
+        }
+        fetchCount();
+        const interval = setInterval(fetchCount, 60_000);
+        return () => { cancelled = true; clearInterval(interval); };
+    }, []);
+
+    return (
+        <button
+            type="button"
+            onClick={() => router.push("/inbox")}
+            aria-label={count > 0 ? `${count} unread messages` : "Inbox"}
+            className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/80 text-slate-600 shadow-sm shadow-white/40 transition hover:border-[var(--sh-accent-soft)] hover:text-[var(--sh-accent)] hover:bg-white"
+        >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <AnimatePresence>
+                {count > 0 && (
+                    <motion.span
+                        key="badge"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        exit={{ scale: 0 }}
+                        className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow"
+                    >
+                        {count > 99 ? "99+" : count}
+                    </motion.span>
+                )}
+            </AnimatePresence>
+        </button>
+    );
+}
 
 export default function Navbar() {
     const router = useRouter();
@@ -173,6 +223,7 @@ export default function Navbar() {
                     </div>
 
                     <div className="relative z-10 hidden items-center gap-2 md:flex">
+                        {resolvedUser && <NotificationBell />}
                         {resolvedUser ? (
                             <ProfileMenu
                                 user={resolvedUser}

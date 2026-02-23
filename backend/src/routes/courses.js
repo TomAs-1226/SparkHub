@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { prisma } = require('../prisma')
 const { requireAuth, requireRole, maybeAuth } = require('../middleware/auth')
+const { moderate } = require('../utils/moderation')
 
 const COURSE_MANAGER_ROLES = ['CREATOR', 'ADMIN', 'TUTOR']
 const MATERIAL_VISIBILITY = new Set(['PUBLIC', 'ENROLLED', 'STAFF'])
@@ -647,10 +648,16 @@ async function handleMessageCreate(req, res, forcedKind) {
         return res.status(403).json({ ok: false, msg: '请先报名课程' })
     }
     const attachments = normalizeAttachmentsInput(req.body.attachments || req.body.attachmentUrls)
-    const content = cleanProfanity(typeof req.body.content === 'string' ? req.body.content : String(req.body.content || ''))
-    if (!content && attachments.length === 0) {
+    const rawContent = typeof req.body.content === 'string' ? req.body.content : String(req.body.content || '')
+    if (!rawContent && attachments.length === 0) {
         return res.status(400).json({ ok: false, msg: '请填写留言内容' })
     }
+    // AI-powered content moderation (permissive — edge cases are allowed through)
+    const modResult = await moderate(rawContent)
+    if (!modResult.allowed) {
+        return res.status(400).json({ ok: false, msg: modResult.reason || 'Message not allowed. Please keep discussions respectful.' })
+    }
+    const content = modResult.cleaned || rawContent
     let visibility = 'ENROLLED'
     if (rawKind === 'CHANNEL') {
         const input = typeof req.body.visibility === 'string' ? req.body.visibility.toUpperCase() : 'ENROLLED'
@@ -1220,21 +1227,21 @@ router.patch('/:id/enrollments/:enrollmentId', requireAuth, requireRole(COURSE_M
 })
 
 // 课程留言（与课程管理者互动）
-router.post('/:id/messages', requireAuth, (req, res) => {
-    handleMessageCreate(req, res)
+router.post('/:id/messages', requireAuth, async (req, res) => {
+    await handleMessageCreate(req, res)
 })
 
 // 查看留言（作者 / 已选课 / 管理员）
-router.get('/:id/messages', requireAuth, (req, res) => {
-    handleMessageList(req, res)
+router.get('/:id/messages', requireAuth, async (req, res) => {
+    await handleMessageList(req, res)
 })
 
-router.get('/:id/chat', requireAuth, (req, res) => {
-    handleMessageList(req, res, 'CHAT')
+router.get('/:id/chat', requireAuth, async (req, res) => {
+    await handleMessageList(req, res, 'CHAT')
 })
 
-router.post('/:id/chat', requireAuth, (req, res) => {
-    handleMessageCreate(req, res, 'CHAT')
+router.post('/:id/chat', requireAuth, async (req, res) => {
+    await handleMessageCreate(req, res, 'CHAT')
 })
 
 module.exports = router

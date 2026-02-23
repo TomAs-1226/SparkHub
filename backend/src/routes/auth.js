@@ -46,6 +46,7 @@ const RESET_EXPIRATION_MS = 1000 * 60 * 60; // 1 hour
 const STATIC_RESET_TOKEN = process.env.RESET_TEST_TOKEN || "always-on-reset-link";
 const STATIC_RESET_ENABLED = String(process.env.RESET_TEST_TOKEN_DISABLED || "").toLowerCase() !== "true";
 const VERIFY_EXPIRATION_MS = 1000 * 60 * 60 * 24; // 24 hours
+const BROWSER_VERIFY_EXPIRATION_MS = 1000 * 60 * 5; // 5 minutes
 
 function generateVerificationToken() {
     return crypto.randomBytes(24).toString("hex");
@@ -187,16 +188,27 @@ router.post("/register", async (req, res) => {
         await prisma.emailPreference.create({ data: { userId: user.id, weeklyUpdates: wantsWeeklyUpdates } }).catch((err) => {
             console.warn("Failed to seed email preferences", err?.message);
         });
-        const verification = await issueVerificationForUser(user).catch((err) => {
-            console.warn("Failed to send verification email", err?.message);
-            return null;
+
+        // Browser-based verification: generate a short-lived token returned directly in the response.
+        // The frontend auto-POSTs it to /auth/verify-browser in the same JS context, completing
+        // verification instantly without any email being sent.
+        await prisma.emailVerificationToken.deleteMany({ where: { userId: user.id, usedAt: null } });
+        const browserToken = crypto.randomBytes(24).toString("hex");
+        await prisma.emailVerificationToken.create({
+            data: {
+                userId: user.id,
+                token: browserToken,
+                code: generateVerificationCode(),
+                expiresAt: new Date(Date.now() + BROWSER_VERIFY_EXPIRATION_MS),
+            },
         });
+
         return res.status(201).json({
             ok: true,
-            requiresVerification: true,
+            requiresBrowserVerification: true,
+            verifyToken: browserToken,
             email: user.email,
-            expiresAt: verification?.expiresAt || null,
-            msg: "Check your email for a verification link and code.",
+            msg: "Account created. Completing browser verification…",
         });
     } catch (err) {
         console.error("REGISTER ERROR:", err);
@@ -242,16 +254,7 @@ router.post("/login", async (req, res) => {
         const ok = await bcrypt.compare(password, user.password);
         if (!ok) return res.status(401).json({ ok: false, msg: "Invalid credentials." });
 
-        if (!user.emailVerified) {
-            await issueVerificationForUser(user).catch((err) => console.warn("Failed to re-send verification", err?.message));
-            return res.status(403).json({
-                ok: false,
-                msg: "Please verify your email to continue.",
-                requiresVerification: true,
-                email: user.email,
-            });
-        }
-
+        // emailVerified check removed — browser-token verification happens at registration time
         const { token } = await issueExclusiveSession(user, req);
         const { id, email, name, role, avatarUrl } = user;
         return res.json({ ok: true, token, user: { id, email, name, role, avatarUrl } });
@@ -413,6 +416,41 @@ router.post("/verify-email/confirm", async (req, res) => {
         return res.json({ ok: true, verified: true, user, code: record.code, verifiedAt });
     } catch (err) {
         console.error("CONFIRM VERIFY ERROR:", err);
+        return res.status(500).json({ ok: false, msg: "Server error." });
+    }
+});
+
+/**
+ * POST /auth/verify-browser
+ * Called automatically by the frontend immediately after registration.
+ * Consumes the browser verify token and returns a full JWT — no email needed.
+ */
+router.post("/verify-browser", async (req, res) => {
+    const token = typeof req.body.token === "string" ? req.body.token.trim() : "";
+    if (!token) return res.status(400).json({ ok: false, msg: "Token is required." });
+    try {
+        const record = await prisma.emailVerificationToken.findUnique({
+            where: { token },
+            include: { user: true },
+        });
+        if (!record) return res.status(400).json({ ok: false, msg: "Invalid or expired verification token." });
+        if (record.usedAt) return res.status(400).json({ ok: false, msg: "Token already used." });
+        if (record.expiresAt.getTime() < Date.now()) {
+            return res.status(400).json({ ok: false, msg: "Token expired. Please register again." });
+        }
+
+        // Mark verified and consume token
+        const [updatedUser] = await prisma.$transaction([
+            prisma.user.update({ where: { id: record.userId }, data: { emailVerified: true } }),
+            prisma.emailVerificationToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+        ]);
+
+        const user = await runUserQuery("findUnique", { where: { id: record.userId } });
+        const { token: jwt } = await issueExclusiveSession(user, req);
+        const { id, email, name, role, avatarUrl } = user;
+        return res.json({ ok: true, token: jwt, user: { id, email, name, role, avatarUrl } });
+    } catch (err) {
+        console.error("VERIFY BROWSER ERROR:", err);
         return res.status(500).json({ ok: false, msg: "Server error." });
     }
 });

@@ -27,11 +27,14 @@ export interface CourseLesson {
     id: string;
     title: string;
     type: string;
+    order?: number;
     body?: string | null;
     videoUrl?: string | null;
     attachmentUrl?: string | null;
     contentUrl?: string | null;
     contentType?: string | null;
+    durationSec?: number | null;
+    isPreview?: boolean;
 }
 
 export interface CourseMaterial {
