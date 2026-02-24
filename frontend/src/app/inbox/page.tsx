@@ -17,6 +17,72 @@ import SiteNav from "@/components/site-nav";
 import { api } from "@/lib/api";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
+/* ─── Simple markdown → React renderer ─── */
+function inlineHtml(text: string): string {
+    return text
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.+?)\*/g, "<em>$1</em>")
+        .replace(/_(.+?)_/g, "<em>$1</em>")
+        .replace(/`(.+?)`/g, '<code class="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-[12px] font-mono">$1</code>');
+}
+
+function MarkdownBody({ text }: { text: string }) {
+    const elements: React.ReactNode[] = [];
+    const lines = text.split("\n");
+    let listBuf: string[] = [];
+    let key = 0;
+
+    function flushList() {
+        if (!listBuf.length) return;
+        elements.push(
+            <ul key={key++} className="my-2 space-y-1 ml-1">
+                {listBuf.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">
+                        <span className="mt-[7px] h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#63C0B9]" />
+                        <span dangerouslySetInnerHTML={{ __html: inlineHtml(item) }} />
+                    </li>
+                ))}
+            </ul>
+        );
+        listBuf = [];
+    }
+
+    for (const line of lines) {
+        if (line.startsWith("## ")) {
+            flushList();
+            elements.push(
+                <h3 key={key++} className="mt-4 mb-1.5 flex items-center gap-2 text-[14px] font-bold text-slate-800 dark:text-slate-100">
+                    <span className="h-0.5 w-3 rounded-full bg-[#63C0B9] flex-shrink-0 inline-block" />
+                    {line.slice(3)}
+                </h3>
+            );
+        } else if (line.startsWith("# ")) {
+            flushList();
+            elements.push(
+                <h2 key={key++} className="mt-3 mb-1.5 text-[15px] font-extrabold text-slate-800 dark:text-slate-100">
+                    {line.slice(2)}
+                </h2>
+            );
+        } else if (/^---+$/.test(line.trim())) {
+            flushList();
+            elements.push(<hr key={key++} className="my-3 border-slate-200 dark:border-slate-600" />);
+        } else if (line.startsWith("- ") || line.startsWith("* ")) {
+            listBuf.push(line.slice(2));
+        } else if (line.trim() === "") {
+            flushList();
+        } else {
+            flushList();
+            elements.push(
+                <p key={key++} className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed my-1"
+                   dangerouslySetInnerHTML={{ __html: inlineHtml(line) }} />
+            );
+        }
+    }
+    flushList();
+
+    return <div className="space-y-0.5">{elements}</div>;
+}
+
 type TabKey = "all" | "unread" | "digests";
 
 interface InboxMessage {
@@ -348,9 +414,7 @@ export default function InboxPage() {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <pre className="whitespace-pre-wrap font-sans text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed">
-                                                            {msg.body}
-                                                        </pre>
+                                                        <MarkdownBody text={msg.body} />
                                                     </div>
                                                 </div>
                                             </motion.div>
