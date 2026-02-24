@@ -280,7 +280,8 @@ export default function OnboardingModal({ user, open = true, onDismiss }: Onboar
     const [saving, setSaving] = useState(false);
 
     // Profile step state — init from user prop
-    const [profileName, setProfileName] = useState(user?.name ?? "");
+    // Init from displayName if set, fall back to name
+    const [profileName, setProfileName] = useState((user as any)?.displayName ?? user?.name ?? "");
     const [profileAvatar, setProfileAvatar] = useState(user?.avatarUrl ?? "");
     const [avatarUploading, setAvatarUploading] = useState(false);
 
@@ -330,7 +331,7 @@ export default function OnboardingModal({ user, open = true, onDismiss }: Onboar
         try {
             await api("/auth/me", {
                 method: "PATCH",
-                body: JSON.stringify({ name: profileName.trim(), avatarUrl: profileAvatar }),
+                body: JSON.stringify({ displayName: profileName.trim(), avatarUrl: profileAvatar }),
             });
         } catch {
             // non-blocking — don't block progression

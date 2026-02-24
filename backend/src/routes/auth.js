@@ -474,6 +474,11 @@ router.patch("/me", requireAuth, async (req, res) => {
         if (typeof req.body.name === "string" && req.body.name.trim()) {
             next.name = req.body.name.trim();
         }
+        // displayName is the freely-changeable friendly alias shown in the UI
+        // name stays as the login identifier and is not shown as changeable
+        if (typeof req.body.displayName === "string") {
+            next.displayName = req.body.displayName.trim() || null;
+        }
         if (typeof req.body.avatarUrl === "string") {
             next.avatarUrl = req.body.avatarUrl.trim() || null;
         }

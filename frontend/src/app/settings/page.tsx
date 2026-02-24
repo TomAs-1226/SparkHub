@@ -59,7 +59,7 @@ export default function SettingsPage() {
     const router = useRouter();
     const { user, loading, setUser, refresh } = useCurrentUser();
     const { theme, setTheme: setGlobalTheme } = useTheme();
-    const [name, setName] = useState("");
+    const [displayName, setDisplayName] = useState("");
     const [avatarUrl, setAvatarUrl] = useState("");
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
@@ -82,7 +82,8 @@ export default function SettingsPage() {
     }, [loading, user, router]);
 
     useEffect(() => {
-        setName(user?.name || "");
+        // displayName is the friendly alias; fall back to name if not set
+        setDisplayName((user as any)?.displayName || user?.name || "");
         setAvatarUrl(user?.avatarUrl || "");
     }, [user]);
 
@@ -108,7 +109,7 @@ export default function SettingsPage() {
         try {
             const res = await api("/auth/me", {
                 method: "PATCH",
-                body: JSON.stringify({ name, avatarUrl }),
+                body: JSON.stringify({ displayName, avatarUrl }),
             });
             const json = await safeJson(res);
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to update profile");
@@ -244,18 +245,33 @@ export default function SettingsPage() {
                             Display name
                             <input
                                 type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
+                                value={displayName}
+                                onChange={(e) => setDisplayName(e.target.value)}
+                                placeholder="How you appear to others"
                                 className="mt-1 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2 text-slate-800 dark:text-slate-100"
-                                required
                             />
+                            <span className="mt-1 block text-[11px] font-normal normal-case text-slate-400 dark:text-slate-500">
+                                Shown on your profile, courses, and comments.
+                            </span>
+                        </label>
+                        <label className="block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            Username
+                            <input
+                                type="text"
+                                value={user?.name || ""}
+                                readOnly
+                                className="mt-1 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-4 py-2 text-slate-500 dark:text-slate-400 cursor-not-allowed select-all"
+                            />
+                            <span className="mt-1 block text-[11px] font-normal normal-case text-slate-400 dark:text-slate-500">
+                                Your unique login identifier — not changeable here.
+                            </span>
                         </label>
                         <div className="rounded-3xl border border-dashed border-slate-200 dark:border-slate-600 bg-[#F9FBFF] dark:bg-slate-700/50 p-4">
                             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Avatar</p>
                             <div className="mt-3 flex items-center gap-4">
                                 <div
                                     className="h-16 w-16 rounded-full border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-600"
-                                    style={{ backgroundImage: `url(${avatarUrl || "https://api.dicebear.com/7.x/initials/png?seed=" + encodeURIComponent(name || "SparkHub")})`, backgroundSize: "cover" }}
+                                    style={{ backgroundImage: `url(${avatarUrl || "https://api.dicebear.com/7.x/initials/png?seed=" + encodeURIComponent(displayName || user?.name || "SparkHub")})`, backgroundSize: "cover" }}
                                 />
                                 <div className="flex flex-col gap-2 text-xs text-slate-500 dark:text-slate-400">
                                     <motion.button
@@ -263,14 +279,19 @@ export default function SettingsPage() {
                                         className="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-600 px-3 py-1 font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600"
                                         whileHover={{ scale: 1.02 }}
                                         whileTap={{ scale: 0.98 }}
-                                        onClick={async () => {
+                                        onClick={() => {
                                             const input = document.createElement("input");
                                             input.type = "file";
                                             input.accept = "image/*";
                                             input.onchange = async () => {
-                                                if (input.files && input.files[0]) {
-                                                    const url = await uploadAsset(input.files[0]);
+                                                const file = input.files?.[0];
+                                                if (!file) return;
+                                                try {
+                                                    const url = await uploadAsset(file);
                                                     setAvatarUrl(url);
+                                                    setStatus("Photo uploaded — click Save to apply.");
+                                                } catch (err) {
+                                                    setStatus(err instanceof Error ? err.message : "Upload failed.");
                                                 }
                                             };
                                             input.click();

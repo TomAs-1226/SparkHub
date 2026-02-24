@@ -13,6 +13,7 @@ model User {
   emailVerified    Boolean          @default(false)
   password         String
   name             String
+  displayName      String?
   role             String           @default("STUDENT")
   avatarUrl        String?
   createdAt        DateTime         @default(now())
