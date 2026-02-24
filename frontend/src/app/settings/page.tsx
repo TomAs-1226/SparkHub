@@ -12,6 +12,7 @@ import {
     Sun,
     Monitor,
     Bell,
+    BellOff,
     Palette,
     Sparkles,
     Info,
@@ -26,6 +27,15 @@ import {
     Megaphone,
     Server,
     SlidersHorizontal,
+    Settings2,
+    RefreshCw,
+    Trash2,
+    Terminal,
+    Play,
+    X,
+    AlertTriangle,
+    Activity,
+    Inbox,
 } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
@@ -54,11 +64,16 @@ export default function SettingsPage() {
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState<string | null>(null);
     const [prefLoading, setPrefLoading] = useState(false);
-    const [weeklyOptIn, setWeeklyOptIn] = useState(true);
-    const [productUpdates, setProductUpdates] = useState(true);
-    const [marketing, setMarketing] = useState(false);
+    const [weeklyDigest, setWeeklyDigest] = useState(true);
+    const [platformAlerts, setPlatformAlerts] = useState(true);
     const [tosExpanded, setTosExpanded] = useState(false);
     const [changelogExpanded, setChangelogExpanded] = useState(false);
+    // Hidden setup menu — unlocked by clicking version badge 5× within 3s
+    const [versionClicks, setVersionClicks] = useState(0);
+    const [lastClickTime, setLastClickTime] = useState(0);
+    const [devMenuOpen, setDevMenuOpen] = useState(false);
+    const [devStatus, setDevStatus] = useState<string | null>(null);
+    const [apiHealth, setApiHealth] = useState<string | null>(null);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -78,9 +93,8 @@ export default function SettingsPage() {
             .then((res) => res.json().catch(() => null))
             .then((json) => {
                 if (json?.preferences) {
-                    setWeeklyOptIn(Boolean(json.preferences.weeklyUpdates));
-                    setProductUpdates(Boolean(json.preferences.productUpdates));
-                    setMarketing(Boolean(json.preferences.marketing));
+                    setWeeklyDigest(Boolean(json.preferences.weeklyUpdates ?? true));
+                    setPlatformAlerts(Boolean(json.preferences.productUpdates ?? true));
                 }
             })
             .catch(() => {})
@@ -110,31 +124,75 @@ export default function SettingsPage() {
         }
     }
 
-    async function handleEmailPrefUpdate(key: string, value: boolean) {
+    async function handleNotifPrefUpdate(key: string, value: boolean) {
         setStatus(null);
-        const updates: Record<string, boolean> = {};
-        updates[key] = value;
-
-        // Optimistic update
-        if (key === "weeklyUpdates") setWeeklyOptIn(value);
-        if (key === "productUpdates") setProductUpdates(value);
-        if (key === "marketing") setMarketing(value);
+        const backendKey = key === "weeklyDigest" ? "weeklyUpdates" : "productUpdates";
+        if (key === "weeklyDigest") setWeeklyDigest(value);
+        if (key === "platformAlerts") setPlatformAlerts(value);
 
         try {
             const res = await api("/emails/preferences", {
                 method: "PATCH",
-                body: JSON.stringify(updates),
+                body: JSON.stringify({ [backendKey]: value }),
             });
             const json = await safeJson(res);
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to update preferences.");
-            setStatus("Email preferences updated.");
+            setStatus("Notification preferences saved.");
         } catch (err) {
             // Revert on error
-            if (key === "weeklyUpdates") setWeeklyOptIn(!value);
-            if (key === "productUpdates") setProductUpdates(!value);
-            if (key === "marketing") setMarketing(!value);
+            if (key === "weeklyDigest") setWeeklyDigest(!value);
+            if (key === "platformAlerts") setPlatformAlerts(!value);
             setStatus(err instanceof Error ? err.message : "Unable to update preferences.");
         }
+    }
+
+    function handleVersionClick() {
+        const now = Date.now();
+        const newCount = now - lastClickTime < 3000 ? versionClicks + 1 : 1;
+        setLastClickTime(now);
+        setVersionClicks(newCount);
+        if (newCount >= 5) {
+            setVersionClicks(0);
+            setDevMenuOpen(true);
+        }
+    }
+
+    async function checkApiHealth() {
+        setApiHealth("Checking…");
+        try {
+            const res = await fetch("/api/healthz");
+            const data = await res.json().catch(() => ({}));
+            setApiHealth(data.status === "healthy" ? "✓ Backend healthy" : `⚠ ${data.status || "Unknown"}`);
+        } catch {
+            setApiHealth("✗ Cannot reach backend");
+        }
+    }
+
+    async function triggerTestDigest() {
+        setDevStatus("Sending digest…");
+        try {
+            const res = await api("/inbox/digest", { method: "POST" });
+            const data = await safeJson(res);
+            setDevStatus(data?.ok ? `✓ Digest sent to ${data.sent} users` : `✗ ${data?.msg || "Failed"}`);
+        } catch {
+            setDevStatus("✗ Failed to trigger digest");
+        }
+    }
+
+    function replayOnboarding() {
+        setDevMenuOpen(false);
+        try { localStorage.removeItem("sparkhub:onboarded"); } catch { /* noop */ }
+        router.push("/dashboard?welcome=1");
+    }
+
+    function clearAllPrefs() {
+        try {
+            ["sparkhub:onboarded", "sparkhub:interests", "sparkhub:goal",
+             "sparkhub:pref:weeklyDigest", "sparkhub:pref:notifications"].forEach((k) => {
+                try { localStorage.removeItem(k); } catch { /* noop */ }
+            });
+        } catch { /* noop */ }
+        setDevStatus("✓ All app preferences cleared");
     }
 
     function handleThemeChange(newTheme: Theme) {
@@ -279,7 +337,7 @@ export default function SettingsPage() {
                         </div>
                     </motion.div>
 
-                    {/* Email Updates */}
+                    {/* Notification Preferences */}
                     <motion.div
                         className="mt-6 rounded-3xl border border-slate-100 dark:border-slate-700 bg-[#F9FBFF] dark:bg-slate-800/50 p-5"
                         initial={SURFACES.lift.initial}
@@ -288,53 +346,59 @@ export default function SettingsPage() {
                     >
                         <div className="flex items-center gap-3">
                             <div className="rounded-full bg-[#E7F6F3] dark:bg-slate-700 p-3 text-[#2D8F80]">
-                                <Bell className="h-5 w-5" />
+                                <Inbox className="h-5 w-5" />
                             </div>
                             <div>
-                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">Email notifications</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Control which emails you receive from SparkHub.</p>
+                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">Notification preferences</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Control what SparkHub delivers to your inbox.</p>
                             </div>
                         </div>
                         <div className="mt-4 space-y-3">
-                            <label className="flex items-start gap-3 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">
-                                <input
-                                    type="checkbox"
-                                    className="mt-1 h-4 w-4 rounded border-slate-300 dark:border-slate-500 text-[#63C0B9] focus:ring-[#63C0B9]"
-                                    checked={weeklyOptIn}
-                                    disabled={prefLoading}
-                                    onChange={(e) => handleEmailPrefUpdate("weeklyUpdates", e.target.checked)}
-                                />
-                                <div>
-                                    <span className="font-medium">Weekly digest</span>
-                                    <span className="block text-xs text-slate-500 dark:text-slate-400">Receive a weekly summary of new courses, events, and opportunities.</span>
+                            {/* Weekly digest toggle */}
+                            <div className="flex items-start gap-3 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        {weeklyDigest
+                                            ? <Bell className="h-4 w-4 text-[#63C0B9]" />
+                                            : <BellOff className="h-4 w-4 text-slate-400" />}
+                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Weekly digest</span>
+                                    </div>
+                                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 ml-6">
+                                        AI-generated summary of new courses, events, and opportunities — delivered to your inbox every Monday.
+                                    </p>
                                 </div>
-                            </label>
-                            <label className="flex items-start gap-3 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">
-                                <input
-                                    type="checkbox"
-                                    className="mt-1 h-4 w-4 rounded border-slate-300 dark:border-slate-500 text-[#63C0B9] focus:ring-[#63C0B9]"
-                                    checked={productUpdates}
+                                <button
                                     disabled={prefLoading}
-                                    onChange={(e) => handleEmailPrefUpdate("productUpdates", e.target.checked)}
-                                />
-                                <div>
-                                    <span className="font-medium">Product updates</span>
-                                    <span className="block text-xs text-slate-500 dark:text-slate-400">Be notified about new features and improvements to SparkHub.</span>
+                                    onClick={() => handleNotifPrefUpdate("weeklyDigest", !weeklyDigest)}
+                                    className={`relative mt-0.5 h-6 w-11 flex-shrink-0 rounded-full transition-colors disabled:opacity-50 ${weeklyDigest ? "bg-[#63C0B9]" : "bg-slate-200 dark:bg-slate-600"}`}
+                                >
+                                    <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${weeklyDigest ? "translate-x-5" : "translate-x-0"}`} />
+                                </button>
+                            </div>
+                            {/* Platform alerts toggle */}
+                            <div className="flex items-start gap-3 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        {platformAlerts
+                                            ? <Bell className="h-4 w-4 text-[#63C0B9]" />
+                                            : <BellOff className="h-4 w-4 text-slate-400" />}
+                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Platform updates</span>
+                                    </div>
+                                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400 ml-6">
+                                        Important announcements and new feature notifications from the SparkHub team.
+                                    </p>
                                 </div>
-                            </label>
-                            <label className="flex items-start gap-3 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">
-                                <input
-                                    type="checkbox"
-                                    className="mt-1 h-4 w-4 rounded border-slate-300 dark:border-slate-500 text-[#63C0B9] focus:ring-[#63C0B9]"
-                                    checked={marketing}
+                                <button
                                     disabled={prefLoading}
-                                    onChange={(e) => handleEmailPrefUpdate("marketing", e.target.checked)}
-                                />
-                                <div>
-                                    <span className="font-medium">Promotional emails</span>
-                                    <span className="block text-xs text-slate-500 dark:text-slate-400">Receive special offers, tips, and partner content.</span>
-                                </div>
-                            </label>
+                                    onClick={() => handleNotifPrefUpdate("platformAlerts", !platformAlerts)}
+                                    className={`relative mt-0.5 h-6 w-11 flex-shrink-0 rounded-full transition-colors disabled:opacity-50 ${platformAlerts ? "bg-[#63C0B9]" : "bg-slate-200 dark:bg-slate-600"}`}
+                                >
+                                    <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${platformAlerts ? "translate-x-5" : "translate-x-0"}`} />
+                                </button>
+                            </div>
+                            <p className="text-[11px] text-slate-400 dark:text-slate-500 px-1">
+                                All notifications are delivered to your <Link href="/inbox" className="font-semibold text-[#63C0B9] hover:underline">in-app inbox</Link> — no email required.
+                            </p>
                         </div>
                     </motion.div>
 
@@ -443,10 +507,21 @@ export default function SettingsPage() {
                                     <p className="text-xs text-slate-500 dark:text-slate-400">Build</p>
                                     <p className="font-medium text-slate-700 dark:text-slate-200">2026.02.23</p>
                                 </div>
-                                <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2">
+                                {/* Version badge — click 5× to open setup menu */}
+                                <button
+                                    onClick={handleVersionClick}
+                                    className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-left hover:border-[#63C0B9]/40 transition-colors group"
+                                >
                                     <p className="text-xs text-slate-500 dark:text-slate-400">Version</p>
-                                    <p className="font-medium text-slate-700 dark:text-slate-200">2.2.0 Production</p>
-                                </div>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200 group-hover:text-[#2D8F80] transition-colors">
+                                        2.2.0 Production
+                                        {versionClicks > 1 && (
+                                            <span className="ml-1.5 text-[10px] text-[#63C0B9]">
+                                                {5 - versionClicks}…
+                                            </span>
+                                        )}
+                                    </p>
+                                </button>
                                 <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2">
                                     <p className="text-xs text-slate-500 dark:text-slate-400">Capacity</p>
                                     <p className="font-medium text-slate-700 dark:text-slate-200">1,000+ users</p>
@@ -454,6 +529,125 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     </motion.div>
+
+                    {/* Hidden Setup Menu — rendered inline below About, animated slide-down */}
+                    {devMenuOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -16, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -12, scale: 0.97 }}
+                            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                            className="mt-4 rounded-3xl border-2 border-[#63C0B9]/40 bg-gradient-to-br from-[#E9F7F5] to-white dark:from-teal-900/20 dark:to-slate-800 p-5 shadow-xl"
+                        >
+                            {/* Header */}
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#63C0B9] text-white shadow-sm">
+                                        <Settings2 className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Setup &amp; Developer Menu</p>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">SparkHub v2.2.0 · Hidden access</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => { setDevMenuOpen(false); setDevStatus(null); setApiHealth(null); }}
+                                    className="rounded-full p-1.5 text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 transition-colors"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            {/* Status feedback */}
+                            {(devStatus || apiHealth) && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="mb-3 rounded-xl bg-white/80 dark:bg-slate-700/60 border border-[#63C0B9]/30 px-3 py-2 text-[12px] font-medium text-slate-700 dark:text-slate-200"
+                                >
+                                    {devStatus || apiHealth}
+                                </motion.div>
+                            )}
+
+                            {/* Action grid */}
+                            <div className="grid grid-cols-2 gap-2.5">
+                                {/* Replay Onboarding */}
+                                <button
+                                    onClick={replayOnboarding}
+                                    className="flex items-center gap-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-left hover:border-[#63C0B9]/50 hover:bg-[#E9F7F5] dark:hover:bg-teal-900/20 transition-all group"
+                                >
+                                    <Play className="h-4 w-4 text-[#63C0B9] group-hover:scale-110 transition-transform flex-shrink-0" />
+                                    <div>
+                                        <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">Replay Onboarding</p>
+                                        <p className="text-[11px] text-slate-400">Re-run the setup wizard</p>
+                                    </div>
+                                </button>
+
+                                {/* Check API Health */}
+                                <button
+                                    onClick={checkApiHealth}
+                                    className="flex items-center gap-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-left hover:border-[#63C0B9]/50 hover:bg-[#E9F7F5] dark:hover:bg-teal-900/20 transition-all group"
+                                >
+                                    <Activity className="h-4 w-4 text-[#63C0B9] group-hover:scale-110 transition-transform flex-shrink-0" />
+                                    <div>
+                                        <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">System Status</p>
+                                        <p className="text-[11px] text-slate-400">Check backend health</p>
+                                    </div>
+                                </button>
+
+                                {/* Trigger Test Digest (admin) */}
+                                {user?.role === "ADMIN" && (
+                                    <button
+                                        onClick={triggerTestDigest}
+                                        className="flex items-center gap-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-left hover:border-[#63C0B9]/50 hover:bg-[#E9F7F5] dark:hover:bg-teal-900/20 transition-all group"
+                                    >
+                                        <RefreshCw className="h-4 w-4 text-[#63C0B9] group-hover:scale-110 transition-transform flex-shrink-0" />
+                                        <div>
+                                            <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">Send Test Digest</p>
+                                            <p className="text-[11px] text-slate-400">Trigger weekly digest now</p>
+                                        </div>
+                                    </button>
+                                )}
+
+                                {/* Clear preferences */}
+                                <button
+                                    onClick={clearAllPrefs}
+                                    className="flex items-center gap-2.5 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-left hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all group"
+                                >
+                                    <Trash2 className="h-4 w-4 text-red-400 group-hover:scale-110 transition-transform flex-shrink-0" />
+                                    <div>
+                                        <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">Clear Preferences</p>
+                                        <p className="text-[11px] text-slate-400">Reset all local settings</p>
+                                    </div>
+                                </button>
+                            </div>
+
+                            {/* Debug info */}
+                            <div className="mt-3 rounded-2xl border border-slate-200 dark:border-slate-600 bg-white/60 dark:bg-slate-700/40 px-4 py-3">
+                                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2 flex items-center gap-1.5">
+                                    <Terminal className="h-3 w-3" /> Session info
+                                </p>
+                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] font-mono text-slate-600 dark:text-slate-300">
+                                    <span className="text-slate-400">user.id</span>
+                                    <span className="truncate">{user?.id?.slice(0, 14)}…</span>
+                                    <span className="text-slate-400">user.role</span>
+                                    <span>{user?.role}</span>
+                                    <span className="text-slate-400">onboarded</span>
+                                    <span>{typeof window !== "undefined" ? (localStorage.getItem("sparkhub:onboarded") ? "yes" : "no") : "—"}</span>
+                                    <span className="text-slate-400">interests</span>
+                                    <span className="truncate">
+                                        {typeof window !== "undefined"
+                                            ? (() => { try { const i = JSON.parse(localStorage.getItem("sparkhub:interests") || "[]"); return i.length ? `${i.length} topics` : "none"; } catch { return "none"; } })()
+                                            : "—"}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p className="mt-3 text-center text-[11px] text-slate-400 dark:text-slate-500">
+                                Hidden menu — accessible via 5× rapid tap on version badge
+                            </p>
+                        </motion.div>
+                    )}
 
                     {/* Update Logs / Changelog */}
                     <motion.div
