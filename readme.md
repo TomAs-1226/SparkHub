@@ -1,463 +1,462 @@
-# SparkHub 部署指南
+<div align="center">
 
-欢迎使用 SparkHub！这是一个完整的在线教育平台，包含课程管理、导师配对、活动组织、机会发布等功能。
+<img src="https://img.shields.io/badge/SparkHub-v2.2.0-63C0B9?style=for-the-badge&logo=zap&logoColor=white" alt="Version" />
+<img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
+<img src="https://img.shields.io/badge/Express.js-5-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
+<img src="https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" />
+<img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+
+<br />
+
+<img src="https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind" />
+<img src="https://img.shields.io/badge/Framer_Motion-animations-FF0080?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion" />
+<img src="https://img.shields.io/badge/SQLite-WAL_mode-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" />
+<img src="https://img.shields.io/badge/OpenAI-gpt--4o--mini-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI" />
+<img src="https://img.shields.io/badge/JWT-Auth-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="JWT" />
+
+<br /><br />
+
+<img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License" />
+<img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome" />
+<img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey?style=flat-square" alt="Platform" />
+<img src="https://img.shields.io/badge/Node.js-%3E%3D18-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node" />
+<img src="https://img.shields.io/badge/status-production%20ready-63C0B9?style=flat-square" alt="Status" />
+
+<br /><br />
+
+# ⚡ SparkHub
+
+### *The all-in-one learning community platform*
+
+**SparkHub** brings together students, tutors, creators, and educators in a beautifully designed, feature-rich learning environment. From AI-generated weekly digests to tutor matching, course creation to live video sessions — everything your learning community needs in one place.
+
+[**Get Started →**](#-quick-start) · [**Features**](#-features) · [**Deploy**](#-one-command-deployment) · [**API Docs**](#-api-reference)
+
+</div>
 
 ---
 
-## 目录
+## 🌟 What is SparkHub?
 
-1. [系统要求](#系统要求)
-2. [快速开始](#快速开始)
-3. [项目结构](#项目结构)
-4. [后端配置](#后端配置)
-5. [前端配置](#前端配置)
-6. [环境变量详解](#环境变量详解)
-7. [数据库设置](#数据库设置)
-8. [启动应用](#启动应用)
-9. [生产部署](#生产部署)
-10. [常见问题](#常见问题)
+SparkHub started as a simple course platform and grew into something much more ambitious — a **full learning community OS**. The idea was straightforward: learning doesn't happen in isolation. You need courses, yes, but also the ability to find a tutor on a Tuesday evening, join a live workshop, discover opportunities, ask questions in discussions, and get a friendly nudge every week about what's happening in your community.
+
+That's exactly what SparkHub does. It's opinionated in its design (glass-morphism UI, teal-and-white colour palette, smooth Framer Motion animations throughout), but completely open and self-hostable.
 
 ---
 
-## 系统要求
+## ✨ Features
 
-在开始之前，请确保您的系统已安装以下软件：
+<table>
+<tr>
+<td width="50%">
 
-| 软件 | 最低版本 | 说明 |
-|------|----------|------|
-| Node.js | 18.18+ | JavaScript 运行环境 |
-| npm | 9.0+ | 包管理器（随 Node.js 安装） |
-| Git | 2.0+ | 版本控制工具 |
+### 📚 Learning Management
+- **Course creation studio** with tab-based UI (Overview · Courses · Workspace · Settings)
+- **Lesson decks** with PDF/PPTX slide viewer and video support
+- **Course materials** with visibility controls (Public / Enrolled / Staff)
+- **Progress tracking** — per-lesson completion checklist
+- **Assignments** with deadline and description
+- **Enrollment management** with approve/reject queue
+- **Join codes** for direct course access
+- **Course ratings & reviews** (1–5 stars)
+- **Threaded discussions** per course
 
-### 验证安装
+</td>
+<td width="50%">
+
+### 🎓 Tutoring & Matching
+- **Tutor profiles** with bio, subjects, rate info
+- **One-click publish/unpublish** — appear in the public listing
+- **Smart matching engine** — word-level subject tokenisation (Java ≠ JavaScript)
+- **Availability calendar** — mark available dates as TUTOR or STUDENT
+- **Match score** with `matchPercent` field and bio keyword boost
+- **Session booking** with Jitsi meeting URL auto-generation
+- **Request / Accept / Decline / Reschedule** workflow
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📬 Inbox & Messaging
+- **In-app inbox** replaces email — no spam folder
+- **Unread badge** in the navbar, polling every 60 seconds
+- **Three tabs** — All · Unread · Digests
+- **AI-generated weekly digest** via OpenAI `gpt-4o-mini` (with template fallback)
+- **Scheduled delivery** every Monday at 09:00 via `node-cron`
+- **Admin broadcast** — send to one user or the entire platform
+- **Mark all read**, per-message delete
+
+</td>
+<td width="50%">
+
+### 🛡️ Auth & Security
+- **Instant registration** — no email verification step
+- **Browser-token verification** — same-session proof, 5-minute TTL
+- **JWT sessions** with device tracking via `UserSession` table
+- **Two-tier AI content moderation** — keyword filter + optional Claude AI
+- **Helmet, CORS, HPP, rate limiting** (3000 req/IP/15min global)
+- **Request timeout middleware** (30s default)
+- **Graceful shutdown** with SIGTERM/SIGINT handling
+- **Optional cluster mode** for multi-core scale-out
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🎉 Community Features
+- **Events** — with cover images, attachments, location, RSVP capacity
+- **Job & opportunity board** — with skills tags, photos, contact info
+- **Learning resources** — links, docs, PDFs with Google Docs viewer
+- **Announcements** — instructor-to-student broadcasts per course
+- **Bookmarks** — save courses for later
+- **Student notes** — per-lesson server-side notes
+- **Course discussions** — threaded Q&A with replies
+
+</td>
+<td width="50%">
+
+### 🎨 Design & UX
+- **Glass-morphism UI** — `bg-white/95`, `backdrop-blur`, `rounded-[32px]`
+- **Teal accent system** (`#63C0B9` / `#2D8F80`) with user-selectable themes
+- **Full dark mode** — persistent via `localStorage`
+- **4-step OOBE onboarding modal** — role-aware, spring animations
+- **Framer Motion** throughout — `AnimatePresence`, spring physics
+- **Notification bell** with animated badge
+- **Dashboard inbox preview** + stats bubbles
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🚀 Quick Start
+
+### Option 1 — One-Command Deploy (Recommended)
+
+The fastest way to get SparkHub running:
 
 ```bash
-# 检查 Node.js 版本
-node --version
+# Clone the repo
+git clone https://github.com/TomAs-1226/SparkHub.git
+cd SparkHub
 
-# 检查 npm 版本
-npm --version
+# macOS / Linux
+bash deploy.sh --dev
 
-# 检查 Git 版本
-git --version
+# Windows (PowerShell)
+.\deploy.ps1 -Dev
 ```
+
+That's it. The script will:
+1. Check Node.js ≥ 18
+2. Copy `.env.example` files if `.env` doesn't exist
+3. Install all dependencies in parallel
+4. Run `prisma db push` to set up the database
+5. Install PM2 globally if missing
+6. Start both servers under PM2
+
+**Frontend:** http://localhost:3000 · **Backend API:** http://localhost:4000
 
 ---
 
-## 快速开始
+### Option 2 — Manual Setup
 
-### 1. 克隆仓库
+If you prefer to set things up yourself:
+
+#### 1. Clone & install
 
 ```bash
 git clone https://github.com/TomAs-1226/SparkHub.git
 cd SparkHub
-```
 
-### 2. 安装依赖
-
-```bash
-# 安装后端依赖
-cd backend
-npm install
-
-# 安装前端依赖
-cd ../frontend
-npm install
-```
-
-### 3. 配置环境变量
-
-```bash
-# 返回后端目录，创建环境配置文件
-cd ../backend
-
-# 创建 .env 文件（详见下方配置说明）
-cp .env.example .env  # 如果有示例文件
-# 或手动创建
-touch .env
-```
-
-### 4. 初始化数据库
-
-```bash
-# 在 backend 目录下运行
-npx prisma generate
-npx prisma db push
-```
-
-### 5. 启动应用
-
-打开**两个终端窗口**：
-
-**终端 1 - 启动后端：**
-```bash
-cd backend
-npm run dev
-```
-
-**终端 2 - 启动前端：**
-```bash
-cd frontend
-npm run dev
-```
-
-### 6. 访问应用
-
-- 前端界面：http://localhost:3000
-- 后端 API：http://localhost:4000
-- API 健康检查：http://localhost:4000/healthz
-
----
-
-## 项目结构
-
-```
-SparkHub/
-├── backend/                 # 后端服务 (Express.js)
-│   ├── prisma/             # 数据库配置
-│   │   ├── schema.prisma   # 数据库模型定义
-│   │   ├── migrations/     # 数据库迁移文件
-│   │   └── dev.db          # SQLite 数据库文件
-│   ├── src/
-│   │   ├── routes/         # API 路由
-│   │   ├── middleware/     # 中间件（认证等）
-│   │   ├── utils/          # 工具函数
-│   │   └── server.js       # 主入口文件
-│   ├── uploads/            # 上传文件存储目录
-│   ├── .env                # 环境变量配置 ⚠️ 需要创建
-│   └── package.json
-│
-├── frontend/               # 前端应用 (Next.js 15)
-│   ├── src/
-│   │   ├── app/           # 页面路由
-│   │   ├── components/    # React 组件
-│   │   ├── lib/           # 工具库
-│   │   └── contexts/      # React 上下文
-│   ├── next.config.ts     # Next.js 配置
-│   └── package.json
-│
-└── README.zh-CN.md        # 本文档
-```
-
----
-
-## 后端配置
-
-### 创建 `.env` 文件
-
-在 `backend/` 目录下创建 `.env` 文件：
-
-```bash
-cd backend
-nano .env  # 或使用您喜欢的编辑器
-```
-
-### 必需的环境变量
-
-```ini
-# ==========================================
-# 数据库配置（必需）
-# ==========================================
-DATABASE_URL="file:./dev.db"
-
-# ==========================================
-# JWT 密钥（必需 - 生产环境必须修改）
-# ==========================================
-# 用于用户认证的密钥，请使用随机生成的长字符串
-JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
-
-# ==========================================
-# 服务器配置
-# ==========================================
-PORT=4000
-NODE_ENV=development
-
-# 前端地址（用于 CORS 配置）
-FRONTEND_URL=http://localhost:3000
-# 多个前端地址用逗号分隔
-# FRONTEND_ORIGINS=http://localhost:3000,https://yourdomain.com
-```
-
-### 可选的环境变量
-
-```ini
-# ==========================================
-# 邮件服务配置（可选 - 启用邮件通知）
-# ==========================================
-# SMTP 服务器设置
-SMTP_HOST=smtp.yourprovider.com
-SMTP_PORT=587
-SMTP_SECURE=false                    # 端口 465 设为 true
-SMTP_USER=your_smtp_username
-SMTP_PASS=your_smtp_password
-MAIL_FROM="SparkHub <noreply@sparkhub.dev>"
-
-# 邮件中的 Logo 图片（可选）
-# EMAIL_LOGO_URL=https://yourcdn.com/logo.png
-
-# ==========================================
-# 管理员配置（可选）
-# ==========================================
-# 管理员注册密钥（用于创建管理员账户）
-ADMIN_REG_SECRET=choose-a-long-random-string
-
-# ==========================================
-# 性能与安全配置（可选）
-# ==========================================
-# 请求超时时间（毫秒）
-REQUEST_TIMEOUT_MS=30000
-
-# 速率限制（每时间窗口最大请求数）
-RATE_LIMIT_MAX_REQUESTS=1800
-
-# 上传文件目录
-UPLOAD_DIR=./uploads
-
-# ==========================================
-# 高级配置（可选）
-# ==========================================
-# 启用集群模式（多核 CPU 利用）
-# ENABLE_CLUSTER=true
-# WEB_CONCURRENCY=4
-
-# 启用负载限制（防止服务器过载）
-# ENABLE_LOAD_SHED=true
-# TOOBUSY_MAX_LAG_MS=120
-
-# 视频会议服务地址
-MEET_BASE=https://meet.jit.si
-```
-
----
-
-## 前端配置
-
-前端通过 Next.js 的 rewrites 功能代理 API 请求，**默认情况下无需额外配置**。
-
-### 可选的前端环境变量
-
-如果后端不在默认地址运行，可在 `frontend/` 目录创建 `.env.local` 文件：
-
-```ini
-# 后端 API 地址（仅在后端不是 localhost:4000 时需要）
-NEXT_PUBLIC_API_BASE_URL=http://localhost:4000
-
-# 网站 URL（用于生成分享链接等）
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-```
-
----
-
-## 环境变量详解
-
-### 核心变量说明
-
-| 变量名 | 必需 | 默认值 | 说明 |
-|--------|------|--------|------|
-| `DATABASE_URL` | ✅ | `file:./dev.db` | 数据库连接字符串 |
-| `JWT_SECRET` | ✅ | 开发用默认值 | JWT 签名密钥，**生产环境必须修改** |
-| `PORT` | ❌ | `4000` | 后端服务端口 |
-| `FRONTEND_URL` | ❌ | - | 前端地址，用于 CORS 和邮件链接 |
-
-### 邮件服务说明
-
-SparkHub 支持以下邮件功能：
-- 用户注册验证邮件
-- 密码重置邮件
-- 每周学习摘要
-
-**推荐的 SMTP 服务提供商：**
-
-| 提供商 | 适用场景 | 配置示例 |
-|--------|----------|----------|
-| [Mailtrap](https://mailtrap.io) | 开发测试 | 提供测试收件箱 |
-| [SendGrid](https://sendgrid.com) | 生产环境 | 免费额度较大 |
-| [阿里云邮件推送](https://www.aliyun.com/product/directmail) | 国内用户 | 需实名认证 |
-| [腾讯企业邮箱](https://exmail.qq.com) | 国内用户 | 需企业认证 |
-
-**Gmail SMTP 配置示例：**
-```ini
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password  # 需要使用应用专用密码
-```
-
-> ⚠️ **注意**：Gmail 需要开启"低安全性应用访问"或使用应用专用密码
-
----
-
-## 数据库设置
-
-SparkHub 使用 **Prisma ORM** 和 **SQLite** 数据库（开发环境）。
-
-### 初始化数据库
-
-```bash
-cd backend
-
-# 生成 Prisma 客户端
-npx prisma generate
-
-# 推送数据库结构（创建表）
-npx prisma db push
-```
-
-### 查看数据库
-
-```bash
-# 打开 Prisma Studio（可视化数据库管理）
-npx prisma studio
-```
-
-浏览器访问 http://localhost:5555 查看和编辑数据。
-
-### 重置数据库
-
-```bash
-# 删除所有数据并重新创建表
-npx prisma db push --force-reset
-```
-
-### 生产环境数据库
-
-对于生产环境，建议使用 PostgreSQL 或 MySQL：
-
-1. 修改 `prisma/schema.prisma`：
-```prisma
-datasource db {
-  provider = "postgresql"  // 或 "mysql"
-  url      = env("DATABASE_URL")
-}
-```
-
-2. 更新 `.env`：
-```ini
-# PostgreSQL 示例
-DATABASE_URL="postgresql://user:password@localhost:5432/sparkhub?schema=public"
-
-# MySQL 示例
-DATABASE_URL="mysql://user:password@localhost:3306/sparkhub"
-```
-
-3. 重新生成并迁移：
-```bash
-npx prisma generate
-npx prisma db push
-```
-
----
-
-## 启动应用
-
-### 开发模式
-
-**方式 1：分别启动（推荐用于开发调试）**
-
-```bash
-# 终端 1 - 后端
-cd backend
-npm run dev
-
-# 终端 2 - 前端
-cd frontend
-npm run dev
-```
-
-**方式 2：使用脚本同时启动**
-
-在项目根目录创建 `start-dev.sh`：
-
-```bash
-#!/bin/bash
-# 同时启动前后端
-cd backend && npm run dev &
-cd frontend && npm run dev &
+# Install dependencies (parallel)
+npm install --prefix backend &
+npm install --prefix frontend &
 wait
 ```
 
-运行：
+#### 2. Configure environment
+
 ```bash
-chmod +x start-dev.sh
-./start-dev.sh
+# Backend
+cp backend/.env.example backend/.env
+# Edit backend/.env — at minimum set JWT_SECRET
+
+# Frontend (optional, defaults work out of the box)
+cp frontend/.env.local.example frontend/.env.local
 ```
 
-### 生产模式
+#### 3. Set up the database
 
 ```bash
-# 后端
 cd backend
-npm start
+npx prisma db push
+```
 
-# 前端（需先构建）
-cd frontend
-npm run build
-npm start
+#### 4. Start development servers
+
+```bash
+# Terminal 1 — Backend (port 4000)
+cd backend && npm run dev
+
+# Terminal 2 — Frontend (port 3000)
+cd frontend && npm run dev
 ```
 
 ---
 
-## 生产部署
+## ⚙️ Environment Variables
 
-### 使用 PM2 管理进程
+### Backend (`backend/.env`)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | ✅ | `file:./prisma/dev.db` | SQLite database path |
+| `JWT_SECRET` | ✅ | — | **Change this in production.** Used to sign auth tokens |
+| `ADMIN_SECRET` | ✅ | `sparkhub-admin-2026` | Secret key for registering admin accounts |
+| `PORT` | ❌ | `4000` | Backend server port |
+| `FRONTEND_URL` | ❌ | `http://localhost:3000` | Used for CORS |
+| `FRONTEND_ORIGINS` | ❌ | — | Comma-separated list for multi-origin CORS |
+| `OPENAI_API_KEY` | ❌ | — | Enables AI-generated weekly digest |
+| `ANTHROPIC_API_KEY` | ❌ | — | Enables Claude AI content moderation (Tier 2) |
+| `UPLOAD_DIR` | ❌ | `./uploads` | Where uploaded files are stored |
+| `ENABLE_LOAD_SHED` | ❌ | `false` | Enable toobusy-js load shedding |
+| `MEET_BASE` | ❌ | `https://meet.jit.si` | Video meeting base URL |
+
+### Frontend (`frontend/.env.local`)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `NEXT_PUBLIC_API_BASE_URL` | ❌ | `http://localhost:4000` | Direct backend URL for file uploads |
+
+---
+
+## 📁 Project Structure
+
+```
+SparkHub/
+├── 📂 backend/
+│   ├── prisma/
+│   │   ├── schema.prisma          # 30+ models — User, Course, Lesson, InboxMessage...
+│   │   └── dev.db                 # SQLite database (auto-created)
+│   ├── src/
+│   │   ├── routes/
+│   │   │   ├── auth.js            # Register, login, verify-browser, me
+│   │   │   ├── courses.js         # Courses, lessons, materials, sessions
+│   │   │   ├── tutors.js          # Profiles, publish, booking, sessions
+│   │   │   ├── matching.js        # Availability + smart match engine
+│   │   │   ├── inbox.js           # In-app messaging + digest trigger
+│   │   │   ├── events.js          # Events CRUD
+│   │   │   ├── jobs.js            # Job/opportunity board
+│   │   │   ├── resources.js       # Learning resources
+│   │   │   ├── ai.js              # AI chat assistant
+│   │   │   ├── admin.js           # Admin controls
+│   │   │   ├── discussions.js     # Threaded course discussions
+│   │   │   ├── ratings.js         # Course ratings & reviews
+│   │   │   ├── progress.js        # Lesson completion tracking
+│   │   │   ├── announcements.js   # Course announcements
+│   │   │   ├── notes.js           # Student notes
+│   │   │   └── bookmarks.js       # Course bookmarks
+│   │   ├── middleware/
+│   │   │   └── auth.js            # requireAuth, requireRole, maybeAuth
+│   │   ├── scheduler/
+│   │   │   └── weekly-digest.js   # AI digest generator + inbox delivery
+│   │   ├── utils/
+│   │   │   ├── moderation.js      # Two-tier content moderation
+│   │   │   └── prisma-sync.js     # Schema sync utility
+│   │   ├── security.js            # Helmet, CORS, rate limits, HPP
+│   │   ├── prisma.js              # Prisma client singleton + health check
+│   │   └── server.js              # Express app, cluster, cron, routes
+│   ├── .env.example
+│   └── package.json
+│
+├── 📂 frontend/
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── page.tsx           # Landing page
+│   │   │   ├── dashboard/         # Main dashboard with inbox preview
+│   │   │   ├── courses/           # Course catalog + studio + viewer
+│   │   │   ├── tutors/            # Tutor listing + dashboard + booking
+│   │   │   ├── inbox/             # In-app inbox (All/Unread/Digests)
+│   │   │   ├── events/            # Events listing
+│   │   │   ├── resources/         # Resources with viewer
+│   │   │   ├── opportunities/     # Job board
+│   │   │   ├── register/          # Browser-verified registration
+│   │   │   ├── login/             # Login page
+│   │   │   ├── settings/          # Account settings + changelog
+│   │   │   ├── privacy/           # Privacy policy
+│   │   │   └── terms/             # Terms of service
+│   │   ├── components/
+│   │   │   ├── site-nav.tsx       # Navbar with notification bell
+│   │   │   ├── onboarding-modal.tsx # 4-step OOBE flow
+│   │   │   ├── slide-viewer.tsx   # PDF/PPTX/video viewer
+│   │   │   ├── course-*.tsx       # Course sub-components
+│   │   │   └── ...
+│   │   ├── lib/
+│   │   │   ├── api.ts             # Authenticated fetch wrapper
+│   │   │   ├── auth.ts            # Token storage helpers
+│   │   │   └── upload.ts          # Direct-to-backend file upload
+│   │   └── hooks/
+│   │       └── use-current-user.ts
+│   ├── .env.local.example
+│   └── next.config.ts
+│
+├── deploy.sh                      # macOS/Linux one-command deploy
+├── deploy.ps1                     # Windows PowerShell deploy
+└── README.md
+```
+
+---
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    Browser (Next.js 15)              │
+│  ┌──────────┐  ┌──────────┐  ┌────────────────────┐ │
+│  │ Pages    │  │Components│  │  lib/api.ts         │ │
+│  │ (App     │  │ (React)  │  │  Bearer token       │ │
+│  │  Router) │  │          │  │  auto-injected      │ │
+│  └────┬─────┘  └────┬─────┘  └──────────┬─────────┘ │
+└───────┼─────────────┼───────────────────┼────────────┘
+        │             │     REST API       │
+        └─────────────┴───────────────────┘
+                             │
+             ┌───────────────▼────────────────┐
+             │       Express.js (port 4000)    │
+             │  Helmet · CORS · Rate Limit     │
+             │  HPP · Compression · Timeout    │
+             │                                 │
+             │  ┌──────────┐  ┌────────────┐  │
+             │  │ Routes   │  │ Middleware │  │
+             │  │ 20+ APIs │  │ requireAuth│  │
+             │  └────┬─────┘  └────────────┘  │
+             │       │                         │
+             │  ┌────▼──────────────────────┐  │
+             │  │  Prisma ORM               │  │
+             │  │  SQLite (WAL mode)        │  │
+             │  │  30+ models               │  │
+             │  └───────────────────────────┘  │
+             │                                 │
+             │  ┌──────────┐  ┌────────────┐  │
+             │  │ node-cron│  │  OpenAI    │  │
+             │  │ Mon 9am  │  │ gpt-4o-mini│  │
+             │  │ digest   │  │  digest    │  │
+             │  └──────────┘  └────────────┘  │
+             └────────────────────────────────┘
+```
+
+**Key design decisions:**
+- File uploads go **directly to the backend** — bypasses Next.js entirely to avoid Turbopack streaming issues and body size limits (50 MB cap)
+- Auth tokens live in `localStorage` (simple, no cookie complexity for this use case)
+- SQLite in WAL mode handles ~1,000 concurrent users without issue — upgrade to PostgreSQL for more
+- Weekly digest runs server-side via cron; OpenAI generates the content, template is always the fallback
+- All routes are CommonJS (`require/module.exports`) to match the existing Express.js pattern
+
+---
+
+## 🔌 API Reference
+
+All API routes are prefixed with `/api/` when called from the frontend (proxied via `next.config.ts`), or at `http://localhost:4000/` directly.
+
+### Auth
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/auth/register` | — | Create account, returns `verifyToken` |
+| `POST` | `/auth/verify-browser` | — | Complete browser verification, returns JWT |
+| `POST` | `/auth/login` | — | Login, returns JWT |
+| `GET` | `/auth/me` | ✅ | Get current user |
+| `PATCH` | `/auth/me` | ✅ | Update name / avatar |
+
+### Courses
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/courses` | — | List published courses |
+| `POST` | `/courses` | ✅ CREATOR+ | Create course |
+| `GET` | `/courses/:id` | — | Course detail |
+| `POST` | `/courses/:id/lessons` | ✅ | Add lesson |
+| `POST` | `/courses/:id/materials` | ✅ | Add material |
+| `POST` | `/courses/:id/enroll` | ✅ | Enroll in course |
+| `GET` | `/courses/enrollments/mine` | ✅ | My enrollments |
+
+### Inbox
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/inbox` | ✅ | Paginated messages (`?kind=DIGEST&unread=true`) |
+| `GET` | `/inbox/unread-count` | ✅ | `{ count }` for navbar badge |
+| `PATCH` | `/inbox/:id/read` | ✅ | Mark message read |
+| `PATCH` | `/inbox/read-all` | ✅ | Mark all read |
+| `DELETE` | `/inbox/:id` | ✅ | Delete message |
+| `POST` | `/inbox/send` | ✅ ADMIN | Send to user or broadcast |
+| `POST` | `/inbox/digest` | ✅ ADMIN | Trigger AI digest now |
+
+### Tutors & Matching
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/tutors` | — | Published tutor profiles |
+| `GET` | `/tutors/profile` | ✅ TUTOR | Own profile |
+| `POST` | `/tutors/profile` | ✅ TUTOR | Create/update profile |
+| `POST` | `/tutors/publish` | ✅ TUTOR | Toggle `isPublished` |
+| `POST` | `/tutors/sessions` | ✅ | Book a session |
+| `GET` | `/matching/find-matches` | ✅ | Find matches (returns `matchPercent`) |
+| `POST` | `/matching/availability` | ✅ | Set availability dates |
+
+---
+
+## 🚢 One-Command Deployment
+
+### macOS / Linux
 
 ```bash
-# 安装 PM2
-npm install -g pm2
+# Production
+bash deploy.sh
 
-# 启动后端
-cd backend
-pm2 start src/server.js --name sparkhub-api
-
-# 构建并启动前端
-cd frontend
-npm run build
-pm2 start npm --name sparkhub-web -- start
-
-# 保存进程列表（开机自启）
-pm2 save
-pm2 startup
+# Development (hot reload)
+bash deploy.sh --dev
 ```
 
-### Docker 部署（可选）
+### Windows
 
-创建 `docker-compose.yml`：
+```powershell
+# Production
+.\deploy.ps1
 
-```yaml
-version: '3.8'
-
-services:
-  backend:
-    build: ./backend
-    ports:
-      - "4000:4000"
-    environment:
-      - DATABASE_URL=file:./dev.db
-      - JWT_SECRET=${JWT_SECRET}
-      - NODE_ENV=production
-    volumes:
-      - ./backend/uploads:/app/uploads
-      - ./backend/prisma/dev.db:/app/prisma/dev.db
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_BASE_URL=http://backend:4000
-    depends_on:
-      - backend
+# Development
+.\deploy.ps1 -Dev
 ```
 
-### Nginx 反向代理配置
+Both scripts handle everything automatically:
+
+```
+✓ Node.js v22.x detected
+Installing dependencies…
+✓ Dependencies installed
+Syncing database…
+✓ Database ready
+Starting servers with PM2…
+✓ SparkHub running in dev mode
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Backend:  http://localhost:4000
+  Frontend: http://localhost:3000
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### Production with Nginx
 
 ```nginx
 server {
     listen 80;
     server_name yourdomain.com;
 
-    # 前端
+    # Frontend
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
@@ -467,15 +466,17 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # API 代理
+    # Backend API
     location /api/ {
         proxy_pass http://localhost:4000/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        client_max_body_size 55M;
     }
 
-    # 上传文件
+    # Uploaded files
     location /uploads/ {
         proxy_pass http://localhost:4000/uploads/;
     }
@@ -484,111 +485,197 @@ server {
 
 ---
 
-## 常见问题
+## 🤖 AI Features
 
-### Q1: 启动后端时提示 "EADDRINUSE: address already in use"
+SparkHub has two AI integrations, both optional and gracefully degraded when API keys are absent.
 
-端口被占用，解决方法：
+### Weekly Digest (OpenAI)
+
+Set `OPENAI_API_KEY` in `backend/.env` to enable AI-generated digests. Every Monday at 09:00, the system:
+
+1. Collects the week's stats — new courses, upcoming events, new jobs, new resources, total users
+2. Sends a prompt to `gpt-4o-mini` asking for a warm, 350-word Markdown newsletter
+3. Delivers the result to every opted-in user's in-app inbox
+4. Logs the digest to the `WeeklyUpdate` table for admin records
+
+Without an API key, a handcrafted template digest is used instead — still looks great.
+
+You can trigger a digest immediately from the admin panel: `POST /inbox/digest`.
+
+### Content Moderation (Anthropic Claude)
+
+Set `ANTHROPIC_API_KEY` to enable Tier 2 AI moderation on user-generated content (course discussions, reviews, chat). Works alongside the always-on Tier 1 keyword filter:
+
+- **Tier 1** — instant, blocks hate speech / doxxing / spam, auto-cleans mild profanity
+- **Tier 2** — Claude AI context analysis with a 5-second timeout and automatic fallback
+
+Educational debate, mild frustration, and constructive criticism always pass through.
+
+---
+
+## 🔐 Creating Your First Admin Account
+
+1. Set `ADMIN_SECRET` in `backend/.env` (default: `sparkhub-admin-2026`)
+2. Register at http://localhost:3000/register
+3. Select **Admin** as your account type
+4. Enter the admin secret in the field that appears
+
+The admin panel is at `/admin` and gives you access to user management, content oversight, the inbox broadcast tool, and the digest trigger.
+
+---
+
+## 🗄️ Database
+
+SparkHub uses **SQLite** in WAL mode out of the box — zero configuration, works instantly, handles ~1,000 concurrent users comfortably. The database file lives at `backend/prisma/dev.db`.
 
 ```bash
-# 查找占用端口的进程
-lsof -i :4000
+# View and edit data visually
+cd backend && npx prisma studio
+# Open http://localhost:5555
 
-# 结束该进程
-kill -9 <PID>
+# Reset everything (⚠️ deletes all data)
+npx prisma db push --force-reset
 
-# 或更改端口
-PORT=4001 npm run dev
+# Backup
+cp backend/prisma/dev.db backend/prisma/dev.db.bak
 ```
 
-### Q2: 前端无法连接后端 API
+### Upgrading to PostgreSQL
 
-1. 确认后端已启动并运行在 http://localhost:4000
-2. 检查 CORS 配置：
-   ```ini
-   # backend/.env
-   FRONTEND_URL=http://localhost:3000
-   ```
-3. 查看浏览器控制台错误信息
+When you're ready to scale, swap out the SQLite datasource:
 
-### Q3: 数据库错误 "table does not exist"
+```prisma
+// backend/prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
 
-运行数据库迁移：
+```bash
+# backend/.env
+DATABASE_URL="postgresql://user:password@localhost:5432/sparkhub"
+
+# Re-push schema
+npx prisma db push
+```
+
+---
+
+## 🐛 Troubleshooting
+
+<details>
+<summary><strong>Port 4000 is already in use</strong></summary>
+
+```bash
+lsof -i :4000 | grep LISTEN
+kill -9 <PID>
+# or just change the port
+PORT=4001 npm run dev
+```
+</details>
+
+<details>
+<summary><strong>Frontend can't reach the backend</strong></summary>
+
+1. Make sure the backend is running on port 4000
+2. Check `backend/.env` has `FRONTEND_URL=http://localhost:3000`
+3. Open browser DevTools → Network tab to see the actual error
+4. Try the health check: `curl http://localhost:4000/healthz`
+</details>
+
+<details>
+<summary><strong>File upload failing</strong></summary>
+
+Uploads go directly to the backend (not through Next.js). Make sure:
+- `backend/uploads/` directory exists: `mkdir -p backend/uploads`
+- The backend is running and reachable at `NEXT_PUBLIC_API_BASE_URL`
+- File is under 50 MB
+</details>
+
+<details>
+<summary><strong>Database errors after pulling new code</strong></summary>
+
 ```bash
 cd backend
 npx prisma db push
 ```
 
-### Q4: 邮件发送失败
+This syncs the schema without losing data. Safe to run anytime.
+</details>
 
-1. 确认 SMTP 配置正确
-2. 检查服务器日志中的错误信息
-3. 测试 SMTP 连接：
-   ```bash
-   # 使用 telnet 测试
-   telnet smtp.yourprovider.com 587
-   ```
-
-### Q5: 如何创建管理员账户？
-
-1. 设置管理员密钥：
-   ```ini
-   # backend/.env
-   ADMIN_REG_SECRET=your-secret-key
-   ```
-
-2. 注册时使用该密钥创建管理员账户
-
-### Q6: 上传文件失败
-
-1. 确认 `uploads` 目录存在且有写入权限：
-   ```bash
-   cd backend
-   mkdir -p uploads
-   chmod 755 uploads
-   ```
-
-2. 检查文件大小限制（默认 1MB）
-
-### Q7: 如何备份数据？
+<details>
+<summary><strong>PM2 processes not starting</strong></summary>
 
 ```bash
-# SQLite 数据库备份
-cp backend/prisma/dev.db backend/prisma/dev.db.backup
-
-# 上传文件备份
-tar -czf uploads-backup.tar.gz backend/uploads/
+pm2 list              # see all processes
+pm2 logs sparkhub-backend  # view backend logs
+pm2 restart all       # restart everything
+pm2 delete all        # nuclear option — start fresh
 ```
+</details>
 
 ---
 
-## 技术栈
+## 📋 Changelog
 
-| 层级 | 技术 |
-|------|------|
-| 前端框架 | Next.js 15 + React 19 |
-| 样式 | Tailwind CSS v4 |
-| 动画 | Framer Motion |
-| 图标 | Lucide React |
-| 后端框架 | Express.js 5 |
-| 数据库 ORM | Prisma |
-| 数据库 | SQLite (开发) / PostgreSQL (生产) |
-| 认证 | JWT (JSON Web Tokens) |
-| 邮件 | Nodemailer |
+### v2.2.0 — Production Release *(February 23, 2026)*
+
+> The biggest update yet. This release makes SparkHub genuinely production-ready with a full messaging system, seamless onboarding, and one-command deployment.
+
+- **In-app inbox** — AI-written weekly digests, admin broadcasts, unread badge in nav
+- **OOBE onboarding** — 4-step modal with role-aware quick start
+- **Instant registration** — browser-token verification, no email required
+- **50 MB uploads** — direct-to-backend, bypasses Next.js entirely
+- **Tutor publishing** — bio, subjects, rate info, one-click publish/unpublish
+- **Smart matching** — word-level tokenisation, `matchPercent` score
+- **Creator studio tabs** — Overview · Courses · Workspace · Settings
+- **Deployment scripts** — `deploy.sh` + `deploy.ps1`
+- **Privacy & Terms pages**
+
+### v2.1.0 — Platform Hardening *(February 22, 2026)*
+- Two-tier AI content moderation
+- Upload streaming fix
+- Enrollment approval UI
+- Slide viewer improvements
+- Opportunity posting fix
+
+### v2.0.0 — LMS Edition *(February 22, 2026)*
+- Full LMS: lessons, materials, progress tracking, ratings, discussions, announcements
+- Slide/PDF/PPTX viewer
+- Course bookmarks and student notes
+- WAL mode SQLite, rate limiting, Helmet security
 
 ---
 
-## 获取帮助
+## 🤝 Contributing
 
-如果您在部署过程中遇到问题：
+SparkHub is open source and contributions are genuinely welcome. Whether it's a bug fix, a new feature, or just improving the docs — all of it helps.
 
-1. 查看 [GitHub Issues](https://github.com/TomAs-1226/SparkHub/issues)
-2. 提交新的 Issue 描述您的问题
-3. 确保提供：
-    - 操作系统和 Node.js 版本
-    - 完整的错误信息
-    - 您尝试过的解决方法
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-idea`
+3. Make your changes
+4. Push and open a pull request
+
+Please keep PRs focused — one feature or fix per PR makes review much easier.
 
 ---
 
-**祝您使用愉快！** 
+## 📄 License
+
+MIT — do whatever you want with it, just don't blame us if something breaks in production.
+
+---
+
+<div align="center">
+
+Built with ☕ and way too many late nights.
+
+<img src="https://img.shields.io/badge/Made%20with-Next.js%2015-black?style=flat-square&logo=next.js" />
+<img src="https://img.shields.io/badge/Powered%20by-Express.js-000000?style=flat-square&logo=express" />
+<img src="https://img.shields.io/badge/Styled%20with-Tailwind%20CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" />
+<img src="https://img.shields.io/badge/Animated%20with-Framer%20Motion-FF0080?style=flat-square&logo=framer&logoColor=white" />
+
+**[⬆ Back to top](#-sparkhub)**
+
+</div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import CoverflowRow, { ContentItem } from "@/components/coverflow-row";
 import { FADES } from "@/lib/motion-presets";
+import { Library, Briefcase, BookOpen } from "lucide-react";
 
 type Cat = "resources" | "opportunities" | "courses";
 type LoadingState = "loading" | "loaded" | "error";
@@ -128,42 +129,47 @@ async function fetchCategory(cat: Cat): Promise<ContentItem[]> {
 function LoadingSkeleton({ title }: { title: string }) {
     return (
         <div className="mb-14">
-            <div className="mb-4 flex items-center gap-2">
-                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                        <path d="M4 8h16M4 16h16" stroke="#64748B" strokeWidth="2" strokeLinecap="round" />
-                    </svg>
-                </span>
-                <h3 className="text-[18px] font-semibold text-slate-800">{title}</h3>
+            <div className="mb-5 flex items-center justify-between">
+                <div className="h-7 w-40 rounded-lg bg-slate-200/70 animate-pulse" />
+                <div className="h-7 w-20 rounded-full bg-slate-200/50 animate-pulse" />
             </div>
-            <div className="flex gap-3 overflow-hidden">
+            <div className="flex gap-3 overflow-hidden px-6 py-8">
                 {Array.from({ length: 5 }).map((_, idx) => (
                     <div
                         key={idx}
-                        className="h-[224px] w-[152px] shrink-0 animate-pulse rounded-[14px] bg-slate-200/60"
-                    />
+                        className="h-[224px] w-[152px] shrink-0 rounded-[14px] overflow-hidden relative"
+                        style={{ animationDelay: `${idx * 0.1}s` }}
+                    >
+                        <div className="absolute inset-0 bg-slate-200/70 animate-pulse" />
+                        <div
+                            className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite]"
+                            style={{
+                                background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)",
+                                animationDelay: `${idx * 0.15}s`,
+                            }}
+                        />
+                    </div>
                 ))}
             </div>
+            <p className="sr-only">Loading {title}…</p>
         </div>
     );
 }
 
-function EmptyState({ category }: { category: string }) {
+function EmptyState({ category, icon }: { category: string; icon: React.ReactNode }) {
     return (
         <motion.div
             variants={FADES.gentleUp}
             initial="initial"
             animate="animate"
-            className="mb-14 rounded-2xl border border-dashed border-slate-200 bg-white/60 p-6 text-center"
+            className="mb-14 rounded-3xl border border-dashed border-slate-300/60 bg-white/70 backdrop-blur-sm p-8 text-center"
         >
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.5">
-                    <path d="M19 11H5M19 11a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2M19 11V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100/80 text-slate-400">
+                {icon}
             </div>
-            <p className="text-sm font-medium text-slate-600">No {category} available yet</p>
-            <p className="mt-1 text-xs text-slate-400">
-                Check back soon or contact an admin to add content.
+            <p className="text-[15px] font-bold text-slate-600">No {category} yet</p>
+            <p className="mt-1.5 text-[13px] text-slate-400 max-w-xs mx-auto">
+                Content will appear here once it&apos;s published. Check back soon!
             </p>
         </motion.div>
     );
@@ -209,17 +215,19 @@ export default function ExploreContents() {
     const isLoading = (cat: Cat) => loadingStates[cat] === "loading";
 
     return (
-        <section className="bg-[#ECF4F9] py-14">
+        <section className="bg-[#ECF4F9] py-16">
             <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6 lg:px-8">
                 <motion.div
                     variants={FADES.gentleUp}
                     initial="initial"
                     animate="animate"
-                    className="mb-8"
+                    className="mb-10"
                 >
-                    <h2 className="text-[22px] md:text-[24px] font-extrabold text-slate-800">Explore the Contents</h2>
-                    <p className="mt-1 text-[14px] text-slate-500">
-                        Hover to preview, click to open as a book. Use arrows, drag, or scroll to browse.
+                    <h2 className="text-[24px] md:text-[28px] font-extrabold text-slate-800 tracking-tight">
+                        Explore the Contents
+                    </h2>
+                    <p className="mt-1.5 text-[14px] text-slate-500 max-w-md">
+                        Click a card to open a preview, drag or scroll to browse. Keyboard and touch friendly.
                     </p>
                 </motion.div>
 
@@ -228,7 +236,7 @@ export default function ExploreContents() {
                 ) : resources && resources.length > 0 ? (
                     <CoverflowRow title="Resources" slug="resources" items={resources} />
                 ) : (
-                    <EmptyState category="resources" />
+                    <EmptyState category="resources" icon={<Library className="h-7 w-7" />} />
                 )}
 
                 {isLoading("opportunities") ? (
@@ -236,7 +244,7 @@ export default function ExploreContents() {
                 ) : opps && opps.length > 0 ? (
                     <CoverflowRow title="Opportunities" slug="opportunities" items={opps} />
                 ) : (
-                    <EmptyState category="opportunities" />
+                    <EmptyState category="opportunities" icon={<Briefcase className="h-7 w-7" />} />
                 )}
 
                 {isLoading("courses") ? (
@@ -244,7 +252,7 @@ export default function ExploreContents() {
                 ) : courses && courses.length > 0 ? (
                     <CoverflowRow title="Courses & Certificates" slug="courses" items={courses} />
                 ) : (
-                    <EmptyState category="courses" />
+                    <EmptyState category="courses" icon={<BookOpen className="h-7 w-7" />} />
                 )}
             </div>
         </section>

@@ -44,13 +44,14 @@ const PUSH_MAG_BASE = 10;
 /* ------------------------------ */
 
 const gradients = [
-    "from-[#a8edea] via-[#81d4d1] to-[#5cc4bb]",
-    "from-[#cfd7ff] via-[#a9b7ff] to-[#8597ff]",
-    "from-[#ffe1b5] via-[#ffc786] to-[#ffaf59]",
-    "from-[#f9c2df] via-[#f39ac6] to-[#ea74ae]",
-    "from-[#d3f2ff] via-[#aee4ff] to-[#86d5ff]",
-    "from-[#def8d2] via-[#b8eca8] to-[#93e07f]",
-    "from-[#ece1ff] via-[#d2c0ff] to-[#b8a0ff]",
+    "from-[#0ea5e9] via-[#38bdf8] to-[#7dd3fc]",   // sky blue
+    "from-[#8b5cf6] via-[#a78bfa] to-[#c4b5fd]",   // violet
+    "from-[#f97316] via-[#fb923c] to-[#fdba74]",   // orange
+    "from-[#ec4899] via-[#f472b6] to-[#f9a8d4]",   // pink
+    "from-[#10b981] via-[#34d399] to-[#6ee7b7]",   // emerald
+    "from-[#06b6d4] via-[#22d3ee] to-[#67e8f9]",   // cyan
+    "from-[#6366f1] via-[#818cf8] to-[#a5b4fc]",   // indigo
+    "from-[#f59e0b] via-[#fbbf24] to-[#fcd34d]",   // amber
 ];
 
 // Use centralized spring from motion-presets with slight customization for coverflow
@@ -229,22 +230,17 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
     return (
         <section className="relative mb-14 isolate">
             {/* Header */}
-            <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow ring-1 ring-black/5">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M4 8h16M4 16h16" stroke="#64748B" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </span>
-                    <h3 className="text-[18px] font-semibold text-slate-800">{title}</h3>
+            <div className="mb-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <h3 className="text-[19px] font-extrabold text-slate-800 tracking-tight">{title}</h3>
                 </div>
 
                 <Link
                     href={`/${slug}`}
-                    className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[13px] font-semibold text-slate-600 hover:text-slate-800"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-3.5 py-1.5 text-[12px] font-bold text-slate-600 shadow-sm hover:border-[#63C0B9]/40 hover:bg-[#E9F7F5] hover:text-[#2D8F80] transition-all"
                 >
-                    SEE ALL
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    See all
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                         <path d="M7 12h10M13 8l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                 </Link>
@@ -360,17 +356,18 @@ export default function CoverflowRow({ title, slug, items }: RowProps) {
                                                     ) : (
                                                         <div className={`h-full w-full rounded-[14px] bg-gradient-to-br ${gradient}`} />
                                                     )}
-                                                    {/* little book-ish styling */}
-                                                    <div className="pointer-events-none absolute inset-y-0 left-0 w-3 rounded-l-[14px] bg-gradient-to-r from-black/30 via-black/10 to-transparent mix-blend-multiply" />
-                                                    <div className="pointer-events-none absolute inset-y-0 left-[3px] w-[2px] rounded-full bg-white/35 opacity-50" />
-                                                    <div className="pointer-events-none absolute inset-y-2 right-1 w-2 rounded-sm opacity-50 bg-[repeating-linear-gradient(180deg,rgba(255,255,255,0.95)_0,rgba(255,255,255,0.95)_2px,rgba(226,232,240,0.95)_2px,rgba(226,232,240,0.95)_4px)]" />
-                                                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3 rounded-b-[14px] bg-gradient-to-t from-black/25 to-transparent" />
+                                                                                        {/* book spine effect */}
+                                                    <div className="pointer-events-none absolute inset-y-0 left-0 w-3 rounded-l-[14px] bg-gradient-to-r from-black/35 via-black/12 to-transparent mix-blend-multiply" />
+                                                    <div className="pointer-events-none absolute inset-y-0 left-[3px] w-[2px] rounded-full bg-white/40 opacity-60" />
+                                                    <div className="pointer-events-none absolute inset-y-2 right-1 w-2 rounded-sm opacity-45 bg-[repeating-linear-gradient(180deg,rgba(255,255,255,0.95)_0,rgba(255,255,255,0.95)_2px,rgba(226,232,240,0.95)_2px,rgba(226,232,240,0.95)_4px)]" />
+                                                    {/* bottom gradient overlay */}
+                                                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 rounded-b-[14px] bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
                                                     {/* title label */}
-                                                    <div className="absolute inset-x-3 bottom-3 z-30 rounded-md bg-black/40 px-2 py-1.5 text-center backdrop-blur-[2px] ring-1 ring-white/15">
-                                                        <div className="line-clamp-2 text-[11px] font-semibold leading-snug text-white">{it.title}</div>
+                                                    <div className="absolute inset-x-2.5 bottom-2.5 z-30">
+                                                        <div className="line-clamp-2 text-[11.5px] font-bold leading-snug text-white drop-shadow-md">{it.title}</div>
                                                     </div>
                                                     {it.tag && (
-                                                        <div className="absolute left-3 top-3 z-20 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-700 ring-1 ring-black/5">
+                                                        <div className="absolute left-2.5 top-2.5 z-20 rounded-full bg-white/95 px-2 py-0.5 text-[10px] font-bold text-slate-700 shadow-sm ring-1 ring-black/5">
                                                             {it.tag}
                                                         </div>
                                                     )}
