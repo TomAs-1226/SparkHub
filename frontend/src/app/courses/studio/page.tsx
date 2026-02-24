@@ -122,6 +122,7 @@ export default function CourseStudioPage() {
     const [detail, setDetail] = useState<CourseDetail | null>(null);
     const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
     const [status, setStatus] = useState<string | null>(null);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const [busy, setBusy] = useState({
         course: false,
         session: false,
@@ -339,13 +340,17 @@ export default function CourseStudioPage() {
     async function handleLessonFileUpload(fileList: FileList | null) {
         if (!fileList || fileList.length === 0) return;
         const file = fileList[0];
+        setUploadProgress(0);
+        setStatus(`Uploading ${file.name}…`);
         try {
-            const url = await uploadAsset(file);
+            const url = await uploadAsset(file, setUploadProgress);
             const detectedType = detectLessonMime(file);
             setLessonForm((prev) => ({ ...prev, attachmentUrl: url, contentType: detectedType || file.type }));
             setStatus("Slides uploaded. Don't forget to save the lesson.");
         } catch (err) {
             setStatus(err instanceof Error ? err.message : "Unable to upload slides");
+        } finally {
+            setUploadProgress(null);
         }
     }
 
@@ -527,6 +532,21 @@ export default function CourseStudioPage() {
                     {status && (
                         <div className="mt-6 rounded-2xl border border-[#E2D9FF] bg-[#F7F3FF] px-4 py-3 text-sm text-[#4B2E83]">
                             {status}
+                        </div>
+                    )}
+                    {/* Upload progress bar */}
+                    {uploadProgress !== null && (
+                        <div className="mt-3 space-y-1.5">
+                            <div className="flex items-center justify-between text-xs text-slate-500">
+                                <span>Uploading…</span>
+                                <span className="font-semibold text-[#2D8F80]">{uploadProgress}%</span>
+                            </div>
+                            <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                                <div
+                                    className="h-full rounded-full bg-gradient-to-r from-[#63C0B9] to-[#2D8F80] transition-all duration-200"
+                                    style={{ width: `${uploadProgress}%` }}
+                                />
+                            </div>
                         </div>
                     )}
 

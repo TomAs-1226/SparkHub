@@ -36,6 +36,7 @@ import {
     AlertTriangle,
     Activity,
     Inbox,
+    UserCheck,
 } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
@@ -62,6 +63,7 @@ export default function SettingsPage() {
     const [displayName, setDisplayName] = useState("");
     const [avatarUrl, setAvatarUrl] = useState("");
     const [saving, setSaving] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const [status, setStatus] = useState<string | null>(null);
     const [prefLoading, setPrefLoading] = useState(false);
     const [weeklyDigest, setWeeklyDigest] = useState(true);
@@ -286,20 +288,33 @@ export default function SettingsPage() {
                                             input.onchange = async () => {
                                                 const file = input.files?.[0];
                                                 if (!file) return;
+                                                setUploadProgress(0);
+                                                setStatus(null);
                                                 try {
-                                                    const url = await uploadAsset(file);
+                                                    const url = await uploadAsset(file, setUploadProgress);
                                                     setAvatarUrl(url);
                                                     setStatus("Photo uploaded — click Save to apply.");
                                                 } catch (err) {
                                                     setStatus(err instanceof Error ? err.message : "Upload failed.");
+                                                } finally {
+                                                    setUploadProgress(null);
                                                 }
                                             };
                                             input.click();
                                         }}
                                     >
-                                        <UploadCloud className="h-4 w-4" /> Upload photo
+                                        <UploadCloud className="h-4 w-4" />
+                                        {uploadProgress !== null ? `${uploadProgress}%` : "Upload photo"}
                                     </motion.button>
-                                    {avatarUrl && (
+                                    {uploadProgress !== null && (
+                                        <div className="w-40 h-1.5 rounded-full bg-slate-200 dark:bg-slate-600 overflow-hidden">
+                                            <div
+                                                className="h-full bg-[#63C0B9] rounded-full transition-all duration-200"
+                                                style={{ width: `${uploadProgress}%` }}
+                                            />
+                                        </div>
+                                    )}
+                                    {avatarUrl && uploadProgress === null && (
                                         <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[200px]">{avatarUrl}</span>
                                     )}
                                 </div>
@@ -568,7 +583,7 @@ export default function SettingsPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Setup &amp; Developer Menu</p>
-                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">SparkHub v2.2.0 · Hidden access</p>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">SparkHub v2.3.0 · Hidden access</p>
                                     </div>
                                 </div>
                                 <button
@@ -705,12 +720,57 @@ export default function SettingsPage() {
                             className="overflow-hidden"
                         >
                             <div className="mt-4 space-y-6 text-sm">
+                                {/* v2.3.0 */}
+                                <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v2.3.0</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">February 24, 2026</span>
+                                        <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400">Latest</span>
+                                    </div>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Reliability &amp; Upload Overhaul</p>
+                                    <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <UploadCloud className="h-3.5 w-3.5 text-[#2D8F80]" /> Upload Engine Rewrite
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Switched from fetch to XMLHttpRequest — eliminates "Failed to fetch" errors in all browsers</li>
+                                                <li>Added dedicated <code className="rounded bg-slate-100 dark:bg-slate-600 px-1">POST /api/upload</code> route handler — no more rewrite proxy issues with Turbopack</li>
+                                                <li>Real-time upload progress bar (0–100%) in Creator Studio and Settings</li>
+                                                <li>3-minute upload timeout with descriptive error messages</li>
+                                                <li>Network error messages now explain the root cause clearly</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <BookOpen className="h-3.5 w-3.5 text-[#2D8F80]" /> Slide Deck Viewer Fixes
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Fixed infinite loading spinner on local PPTX files (spinner now clears immediately)</li>
+                                                <li>Automatic fallback: Office Online → Google Docs Viewer on failure</li>
+                                                <li>Retry button when both viewers fail</li>
+                                                <li>Improved localhost fallback UI with file name, download button, and dev note</li>
+                                                <li>Error states no longer overlap with the iframe viewer</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <UserCheck className="h-3.5 w-3.5 text-[#2D8F80]" /> Profile &amp; Identity
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Display name and username are now separate — change your display name without affecting login</li>
+                                                <li>Onboarding profile step saves display name independently</li>
+                                                <li>Settings page shows username as read-only login identifier</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* v2.2.0 */}
                                 <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
                                     <div className="flex items-center gap-3 mb-3">
                                         <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v2.2.0</span>
                                         <span className="text-xs text-slate-500 dark:text-slate-400">February 23, 2026</span>
-                                        <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400">Latest</span>
                                     </div>
                                     <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Production Release — Inbox, Onboarding &amp; More</p>
                                     <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
