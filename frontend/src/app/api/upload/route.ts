@@ -6,31 +6,40 @@ const BACKEND = (
 
 /**
  * POST /api/upload
- * Proxies multipart file uploads to the backend.
- * Using an explicit route handler (not a rewrite) so Next.js/Turbopack never
- * tries to parse or buffer the body — it reads the formData and forwards it.
+ *
+ * Proxies multipart file uploads to the backend without parsing the body.
+ *
+ * Key difference from the formData() approach:
+ *   req.formData() re-parses the multipart structure inside Next.js, which
+ *   stalls on large or iCloud-backed files in Turbopack dev mode.
+ *
+ * Instead we read the raw bytes with arrayBuffer() and forward them with
+ * the original Content-Type header (which already contains the multipart
+ * boundary). multer on the backend receives exactly what the browser sent.
  */
 export async function POST(req: NextRequest) {
     try {
         const auth = req.headers.get("authorization") ?? "";
+        // MUST forward Content-Type — it contains the multipart boundary string
+        // that multer needs to split the body into fields/files.
+        const contentType = req.headers.get("content-type") ?? "";
 
-        // Parse the incoming multipart form data
-        const formData = await req.formData();
-
-        // Forward to backend — do NOT set Content-Type; fetch sets it automatically
-        // with the correct multipart boundary from the FormData object.
         const headers: Record<string, string> = {};
         if (auth) headers["authorization"] = auth;
+        if (contentType) headers["content-type"] = contentType;
+
+        // Read raw bytes — no multipart parsing in Next.js, no stall risk.
+        const body = await req.arrayBuffer();
 
         const upstream = await fetch(`${BACKEND}/upload`, {
             method: "POST",
             headers,
-            body: formData,
+            body,
         });
 
         const json = await upstream.json().catch(() => ({
             ok: false,
-            msg: "Upload failed — could not parse response",
+            msg: "Upload failed — could not parse backend response",
         }));
 
         return NextResponse.json(json, { status: upstream.status });
