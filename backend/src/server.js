@@ -15,7 +15,7 @@ const { ensurePrismaSync } = require('./utils/prisma-sync')
 
 let toobusyInstance = null
 
-ensurePrismaSync()
+ensurePrismaSync().catch((err) => console.warn('[prisma-sync] unexpected error:', err.message))
 
 // Global error handlers with recovery
 process.on('unhandledRejection', (reason, promise) => {
