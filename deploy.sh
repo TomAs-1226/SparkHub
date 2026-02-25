@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SparkHub One-Command Deployment Script  v0.2.4
+# SparkHub One-Command Deployment Script  v0.2.5
 # Usage: bash deploy.sh [--dev]
 set -e
 
@@ -12,7 +12,7 @@ for arg in "$@"; do [[ "$arg" == "--dev" ]] && DEV_MODE=true; done
 echo -e "${TEAL}"
 echo "  ╔═══════════════════════════════════════╗"
 echo "  ║    SparkHub Deployment Script         ║"
-echo "  ║    v0.2.4 (build 20260224.A)          ║"
+echo "  ║    v0.2.5 (build 20260224.B)          ║"
 echo "  ║    macOS / Linux                      ║"
 echo "  ╚═══════════════════════════════════════╝"
 echo -e "${NC}"
@@ -91,7 +91,7 @@ pm2 save
 pm2 startup 2>/dev/null | tail -1 | grep -E "sudo" | bash 2>/dev/null || true
 
 echo -e "\n${TEAL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "  SparkHub v0.2.4 (build 20260224.A)"
+echo -e "  SparkHub v0.2.5 (build 20260224.B)"
 echo -e "  Backend:  http://localhost:4000"
 echo -e "  Frontend: http://localhost:3000"
 echo -e "  Admin:    http://localhost:3000/admin"

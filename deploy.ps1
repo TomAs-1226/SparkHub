@@ -1,4 +1,4 @@
-# SparkHub One-Command Deployment Script (PowerShell)  v0.2.4
+# SparkHub One-Command Deployment Script (PowerShell)  v0.2.5
 # Usage: .\deploy.ps1 [-Dev]
 param(
     [switch]$Dev
@@ -14,7 +14,7 @@ function Write-Yellow{ param($msg) Write-Host $msg -ForegroundColor Yellow }
 Write-Teal ""
 Write-Teal "  +=========================================+"
 Write-Teal "  |   SparkHub Deployment Script           |"
-Write-Teal "  |   v0.2.4 (build 20260224.A) - Windows  |"
+Write-Teal "  |   v0.2.5 (build 20260224.B) - Windows  |"
 Write-Teal "  +=========================================+"
 Write-Teal ""
 
@@ -111,7 +111,7 @@ if ($Dev) {
 pm2 save
 
 Write-Teal "`n-----------------------------------------"
-Write-Teal "  SparkHub v0.2.4 (build 20260224.A)"
+Write-Teal "  SparkHub v0.2.5 (build 20260224.B)"
 Write-Teal "  Backend:  http://localhost:4000"
 Write-Teal "  Frontend: http://localhost:3000"
 Write-Teal "  Admin:    http://localhost:3000/admin"

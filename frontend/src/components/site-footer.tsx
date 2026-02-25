@@ -1,23 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Github, Mail, BookOpen, Calendar, Users, Briefcase, FileText, BookMarked, MessageSquare, Shield, FileCheck, AlertCircle, Zap, Heart } from "lucide-react";
+import { Github, Mail, BookOpen, Calendar, Users, Briefcase, FileText, BookMarked, MessageSquare, Shield, FileCheck, AlertCircle, Zap, Heart, Star } from "lucide-react";
 
-const VERSION = "0.2.4 (build 20260224.A)";
+const VERSION = "0.2.5 (build 20260224.B)";
 
 export default function SiteFooter() {
-    const [email, setEmail] = useState("");
-    const [subscribed, setSubscribed] = useState(false);
-
-    const handleSubscribe = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (email.trim()) {
-            setSubscribed(true);
-            setEmail("");
-        }
-    };
-
     return (
         <footer className="bg-[#0F1629] text-slate-300 mt-auto">
             {/* Main grid */}
@@ -33,10 +21,10 @@ export default function SiteFooter() {
                             <span className="text-xl font-bold text-white tracking-tight">SparkHub</span>
                         </div>
                         <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
-                            A modern learning management system built for students, creators, and educators.
+                            A modern, open-source learning management system built for students, creators, and educators.
                             Everything you need to learn, teach, and grow — in one place.
                         </p>
-                        <div className="flex items-center gap-3 pt-1">
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
                             <a
                                 href="https://github.com/TomAs-1226/SparkHub"
                                 target="_blank"
@@ -53,30 +41,19 @@ export default function SiteFooter() {
                                 <Mail className="h-3.5 w-3.5" />
                                 Contact
                             </a>
+                            <a
+                                href="https://github.com/TomAs-1226/SparkHub"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-xs text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                            >
+                                <Star className="h-3.5 w-3.5" />
+                                Star on GitHub
+                            </a>
                         </div>
-                        {/* Newsletter */}
-                        <div className="pt-2">
-                            <p className="text-xs font-medium text-slate-400 mb-2">Stay updated</p>
-                            {subscribed ? (
-                                <p className="text-xs text-[#63C0B9]">Thanks! You&apos;re on the list.</p>
-                            ) : (
-                                <form onSubmit={handleSubscribe} className="flex gap-2">
-                                    <input
-                                        type="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="your@email.com"
-                                        className="flex-1 min-w-0 rounded-lg bg-slate-800 border border-slate-700 px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#63C0B9] focus:ring-1 focus:ring-[#63C0B9]/30"
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="rounded-lg bg-[#63C0B9] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#4a9e97] transition-colors whitespace-nowrap"
-                                    >
-                                        Subscribe
-                                    </button>
-                                </form>
-                            )}
-                        </div>
+                        <p className="text-xs text-slate-600 pt-1 leading-relaxed">
+                            Self-hostable · Free &amp; open-source · MIT license
+                        </p>
                     </div>
 
                     {/* Platform column */}
@@ -150,10 +127,11 @@ export default function SiteFooter() {
                             ))}
                         </ul>
                         <div className="mt-6">
-                            <h3 className="text-sm font-semibold text-white mb-4">About</h3>
+                            <h3 className="text-sm font-semibold text-white mb-3">About</h3>
                             <p className="text-xs text-slate-500 leading-relaxed">
-                                SparkHub is an open-source LMS built for modern learners and educators.
-                                Free to self-host, powered by Next.js + Express.
+                                SparkHub is open-source and free to self-host.
+                                Built with Next.js, Express &amp; SQLite.
+                                Contributions welcome on GitHub.
                             </p>
                         </div>
                     </div>

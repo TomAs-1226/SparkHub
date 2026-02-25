@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/SparkHub-v0.2.4-63C0B9?style=for-the-badge&logo=zap&logoColor=white" alt="Version" />
+<img src="https://img.shields.io/badge/SparkHub-v0.2.5-63C0B9?style=for-the-badge&logo=zap&logoColor=white" alt="Version" />
 <img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
 <img src="https://img.shields.io/badge/Express.js-5-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
 <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" />
@@ -20,7 +20,7 @@
 <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey?style=flat-square" alt="Platform" />
 <img src="https://img.shields.io/badge/Node.js-%3E%3D18-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node" />
 <img src="https://img.shields.io/badge/status-production%20ready-63C0B9?style=flat-square" alt="Status" />
-<img src="https://img.shields.io/badge/build-20260224.A-2B2E83?style=flat-square" alt="Build" />
+<img src="https://img.shields.io/badge/build-20260224.B-2B2E83?style=flat-square" alt="Build" />
 
 <br /><br />
 
@@ -28,7 +28,7 @@
 
 ### *The all-in-one learning community platform*
 
-**v0.2.4 (build 20260224.A)** — Open-source LMS built for students, creators, tutors, and educators.
+**v0.2.5 (build 20260224.B)** — Open-source LMS built for students, creators, tutors, and educators.
 Self-hostable in under 2 minutes. No vendor lock-in. No subscriptions.
 
 </div>
@@ -45,8 +45,9 @@ Self-hostable in under 2 minutes. No vendor lock-in. No subscriptions.
 | **Student Tools** | Pomodoro timer (runs in background), flashcards (cloud-synced), quick notes |
 | **AI Assistant** | Built-in rule-based chat assistant, persistent conversation history |
 | **Admin** | Full admin panel with PIN auth, user management, site announcements, media library |
+| **Notifications** | Global toast notification system (success/error/info, auto-dismiss, animated) |
 | **Security** | JWT auth, rate limiting, CORS, Helmet, production mode disables test routes |
-| **Deployment** | One-command deploy with PM2 (macOS/Linux + Windows PowerShell) |
+| **Deployment** | One-command deploy with PM2 (macOS/Linux + Windows PowerShell), DB ships empty |
 
 ---
 
@@ -128,8 +129,7 @@ In `NODE_ENV=production`, the `/testing` routes are completely disabled (no-op, 
 SparkHub/
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma          # Database schema (SQLite)
-│   │   └── dev.db                 # SQLite database file
+│   │   └── schema.prisma          # Database schema (SQLite — dev.db excluded from git)
 │   ├── src/
 │   │   ├── server.js              # Express app + route registration
 │   │   ├── prisma.js              # Prisma singleton
@@ -172,6 +172,7 @@ SparkHub/
 │   │   │   ├── courses/           # Course browse + studio + workspace
 │   │   │   ├── dashboard/         # Student dashboard
 │   │   │   ├── events/            # Events listing + detail
+│   │   │   ├── not-found.tsx      # Custom 404 page
 │   │   │   ├── opportunities/     # Job listings
 │   │   │   ├── privacy/page.tsx   # Privacy policy
 │   │   │   ├── resources/         # Resource library
@@ -186,10 +187,12 @@ SparkHub/
 │   │   │   ├── site-announcement-banner.tsx  # Site-wide banner (visible to all)
 │   │   │   ├── site-footer.tsx          # Rich global footer
 │   │   │   ├── site-nav.tsx             # Navigation bar
+│   │   │   ├── toast-container.tsx      # Animated toast notifications
 │   │   │   └── providers.tsx            # Global providers + layout
 │   │   ├── contexts/
 │   │   │   ├── theme-context.tsx        # Dark/light/system theme
-│   │   │   └── timer-context.tsx        # Global background timer
+│   │   │   ├── timer-context.tsx        # Global background timer
+│   │   │   └── toast-context.tsx        # Global toast notifications
 │   │   ├── hooks/
 │   │   │   └── use-current-user.ts      # Auth state hook
 │   │   └── lib/
@@ -332,9 +335,19 @@ The Next.js config rewrites `/api/*` → `http://localhost:4000/*` automatically
 
 ## 📋 Changelog
 
+### v0.2.5 (build 20260224.B) — February 24, 2026
+- **Global toast notifications** — animated success/error/info toasts (bottom-right, auto-dismiss 4s, max 5)
+- **Custom 404 page** — branded not-found page with navigation links
+- **DB excluded from git** — `dev.db` untracked; deploy script creates a fresh empty database on first run
+- **Contact page cleanup** — replaced fake phone/address with GitHub + response time info; updated support email
+- **Newsletter subscribe form removed** — form was decorative only (no email backend); replaced with GitHub link
+- **Version numbers fixed** — all historical changelog entries corrected to `0.x.x` format
+- **Admin panel** — replaced inline status messages with global toast notifications
+- **Footer** — removed email subscribe form, added "Star on GitHub" link
+
 ### v0.2.4 (build 20260224.A) — February 24, 2026
 - **Site-wide announcement banner** — admin-controlled, all visitors, color-coded, dismissable
-- **Rich global footer** — 5-column footer on every page (Platform, For Creators, Support, About, Newsletter)
+- **Rich global footer** — 5-column footer on every page (Platform, For Creators, Support, About)
 - **Admin PIN screen** — secondary PIN verification before accessing admin panel
 - **Media library** — browse/copy/delete all uploaded assets from admin panel
 - **System stats** — live DB size, upload size, user counts, server uptime in admin panel

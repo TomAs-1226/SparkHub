@@ -2,31 +2,32 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowRight, Clock3, Mail, MapPin, MessageSquare, Phone } from "lucide-react";
+import { ArrowRight, Clock3, Github, Mail, MessageSquare } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { api } from "@/lib/api";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { EASE, STAGGER, SURFACES } from "@/lib/motion-presets";
+import { EASE, SURFACES } from "@/lib/motion-presets";
 
 const SUPPORT_PILLARS = [
     {
-        title: "Community inbox",
+        title: "Support email",
         icon: <Mail className="h-5 w-5" />,
-        body: "hello@sparkhub.io",
+        body: "support@sparkhub.app",
         detail: "We reply within one business day",
     },
     {
-        title: "Live phone",
-        icon: <Phone className="h-5 w-5" />,
-        body: "+1 (312) 555-0117",
-        detail: "Weekdays 9am – 6pm CT",
+        title: "GitHub",
+        icon: <Github className="h-5 w-5" />,
+        body: "Open source on GitHub",
+        detail: "Report issues, request features, contribute",
+        href: "https://github.com/TomAs-1226/SparkHub",
     },
     {
-        title: "Studio",
-        icon: <MapPin className="h-5 w-5" />,
-        body: "433 Maker Lane, Chicago",
-        detail: "Visitors welcome by appointment",
+        title: "Response time",
+        icon: <Clock3 className="h-5 w-5" />,
+        body: "Within 1 business day",
+        detail: "Faster for critical bugs and security issues",
     },
 ];
 
@@ -91,28 +92,20 @@ export default function ContactPage() {
                     transition={{ duration: 0.6, ease: EASE.emphasized }}
                     className="rounded-[36px] border border-white/60 bg-white/95 p-6 shadow-2xl md:p-12"
                 >
-                    <motion.div
-                        className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]"
-                        variants={staggeredContainer}
-                        initial="hidden"
-                        animate="visible"
-                        viewport={{ once: true, margin: "-120px" }}
-                    >
-                        <motion.div variants={fadeLiftVariants}>
+                    <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+                        <div>
                             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2D8F80]">Contact SparkHub</p>
-                            <h1 className="mt-3 text-3xl font-semibold leading-tight text-slate-900 md:text-4xl">
+                            <h1 className="mt-3 text-3xl font-semibold leading-tight text-slate-900 dark:text-slate-100 md:text-4xl">
                                 Talk with admins, mentors, and the partner success crew
                             </h1>
-                            <p className="mt-4 text-base text-slate-600">
-                                Need help enrolling students, launching a new cohort, or wiring up the tutor dashboard? Our team is
-                                online daily with live chat, callbacks, and async updates that land directly inside your dashboard
-                                notifications.
+                            <p className="mt-4 text-base text-slate-600 dark:text-slate-400">
+                                Need help enrolling students, launching a new cohort, or wiring up the tutor dashboard? Use the form to reach the team — all submissions go directly into the admin inbox.
                             </p>
-                            <motion.div className="mt-6 grid gap-4 sm:grid-cols-3" variants={staggeredBrisk}>
+                            <div className="mt-6 grid gap-4 sm:grid-cols-3">
                                 {SUPPORT_PILLARS.map((card, idx) => (
                                     <motion.div
                                         key={card.title}
-                                        className="rounded-3xl border border-slate-100 bg-[#F9FBFF] p-4 text-sm shadow-sm"
+                                        className="rounded-3xl border border-slate-100 bg-[#F9FBFF] dark:bg-slate-800 dark:border-slate-700 p-4 text-sm shadow-sm"
                                         initial={SURFACES.lift.initial}
                                         whileInView={SURFACES.lift.animate(idx * 0.05)}
                                         whileHover={SURFACES.lift.whileHover}
@@ -120,38 +113,49 @@ export default function ContactPage() {
                                         whileTap={{ scale: 0.99 }}
                                         transition={{ duration: 0.35, ease: EASE.swift }}
                                     >
-                                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#E7F6F3] text-[#2D8F80]">
+                                        <div className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[#E7F6F3] dark:bg-teal-900/30 text-[#2D8F80]">
                                             {card.icon}
                                         </div>
                                         <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[#2D8F80]">{card.title}</p>
-                                        <p className="text-base font-semibold text-slate-900">{card.body}</p>
-                                        <p className="text-xs text-slate-500">{card.detail}</p>
+                                        {card.href ? (
+                                            <a
+                                                href={card.href}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-base font-semibold text-slate-900 dark:text-slate-100 hover:text-[#2D8F80] transition-colors"
+                                            >
+                                                {card.body}
+                                            </a>
+                                        ) : (
+                                            <p className="text-base font-semibold text-slate-900 dark:text-slate-100">{card.body}</p>
+                                        )}
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">{card.detail}</p>
                                     </motion.div>
                                 ))}
-                            </motion.div>
+                            </div>
                             <motion.div
-                                className="mt-8 rounded-3xl border border-dashed border-slate-200 bg-[#FDF7EC] p-4 text-sm"
+                                className="mt-8 rounded-3xl border border-dashed border-slate-200 bg-[#FDF7EC] dark:bg-amber-900/10 dark:border-amber-800/30 p-4 text-sm"
                                 initial={SURFACES.floatIn.initial}
                                 whileInView={SURFACES.floatIn.animate(0.05)}
                                 viewport={{ once: true, amount: 0.5 }}
                             >
-                                <div className="flex items-center gap-3 text-[#B35C00]">
+                                <div className="flex items-center gap-3 text-[#B35C00] dark:text-amber-400">
                                     <Clock3 className="h-5 w-5" />
                                     <div>
                                         <p className="text-xs font-semibold uppercase tracking-wide">Response promise</p>
-                                        <p>Average turnaround: 3h 12m on school days.</p>
+                                        <p>We aim to reply within one business day for all enquiries.</p>
                                     </div>
                                 </div>
                             </motion.div>
-                        </motion.div>
+                        </div>
                         <motion.form
                             onSubmit={handleSubmit}
-                            className="rounded-[30px] border border-slate-100 bg-[#F9FBFF] p-6 text-sm"
+                            className="rounded-[30px] border border-slate-100 dark:border-slate-700 bg-[#F9FBFF] dark:bg-slate-800 p-6 text-sm"
                             initial={SURFACES.lift.initial}
                             whileInView={SURFACES.lift.animate(0.08)}
                             viewport={{ once: true, amount: 0.45 }}
                         >
-                            <div className="rounded-2xl border border-[#DCE7F2] bg-white/90 p-4 text-xs font-semibold uppercase tracking-wide text-[#2D8F80]">
+                            <div className="rounded-2xl border border-[#DCE7F2] dark:border-slate-600 bg-white/90 dark:bg-slate-700 p-4 text-xs font-semibold uppercase tracking-wide text-[#2D8F80]">
                                 Send a message
                             </div>
                             <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -159,11 +163,12 @@ export default function ContactPage() {
                                 <select
                                     value={topic}
                                     onChange={(e) => setTopic(e.target.value)}
-                                    className="mt-1 w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm"
+                                    className="mt-1 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-4 py-2 text-sm"
                                 >
                                     <option value="General">General question</option>
                                     <option value="Admin support">Admin support</option>
                                     <option value="Tutor onboarding">Tutor onboarding</option>
+                                    <option value="Bug report">Bug report</option>
                                     <option value="Partnerships">Partnerships</option>
                                 </select>
                             </label>
@@ -175,7 +180,7 @@ export default function ContactPage() {
                                     placeholder="Let us know how we can help"
                                     rows={5}
                                     required
-                                    className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm"
+                                    className="mt-1 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-4 py-3 text-sm"
                                 />
                             </label>
                             <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -186,7 +191,7 @@ export default function ContactPage() {
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         placeholder="Optional"
-                                        className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                        className="mt-1 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-4 py-2"
                                     />
                                 </label>
                                 <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -196,12 +201,12 @@ export default function ContactPage() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="Optional"
-                                        className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-2"
+                                        className="mt-1 w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 dark:text-slate-100 px-4 py-2"
                                     />
                                 </label>
                             </div>
                             {status && (
-                                <p className="mt-4 rounded-2xl border border-[#CFE3E0] bg-[#E9F7F5] px-4 py-3 text-sm text-slate-700">
+                                <p className="mt-4 rounded-2xl border border-[#CFE3E0] bg-[#E9F7F5] dark:bg-teal-900/20 dark:border-teal-700 px-4 py-3 text-sm text-slate-700 dark:text-slate-200">
                                     {status}
                                 </p>
                             )}
@@ -217,33 +222,27 @@ export default function ContactPage() {
                                 <ArrowRight className="h-4 w-4" />
                             </motion.button>
                         </motion.form>
-                    </motion.div>
+                    </div>
 
-                    <motion.div
-                        className="mt-12 grid gap-4 md:grid-cols-3"
-                        variants={staggeredContainer}
-                        initial="hidden"
-                        animate="visible"
-                        viewport={{ once: true, amount: 0.4 }}
-                    >
+                    <div className="mt-12 grid gap-4 md:grid-cols-3">
                         {TIMELINE.map((step, idx) => (
                             <motion.div
                                 key={step.title}
-                                className="rounded-3xl border border-slate-100 bg-white/90 p-4 text-sm shadow-sm"
+                                className="rounded-3xl border border-slate-100 dark:border-slate-700 bg-white/90 dark:bg-slate-800 p-4 text-sm shadow-sm"
                                 initial={SURFACES.floatIn.initial}
                                 whileInView={SURFACES.floatIn.animate(idx * 0.05)}
                                 viewport={{ once: true, amount: 0.5 }}
                                 whileHover={{ y: -2, scale: 1.01 }}
                                 transition={{ duration: 0.32, ease: EASE.emphasized }}
                             >
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E7F6F3] text-sm font-semibold text-[#2D8F80]">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E7F6F3] dark:bg-teal-900/30 text-sm font-semibold text-[#2D8F80]">
                                     {String(idx + 1).padStart(2, "0")}
                                 </div>
                                 <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#2D8F80]">{step.title}</p>
-                                <p className="text-slate-600">{step.detail}</p>
+                                <p className="text-slate-600 dark:text-slate-400">{step.detail}</p>
                             </motion.div>
                         ))}
-                    </motion.div>
+                    </div>
 
                     <motion.div
                         className="mt-10 rounded-[32px] border border-dashed border-slate-200 bg-[#1F2A44] p-6 text-white"
@@ -253,17 +252,19 @@ export default function ContactPage() {
                     >
                         <div className="flex flex-wrap items-center justify-between gap-4">
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Need a live walkthrough?</p>
-                                <p className="text-lg font-semibold">Book a 20‑minute product tour with an admin coach.</p>
+                                <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Open source</p>
+                                <p className="text-lg font-semibold">SparkHub is on GitHub — star it, fork it, contribute.</p>
                             </div>
                             <motion.a
-                                href="mailto:hello@sparkhub.io?subject=Book%20a%20SparkHub%20tour"
+                                href="https://github.com/TomAs-1226/SparkHub"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#1F2A44]"
                                 whileHover={{ y: -1, scale: 1.01 }}
                                 whileTap={{ scale: 0.99 }}
                                 transition={{ duration: 0.24, ease: EASE.swift }}
                             >
-                                Email our team <MessageSquare className="h-4 w-4" />
+                                View on GitHub <MessageSquare className="h-4 w-4" />
                             </motion.a>
                         </div>
                     </motion.div>
@@ -277,16 +278,7 @@ const fadeLiftVariants = {
     hidden: { opacity: 0, y: 14 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: EASE.drift } },
 };
-
-const staggeredContainer = {
-    hidden: {},
-    visible: { transition: STAGGER.slow },
-};
-
-const staggeredBrisk = {
-    hidden: {},
-    visible: { transition: STAGGER.brisk },
-};
+void fadeLiftVariants; // keep for potential future use
 
 async function safeJson(res: Response) {
     try {

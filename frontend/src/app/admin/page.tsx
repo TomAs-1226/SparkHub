@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { uploadAsset } from "@/lib/upload";
 import { parseSkillsInput } from "@/lib/skills";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useToast } from "@/contexts/toast-context";
 import { EASE, SURFACES } from "@/lib/motion-presets";
 
 interface EventRow {
@@ -127,10 +128,9 @@ export default function AdminPage() {
     const router = useRouter();
     const { user, loading: userLoading } = useCurrentUser();
 
+    const { toast } = useToast();
     const [denied, setDenied] = useState(false);
     const [bootstrap, setBootstrap] = useState(true);
-    const [statusMsg, setStatusMsg] = useState<string | null>(null);
-    const [loadAlert, setLoadAlert] = useState<string | null>(null);
 
     // PIN verification
     const [pinVerified, setPinVerified] = useState(false);
@@ -258,7 +258,7 @@ export default function AdminPage() {
             setUsers(data.users);
             setFeedback(data.feedback);
             setWeeklyUpdates(data.weeklyUpdates);
-            setLoadAlert(errors.length ? `Some sections failed to load: ${errors.join(" · ")}` : null);
+            if (errors.length) toast(`Some sections failed to load: ${errors.join(" · ")}`, "error");
             setBootstrap(false);
         })();
         return () => {
@@ -286,13 +286,12 @@ export default function AdminPage() {
         setUsers(data.users);
         setFeedback(data.feedback);
         setWeeklyUpdates(data.weeklyUpdates);
-        setLoadAlert(errors.length ? `Some sections failed to load: ${errors.join(" · ")}` : null);
-    }, [loadAll]);
+        if (errors.length) toast(`Some sections failed to load: ${errors.join(" · ")}`, "error");
+    }, [loadAll, toast]);
 
     async function handleCreateEvent(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setSaving((s) => ({ ...s, event: true }));
-        setStatusMsg(null);
         try {
             const res = await api("/events", {
                 method: "POST",
@@ -311,9 +310,9 @@ export default function AdminPage() {
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to create event");
             setEventForm(EVENT_DEFAULT);
             await refreshAll();
-            setStatusMsg("Event created successfully.");
+            toast("Event created successfully.", "success");
         } catch (err) {
-            setStatusMsg(getErrorMessage(err) || "Failed to create event.");
+            toast(getErrorMessage(err) || "Failed to create event.", "error");
         } finally {
             setSaving((s) => ({ ...s, event: false }));
         }
@@ -322,7 +321,6 @@ export default function AdminPage() {
     async function handleCreateResource(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setSaving((s) => ({ ...s, resource: true }));
-        setStatusMsg(null);
         try {
             if (!resourceForm.url && !resourceForm.attachmentUrl) {
                 throw new Error("Upload the resource file or paste a URL before publishing.");
@@ -337,9 +335,9 @@ export default function AdminPage() {
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to create resource");
             setResourceForm(RESOURCE_DEFAULT);
             await refreshAll();
-            setStatusMsg("Resource published.");
+            toast("Resource published.", "success");
         } catch (err) {
-            setStatusMsg(getErrorMessage(err) || "Failed to create resource.");
+            toast(getErrorMessage(err) || "Failed to create resource.", "error");
         } finally {
             setSaving((s) => ({ ...s, resource: false }));
         }
@@ -348,7 +346,6 @@ export default function AdminPage() {
     async function handleCreateJob(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setSaving((s) => ({ ...s, job: true }));
-        setStatusMsg(null);
         try {
             const res = await api("/jobs", {
                 method: "POST",
@@ -369,9 +366,9 @@ export default function AdminPage() {
             if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to create opportunity");
             setJobForm(JOB_DEFAULT);
             await refreshAll();
-            setStatusMsg("Opportunity posted.");
+            toast("Opportunity posted.", "success");
         } catch (err) {
-            setStatusMsg(getErrorMessage(err) || "Failed to create opportunity.");
+            toast(getErrorMessage(err) || "Failed to create opportunity.", "error");
         } finally {
             setSaving((s) => ({ ...s, job: false }));
         }
@@ -501,7 +498,7 @@ export default function AdminPage() {
             const uploads = await Promise.all(Array.from(fileList).map((file) => uploadAsset(file)));
             return uploads;
         } catch (err) {
-            setStatusMsg(getErrorMessage(err) || "Upload failed. Please try again.");
+            toast(getErrorMessage(err) || "Upload failed. Please try again.", "error");
             return [] as string[];
         }
     }
@@ -547,7 +544,7 @@ export default function AdminPage() {
             await api(`/admin/assets/${encodeURIComponent(name)}`, { method: "DELETE" });
             setAssets((prev) => prev.filter((a) => a.name !== name));
         } catch (err) {
-            setStatusMsg(getErrorMessage(err));
+            toast(getErrorMessage(err), "error");
         }
     }
 
@@ -710,18 +707,6 @@ export default function AdminPage() {
                             </motion.div>
                         ))}
                     </div>
-
-                    {loadAlert && (
-                        <div className="mt-6 rounded-2xl border border-[#FAD7A0] bg-[#FEF4E6] px-4 py-3 text-sm text-[#9C6200]">
-                            {loadAlert}
-                        </div>
-                    )}
-
-                    {statusMsg && (
-                        <div className="mt-6 rounded-2xl border border-[#CFE3E0] bg-[#E9F7F5] px-4 py-3 text-sm text-slate-700">
-                            {statusMsg}
-                        </div>
-                    )}
 
                     <div className="mt-8 grid gap-6 md:grid-cols-2">
                         <AdminCard title="Create event" icon={<CalendarDays className="h-5 w-5" />}>
@@ -1278,9 +1263,9 @@ export default function AdminPage() {
                             onDelete={async (id) => {
                                 try {
                                     await handleDelete(`/events/${id}`);
-                                    setStatusMsg("Event removed.");
+                                    toast("Event removed.", "success");
                                 } catch (err) {
-                                    setStatusMsg(getErrorMessage(err));
+                                    toast(getErrorMessage(err), "error");
                                 }
                             }}
                         />
@@ -1297,9 +1282,9 @@ export default function AdminPage() {
                             onDelete={async (id) => {
                                 try {
                                     await handleDelete(`/resources/${id}`);
-                                    setStatusMsg("Resource removed.");
+                                    toast("Resource removed.", "success");
                                 } catch (err) {
-                                    setStatusMsg(getErrorMessage(err));
+                                    toast(getErrorMessage(err), "error");
                                 }
                             }}
                         />
@@ -1316,9 +1301,9 @@ export default function AdminPage() {
                             onDelete={async (id) => {
                                 try {
                                     await handleDelete(`/jobs/${id}`);
-                                    setStatusMsg("Opportunity removed.");
+                                    toast("Opportunity removed.", "success");
                                 } catch (err) {
-                                    setStatusMsg(getErrorMessage(err));
+                                    toast(getErrorMessage(err), "error");
                                 }
                             }}
                         />
@@ -1528,7 +1513,7 @@ export default function AdminPage() {
                                                         try {
                                                             await handleRoleChange(account.id, e.target.value);
                                                         } catch (err) {
-                                                            setStatusMsg(getErrorMessage(err));
+                                                            toast(getErrorMessage(err), "error");
                                                         }
                                                     }}
                                                 >
@@ -1546,7 +1531,7 @@ export default function AdminPage() {
                                                         try {
                                                             await handleDeleteUser(account.id);
                                                         } catch (err) {
-                                                            setStatusMsg(getErrorMessage(err));
+                                                            toast(getErrorMessage(err), "error");
                                                         }
                                                     }}
                                                     className="inline-flex items-center gap-1 rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"

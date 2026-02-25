@@ -18,6 +18,16 @@ pnpm-debug.log*
 # macOS junk
 .DS_Store
 
+# SQLite database files — do not commit data to git; deploy script recreates on first run
+*.db
+*.db-shm
+*.db-wal
+
+# Environment files with secrets
+.env
+.env.local
+.env.production
+
 # Python (if any backend stuff)
 __pycache__/
 *.pyc

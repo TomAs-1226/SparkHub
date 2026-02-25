@@ -523,7 +523,7 @@ export default function SettingsPage() {
                             </div>
                             <div>
                                 <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">About SparkHub</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Version 0.2.4 (build 20260224.A) • Production Release</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Version 0.2.5 (build 20260224.B) • Production Release</p>
                             </div>
                         </div>
                         <div className="mt-4 space-y-4">
@@ -544,7 +544,7 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2">
                                     <p className="text-xs text-slate-500 dark:text-slate-400">Build</p>
-                                    <p className="font-medium text-slate-700 dark:text-slate-200">20260224.A</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200">20260224.B</p>
                                 </div>
                                 {/* Version badge — click 5× to open setup menu */}
                                 <button
@@ -553,7 +553,7 @@ export default function SettingsPage() {
                                 >
                                     <p className="text-xs text-slate-500 dark:text-slate-400">Version</p>
                                     <p className="font-medium text-slate-700 dark:text-slate-200 group-hover:text-[#2D8F80] transition-colors">
-                                        0.2.4 (build 20260224.A)
+                                        0.2.5 (build 20260224.B)
                                         {versionClicks > 1 && (
                                             <span className="ml-1.5 text-[10px] text-[#63C0B9]">
                                                 {5 - versionClicks}…
@@ -586,7 +586,7 @@ export default function SettingsPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Setup &amp; Developer Menu</p>
-                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">SparkHub v0.2.4 · Hidden access</p>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">SparkHub v0.2.5 · Hidden access</p>
                                     </div>
                                 </div>
                                 <button
@@ -723,12 +723,54 @@ export default function SettingsPage() {
                             className="overflow-hidden"
                         >
                             <div className="mt-4 space-y-6 text-sm">
+                                {/* v0.2.5 */}
+                                <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v0.2.5</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">February 24, 2026 (build 20260224.B)</span>
+                                        <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400">Latest</span>
+                                    </div>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Cleanup, Toast Notifications &amp; 404 Page</p>
+                                    <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Bell className="h-3.5 w-3.5 text-[#2D8F80]" /> Global Toast Notifications
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Replaced all inline status messages with animated toast notifications</li>
+                                                <li>Toasts slide in from the bottom-right and auto-dismiss after 4 seconds</li>
+                                                <li>Three types: success (green), error (red), info (teal)</li>
+                                                <li>Dismiss button on each toast for manual close</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Zap className="h-3.5 w-3.5 text-[#2D8F80]" /> Custom 404 Page
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>SparkHub-branded 404 not-found page replaces the default Next.js error page</li>
+                                                <li>Quick navigation back to Dashboard or Home</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Shield className="h-3.5 w-3.5 text-[#2D8F80]" /> Data &amp; Security Cleanup
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Database file removed from git — ships empty on fresh deploy (no seeded data)</li>
+                                                <li>Newsletter subscription form removed (not connected to mail system)</li>
+                                                <li>Contact page: removed fake phone number and address; replaced with GitHub link</li>
+                                                <li>All version badges updated from 2.x.x to 0.x.x format</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* v0.2.4 */}
                                 <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
                                     <div className="flex items-center gap-3 mb-3">
-                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v0.2.4</span>
+                                        <span className="rounded-full bg-slate-500 px-3 py-1 text-xs font-bold text-white">v0.2.4</span>
                                         <span className="text-xs text-slate-500 dark:text-slate-400">February 24, 2026 (build 20260224.A)</span>
-                                        <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400">Latest</span>
                                     </div>
                                     <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Persistent Student Tools &amp; Background Timer</p>
                                     <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
@@ -790,10 +832,10 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* v2.3.0 */}
+                                {/* v0.2.3 */}
                                 <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-5 py-4">
                                     <div className="flex items-center gap-3 mb-3">
-                                        <span className="rounded-full bg-slate-500 px-3 py-1 text-xs font-bold text-white">v2.3.0</span>
+                                        <span className="rounded-full bg-slate-500 px-3 py-1 text-xs font-bold text-white">v0.2.3</span>
                                         <span className="text-xs text-slate-500 dark:text-slate-400">February 24, 2026</span>
                                     </div>
                                     <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Reliability &amp; Upload Overhaul</p>
@@ -835,10 +877,10 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* v2.2.0 */}
+                                {/* v0.2.2 */}
                                 <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
                                     <div className="flex items-center gap-3 mb-3">
-                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v2.2.0</span>
+                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v0.2.2</span>
                                         <span className="text-xs text-slate-500 dark:text-slate-400">February 23, 2026</span>
                                     </div>
                                     <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Production Release — Inbox, Onboarding &amp; More</p>
@@ -912,10 +954,10 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* v2.1.0 */}
+                                {/* v0.2.1 */}
                                 <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
                                     <div className="flex items-center gap-3 mb-3">
-                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v2.1.0</span>
+                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v0.2.1</span>
                                         <span className="text-xs text-slate-500 dark:text-slate-400">February 22, 2026</span>
                                     </div>
                                     <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Platform Hardening &amp; AI Safety</p>
@@ -980,10 +1022,10 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {/* v2.0.0 */}
+                                {/* v0.2.0 */}
                                 <div className="rounded-2xl border border-[#63C0B9]/30 bg-white dark:bg-slate-700 px-5 py-4">
                                     <div className="flex items-center gap-3 mb-3">
-                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v2.0.0</span>
+                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v0.2.0</span>
                                         <span className="text-xs text-slate-500 dark:text-slate-400">February 22, 2026</span>
                                         <span className="rounded-full bg-amber-100 dark:bg-amber-900/30 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">Major Release</span>
                                     </div>
