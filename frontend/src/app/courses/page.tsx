@@ -77,6 +77,7 @@ const categories = [
 export default function CoursesPage() {
     const router = useRouter();
     const { user } = useCurrentUser();
+    const [mounted, setMounted] = useState(false);
     const [catalog, setCatalog] = useState<LiveCourse[]>([]);
     const [loadingCatalog, setLoadingCatalog] = useState(true);
     const [enrolledIds, setEnrolledIds] = useState<string[]>([]);
@@ -93,6 +94,8 @@ export default function CoursesPage() {
     const [assignmentBusy, setAssignmentBusy] = useState<string | null>(null);
     const [interestTags, setInterestTags] = useState<CourseTag[]>([]);
     const [activeInterest, setActiveInterest] = useState<string | null>(null);
+
+    useEffect(() => { setMounted(true); }, []);
 
     useEffect(() => {
         let active = true;
@@ -428,7 +431,7 @@ export default function CoursesPage() {
                                 >
                                     Browse catalog
                                 </Link>
-                                {canCreateCourses && (
+                                {mounted && canCreateCourses && (
                                     <Link
                                         href="/courses/studio"
                                         className="rounded-full bg-[#2B2E83] px-5 py-2 text-sm font-semibold text-white hover:brightness-110"
@@ -565,7 +568,7 @@ export default function CoursesPage() {
                     </section>
                 )}
 
-                {canCreateCourses && <CourseBuilderCard onCreated={(course) => setCatalog((prev) => [course, ...prev])} />}
+                {mounted && canCreateCourses && <CourseBuilderCard onCreated={(course) => setCatalog((prev) => [course, ...prev])} />}
 
                 <section className="mt-12" id="catalog">
                     <div className="flex flex-wrap items-center justify-between gap-4">

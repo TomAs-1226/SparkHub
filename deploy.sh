@@ -78,28 +78,46 @@ if ! command -v pm2 &>/dev/null; then
   npm install -g pm2
 fi
 
-echo -e "\n${TEAL}Starting servers with PM2…${NC}"
-pm2 delete sparkhub-backend sparkhub-frontend 2>/dev/null || true
+# Install pm2-logrotate for automatic log rotation if not already installed
+pm2 install pm2-logrotate 2>/dev/null || true
 
-NODE_ENV=production pm2 start backend/src/server.js --name sparkhub-backend --node-args="--max-old-space-size=512"
+# Ensure logs directory exists
+mkdir -p "$SCRIPT_DIR/logs"
 
-if [[ "$DEV_MODE" == "true" ]]; then
-  pm2 start "npm run dev" --name sparkhub-frontend --cwd "$SCRIPT_DIR/frontend"
-  echo -e "\n${GREEN}✓ SparkHub v0.3.0 running in dev mode${NC}"
-else
+if [[ "$DEV_MODE" == "false" ]]; then
   echo -e "\n${TEAL}Building frontend for production…${NC}"
   cd frontend && npm run build && cd "$SCRIPT_DIR"
-  pm2 start "npm start" --name sparkhub-frontend --cwd "$SCRIPT_DIR/frontend"
+fi
+
+echo -e "\n${TEAL}Starting servers with PM2 ecosystem…${NC}"
+
+# Stop existing instances gracefully
+pm2 delete sparkhub-backend sparkhub-frontend 2>/dev/null || true
+
+if [[ "$DEV_MODE" == "true" ]]; then
+  pm2 start ecosystem.config.js --env dev
+  echo -e "\n${GREEN}✓ SparkHub v0.3.0 running in dev mode${NC}"
+else
+  pm2 start ecosystem.config.js
   echo -e "\n${GREEN}✓ SparkHub v0.3.0 running in production mode${NC}"
 fi
 
+# Save process list so PM2 restarts everything on reboot
 pm2 save
-pm2 startup 2>/dev/null | tail -1 | grep -E "sudo" | bash 2>/dev/null || true
+
+# Register PM2 as a system service (auto-restart after machine reboot/crash)
+echo -e "\n${TEAL}Registering PM2 system service…${NC}"
+PM2_STARTUP=$(pm2 startup 2>&1 | grep -E "sudo|systemctl" | tail -1)
+if [[ -n "$PM2_STARTUP" ]]; then
+  eval "$PM2_STARTUP" 2>/dev/null || echo -e "${YELLOW}Run this manually to enable boot persistence:${NC}\n  $PM2_STARTUP${NC}"
+fi
 
 echo -e "\n${TEAL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "  SparkHub v0.3.0 (build 20260225.A)"
 echo -e "  Backend:  http://localhost:4000"
 echo -e "  Frontend: http://localhost:3000"
 echo -e "  Admin:    http://localhost:3000/admin"
+echo -e "  Health:   http://localhost:4000/healthz"
+echo -e "  Logs:     pm2 logs  |  ./logs/"
 echo -e "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 pm2 list

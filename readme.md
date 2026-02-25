@@ -326,6 +326,42 @@ Site-wide banners appear above the nav bar for **all visitors**, including logge
 
 ---
 
+## ⚡ Automation & Crash Recovery
+
+SparkHub uses **PM2** via `ecosystem.config.js` for production process management:
+
+| Feature | Detail |
+|---|---|
+| Auto-restart on crash | Exponential backoff (100ms → 200 → 400ms…), max 20 restarts |
+| Memory guard | Restarts backend if RSS > 512 MB, frontend if > 1 GB |
+| Boot persistence | `pm2 startup` registers a system service — survives server reboots |
+| Log rotation | `pm2-logrotate` rotates files in `./logs/` automatically |
+| Zero-downtime reload | `pm2 reload ecosystem.config.js` — drains connections before replacing workers |
+| Health endpoints | `GET /api/healthz` (liveness) · `GET /api/readyz` (DB readiness) |
+
+```bash
+pm2 logs                         # tail all logs
+pm2 reload ecosystem.config.js   # reload without downtime
+pm2 monit                        # live CPU/RAM dashboard
+```
+
+---
+
+## 🌐 Scaling & Multi-Node Deployment
+
+See **[deploy/SCALING.md](deploy/SCALING.md)** for the full guide.
+
+**Same machine (multi-core):**
+```env
+# backend/.env
+BACKEND_INSTANCES=4
+ENABLE_CLUSTER=true
+```
+
+**Multiple servers / datacenters:** requires a shared database (PostgreSQL recommended — SQLite is file-based and cannot be shared across machines), shared uploads (NFS or S3), and nginx load balancer. Use `deploy/nginx-multi-node.conf`.
+
+---
+
 ## 🔧 Development
 
 ```bash

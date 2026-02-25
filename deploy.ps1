@@ -95,31 +95,42 @@ if (-not (Get-Command pm2 -ErrorAction SilentlyContinue)) {
     npm install -g pm2
 }
 
-Write-Teal "`nStarting servers with PM2..."
-pm2 delete sparkhub-backend  2>$null; $true
-pm2 delete sparkhub-frontend 2>$null; $true
+# Install pm2-logrotate for automatic log rotation
+pm2 install pm2-logrotate 2>$null; $true
 
-$env:NODE_ENV = "production"
-pm2 start "$ScriptDir\backend\src\server.js" --name sparkhub-backend --node-args="--max-old-space-size=512"
+# Ensure logs directory exists
+New-Item -ItemType Directory -Force -Path "$ScriptDir\logs" | Out-Null
 
-if ($Dev) {
-    pm2 start "npm run dev" --name sparkhub-frontend --cwd "$ScriptDir\frontend"
-    Write-Green "`nOK  SparkHub v0.3.0 running in dev mode"
-} else {
+# Build frontend first if not in dev mode
+if (-not $Dev) {
     Write-Teal "`nBuilding frontend for production..."
     Set-Location "$ScriptDir\frontend"
     npm run build
     Set-Location $ScriptDir
-    pm2 start "npm start" --name sparkhub-frontend --cwd "$ScriptDir\frontend"
+}
+
+Write-Teal "`nStarting servers with PM2 ecosystem..."
+pm2 delete sparkhub-backend  2>$null; $true
+pm2 delete sparkhub-frontend 2>$null; $true
+
+if ($Dev) {
+    pm2 start "$ScriptDir\ecosystem.config.js" --env dev
+    Write-Green "`nOK  SparkHub v0.3.0 running in dev mode"
+} else {
+    pm2 start "$ScriptDir\ecosystem.config.js"
     Write-Green "`nOK  SparkHub v0.3.0 running in production mode"
 }
 
+# Save and register as Windows service (NSSM) for boot persistence
 pm2 save
+Write-Yellow "To enable auto-start on Windows boot, run: pm2-startup install"
 
 Write-Teal "`n-----------------------------------------"
 Write-Teal "  SparkHub v0.3.0 (build 20260225.A)"
 Write-Teal "  Backend:  http://localhost:4000"
 Write-Teal "  Frontend: http://localhost:3000"
 Write-Teal "  Admin:    http://localhost:3000/admin"
+Write-Teal "  Health:   http://localhost:4000/healthz"
+Write-Teal "  Logs:     pm2 logs  |  .\logs\"
 Write-Teal "-----------------------------------------"
 pm2 list
