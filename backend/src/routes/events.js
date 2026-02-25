@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const { prisma } = require('../prisma')
-const { requireAuth, requireRole } = require('../middleware/auth')
+const { requireAuth, requireRole, maybeAuth } = require('../middleware/auth')
 const { isUnknownFieldError, cloneArgs } = require('../utils/prisma-compat')
 
 const creatorSelect = { select: { id: true, name: true, avatarUrl: true } }
@@ -87,23 +87,42 @@ router.post('/', requireAuth, requireRole(['ADMIN', 'TUTOR', 'CREATOR']), async 
         res.json({ ok: true, event: presentEvent(event) })
     } catch (err) {
         console.error('CREATE EVENT ERROR', err)
-        res.status(500).json({ ok: false, msg: '活动创建失败' })
+        res.status(500).json({ ok: false, msg: 'Failed to create event' })
     }
 })
 
-// 活动列表
-router.get('/', async (req, res) => {
+// Event listing — includes signup count + whether current user has RSVP'd
+router.get('/', maybeAuth, async (req, res) => {
     const limitRaw = Array.isArray(req.query.limit) ? req.query.limit[0] : req.query.limit
     const take = limitRaw ? parseInt(limitRaw, 10) : null
     const query = {
         orderBy: { startsAt: 'asc' },
-        include: { creator: creatorSelect },
+        include: {
+            creator: creatorSelect,
+            _count: { select: { signups: true } },
+        },
     }
     if (take && Number.isFinite(take) && take > 0) {
         query.take = take
     }
     const rows = await runEventQuery('findMany', query)
-    res.json({ ok: true, list: rows.map(presentEvent) })
+
+    // If user is authenticated, check which events they've RSVP'd to
+    let userSignupIds = new Set()
+    if (req.user) {
+        const userSignups = await prisma.eventSignup.findMany({
+            where: { userId: req.user.id },
+            select: { eventId: true },
+        })
+        userSignupIds = new Set(userSignups.map((s) => s.eventId))
+    }
+
+    const list = rows.map((event) => ({
+        ...presentEvent(event),
+        signupCount: event._count?.signups ?? 0,
+        userSignedUp: userSignupIds.has(event.id),
+    }))
+    res.json({ ok: true, list })
 })
 
 // 我发布的活动
@@ -120,16 +139,16 @@ router.get('/:id', async (req, res) => {
     const event = await runEventQuery('findUnique', {
         where: { id: req.params.id },
     })
-    if (!event) return res.status(404).json({ ok: false, msg: '活动不存在' })
+    if (!event) return res.status(404).json({ ok: false, msg: 'Event not found' })
     res.json({ ok: true, event: presentEvent(event) })
 })
 
 // 更新活动
 router.patch('/:id', requireAuth, async (req, res) => {
     const existing = await prisma.event.findUnique({ where: { id: req.params.id } })
-    if (!existing) return res.status(404).json({ ok: false, msg: '活动不存在' })
+    if (!existing) return res.status(404).json({ ok: false, msg: 'Event not found' })
     if (req.user.role !== 'ADMIN' && existing.creatorId !== req.user.id) {
-        return res.status(403).json({ ok: false, msg: '无权限' })
+        return res.status(403).json({ ok: false, msg: 'Unauthorized' })
     }
     const data = {}
     const editableFields = ['title', 'location', 'description', 'coverUrl']
@@ -162,27 +181,39 @@ router.patch('/:id', requireAuth, async (req, res) => {
 // 删除活动
 router.delete('/:id', requireAuth, async (req, res) => {
     const existing = await prisma.event.findUnique({ where: { id: req.params.id } })
-    if (!existing) return res.status(404).json({ ok: false, msg: '活动不存在' })
+    if (!existing) return res.status(404).json({ ok: false, msg: 'Event not found' })
     if (req.user.role !== 'ADMIN' && existing.creatorId !== req.user.id) {
-        return res.status(403).json({ ok: false, msg: '无权限' })
+        return res.status(403).json({ ok: false, msg: 'Unauthorized' })
     }
     await prisma.event.delete({ where: { id: existing.id } })
     res.json({ ok: true })
 })
 
-// 报名活动
+// RSVP to an event
 router.post('/:id/signup', requireAuth, async (req, res) => {
     const ev = await prisma.event.findUnique({ where: { id: req.params.id } })
-    if (!ev) return res.status(404).json({ ok: false, msg: '活动不存在' })
-    const signup = await prisma.eventSignup.upsert({
+    if (!ev) return res.status(404).json({ ok: false, msg: 'Event not found' })
+    await prisma.eventSignup.upsert({
         where: { eventId_userId: { eventId: ev.id, userId: req.user.id } },
         create: { eventId: ev.id, userId: req.user.id, note: req.body.note },
-        update: { note: req.body.note }
+        update: { note: req.body.note },
     })
-    res.json({ ok: true, signup })
+    const count = await prisma.eventSignup.count({ where: { eventId: ev.id } })
+    res.json({ ok: true, signedUp: true, signupCount: count })
 })
 
-// 查看报名（管理员）
+// Cancel RSVP
+router.delete('/:id/signup', requireAuth, async (req, res) => {
+    const ev = await prisma.event.findUnique({ where: { id: req.params.id } })
+    if (!ev) return res.status(404).json({ ok: false, msg: 'Event not found' })
+    await prisma.eventSignup.deleteMany({
+        where: { eventId: ev.id, userId: req.user.id },
+    })
+    const count = await prisma.eventSignup.count({ where: { eventId: ev.id } })
+    res.json({ ok: true, signedUp: false, signupCount: count })
+})
+
+// View signups (admin only)
 router.get('/:id/signups', requireAuth, requireRole(['ADMIN']), async (req, res) => {
     const list = await prisma.eventSignup.findMany({ where: { eventId: req.params.id }, include: { user: true } })
     res.json({ ok: true, list })

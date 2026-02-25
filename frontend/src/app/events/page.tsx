@@ -7,6 +7,7 @@ import { CalendarDays, Clock4, MapPin, NotebookPen } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useToast } from "@/contexts/toast-context";
 import { api } from "@/lib/api";
 import { EASE, FADES, STAGGER, SURFACES } from "@/lib/motion-presets";
 
@@ -17,6 +18,8 @@ interface EventRow {
     startsAt?: string | null;
     endsAt?: string | null;
     description?: string | null;
+    signupCount?: number;
+    userSignedUp?: boolean;
 }
 
 export default function EventsPage() {
@@ -24,8 +27,8 @@ export default function EventsPage() {
     const [loading, setLoading] = useState(true);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [signingUp, setSigningUp] = useState(false);
-    const [signupStatus, setSignupStatus] = useState<string | null>(null);
     const { user } = useCurrentUser();
+    const { toast } = useToast();
 
     useEffect(() => {
         let active = true;
@@ -166,24 +169,28 @@ export default function EventsPage() {
                                         role={user?.role}
                                         userId={user?.id}
                                         signingUp={signingUp}
-                                        signupStatus={signupStatus}
                                         onSignup={async () => {
                                             if (!user) {
                                                 window.location.href = "/login?from=/events";
                                                 return;
                                             }
                                             setSigningUp(true);
-                                            setSignupStatus(null);
                                             try {
+                                                const alreadySignedUp = selected.userSignedUp;
                                                 const res = await api(`/events/${selected.id}/signup`, {
-                                                    method: "POST",
-                                                    body: JSON.stringify({ note: "Saved from events catalog" }),
+                                                    method: alreadySignedUp ? "DELETE" : "POST",
+                                                    body: alreadySignedUp ? undefined : JSON.stringify({ note: "Saved from events catalog" }),
                                                 });
                                                 const json = await res.json();
-                                                if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to RSVP");
-                                                setSignupStatus("You're signed up for this event.");
+                                                if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to update RSVP");
+                                                setEvents((prev) => prev.map((ev) =>
+                                                    ev.id === selected.id
+                                                        ? { ...ev, userSignedUp: json.signedUp, signupCount: json.signupCount }
+                                                        : ev
+                                                ));
+                                                toast(json.signedUp ? "You're going! Seat saved." : "RSVP cancelled.", json.signedUp ? "success" : "info");
                                             } catch (err) {
-                                                setSignupStatus(err instanceof Error ? err.message : "Unable to RSVP.");
+                                                toast(err instanceof Error ? err.message : "Unable to update RSVP.", "error");
                                             } finally {
                                                 setSigningUp(false);
                                             }
@@ -208,14 +215,12 @@ function RoleCallout({
                          event,
                          userId,
                          signingUp,
-                         signupStatus,
                          onSignup,
                      }: {
     role?: string;
     event: EventRow;
     userId?: string;
     signingUp: boolean;
-    signupStatus: string | null;
     onSignup: () => Promise<void>;
 }) {
     const calendarUrl = createCalendarLink(event);
@@ -255,7 +260,7 @@ function RoleCallout({
                 <p className="font-semibold text-slate-900 dark:text-slate-100">Add to your calendar</p>
                 <p>Save the invite and optionally RSVP so hosts know you&apos;re coming.</p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap items-center gap-3">
                 <a
                     href={calendarUrl}
                     target="_blank"
@@ -269,9 +274,13 @@ function RoleCallout({
                         type="button"
                         onClick={onSignup}
                         disabled={signingUp}
-                        className="inline-flex items-center gap-2 rounded-full bg-[var(--sh-accent,#63C0B9)] px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
+                        className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold disabled:opacity-70 transition-colors ${
+                            event.userSignedUp
+                                ? "border border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100"
+                                : "bg-[var(--sh-accent,#63C0B9)] text-white hover:opacity-90"
+                        }`}
                     >
-                        {signingUp ? "Saving..." : "Save me a seat"}
+                        {signingUp ? "Updating..." : event.userSignedUp ? "Cancel RSVP" : "Save me a seat"}
                     </button>
                 ) : (
                     <Link
@@ -281,8 +290,12 @@ function RoleCallout({
                         Sign in to RSVP
                     </Link>
                 )}
+                {typeof event.signupCount === "number" && event.signupCount > 0 && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {event.signupCount} {event.signupCount === 1 ? "person" : "people"} attending
+                    </span>
+                )}
             </div>
-            {signupStatus && <p className="text-xs text-[#2D8F80] dark:text-[#63C0B9]">{signupStatus}</p>}
             <Link
                 href={`/events/${event.id}`}
                 className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#2D8F80] dark:text-[#63C0B9]"

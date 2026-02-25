@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 import SparkHubLogo from "@/components/SparkHubLogo";
+import SearchOverlay from "@/components/search-overlay";
 import { clearToken } from "@/lib/auth";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ACCENT_OPTIONS, AccentOption, applyAccent, loadAccent } from "@/lib/accent-theme";
@@ -92,6 +93,7 @@ export default function Navbar() {
     const router = useRouter();
     const pathname = usePathname();
     const [open, setOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
     const { user, setUser } = useCurrentUser();
     const [clientReady, setClientReady] = useState(false);
     const [accent, setAccent] = useState<AccentOption | null>(null);
@@ -136,6 +138,17 @@ export default function Navbar() {
             }
             window.removeEventListener("scroll", handleScroll);
         };
+    }, []);
+
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+                e.preventDefault();
+                setSearchOpen((prev) => !prev);
+            }
+        };
+        window.addEventListener("keydown", handleKey);
+        return () => window.removeEventListener("keydown", handleKey);
     }, []);
 
     const resolvedUser = clientReady ? user : null;
@@ -223,6 +236,19 @@ export default function Navbar() {
                     </div>
 
                     <div className="relative z-10 hidden items-center gap-2 md:flex">
+                        {/* Search button */}
+                        <button
+                            type="button"
+                            onClick={() => setSearchOpen(true)}
+                            aria-label="Search (⌘K)"
+                            title="Search (⌘K)"
+                            className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/70 bg-white/80 text-slate-600 shadow-sm shadow-white/40 transition hover:border-[var(--sh-accent-soft)] hover:text-[var(--sh-accent)] hover:bg-white"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.35-4.35" />
+                            </svg>
+                        </button>
                         {resolvedUser && <NotificationBell />}
                         {resolvedUser ? (
                             <ProfileMenu
@@ -398,6 +424,7 @@ export default function Navbar() {
                 </AnimatePresence>
             </motion.header>
             <ScrollToTop show={showScrollTop} />
+            <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
         </>
     );
 }

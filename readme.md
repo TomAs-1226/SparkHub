@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/SparkHub-v0.2.5-63C0B9?style=for-the-badge&logo=zap&logoColor=white" alt="Version" />
+<img src="https://img.shields.io/badge/SparkHub-v0.3.0-63C0B9?style=for-the-badge&logo=zap&logoColor=white" alt="Version" />
 <img src="https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js&logoColor=white" alt="Next.js" />
 <img src="https://img.shields.io/badge/Express.js-5-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express" />
 <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma&logoColor=white" alt="Prisma" />
@@ -20,7 +20,7 @@
 <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey?style=flat-square" alt="Platform" />
 <img src="https://img.shields.io/badge/Node.js-%3E%3D18-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node" />
 <img src="https://img.shields.io/badge/status-production%20ready-63C0B9?style=flat-square" alt="Status" />
-<img src="https://img.shields.io/badge/build-20260224.B-2B2E83?style=flat-square" alt="Build" />
+<img src="https://img.shields.io/badge/build-20260225.A-2B2E83?style=flat-square" alt="Build" />
 
 <br /><br />
 
@@ -28,7 +28,7 @@
 
 ### *The all-in-one learning community platform*
 
-**v0.2.5 (build 20260224.B)** — Open-source LMS built for students, creators, tutors, and educators.
+**v0.3.0 (build 20260225.A)** — Open-source LMS built for students, creators, tutors, and educators.
 Self-hostable in under 2 minutes. No vendor lock-in. No subscriptions.
 
 </div>
@@ -40,13 +40,14 @@ Self-hostable in under 2 minutes. No vendor lock-in. No subscriptions.
 | Category | Feature |
 |---|---|
 | **Learning** | Courses with lessons, slide viewer (PDF/PPTX/video/audio), progress tracking, bookmarks |
-| **Community** | Events, tutoring marketplace, job opportunities, discussions, ratings |
+| **Community** | Events with RSVP tracking + attendee count, tutoring marketplace, job opportunities, discussions, ratings |
 | **Communication** | In-app inbox, weekly digest emails, contact forms |
 | **Student Tools** | Pomodoro timer (runs in background), flashcards (cloud-synced), quick notes |
-| **AI Assistant** | Built-in rule-based chat assistant, persistent conversation history |
+| **AI Assistant** | Google Gemini 1.5 Flash — Socratic tutoring with full conversation history; rule-based fallback |
+| **Search** | Cmd+K global search overlay — courses, events, resources, opportunities (animated, debounced) |
 | **Admin** | Full admin panel with PIN auth, user management, site announcements, media library |
+| **Security** | JWT auth, password change, rate limiting, CORS, Helmet, production mode disables test routes |
 | **Notifications** | Global toast notification system (success/error/info, auto-dismiss, animated) |
-| **Security** | JWT auth, rate limiting, CORS, Helmet, production mode disables test routes |
 | **Deployment** | One-command deploy with PM2 (macOS/Linux + Windows PowerShell), DB ships empty |
 
 ---
@@ -77,9 +78,10 @@ The script will:
 1. Copy `.env.example` → `.env` (edit it with your values)
 2. Set `NODE_ENV=production` automatically
 3. Auto-generate a random 6-digit **ADMIN PIN** and print it clearly
-4. Install all dependencies
-5. Run `prisma db push` to sync the database
-6. Start both servers with PM2 (persistent across reboots)
+4. Remind you to set `GEMINI_API_KEY` if not already configured
+5. Install all dependencies
+6. Run `prisma db push` to sync the database
+7. Start both servers with PM2 (persistent across reboots)
 
 > **Dev mode:** `bash deploy.sh --dev` starts Next.js in watch mode for development.
 
@@ -100,7 +102,10 @@ FRONTEND_URL=http://your-domain.com
 FRONTEND_ORIGINS=http://your-domain.com
 UPLOAD_DIR=./uploads
 BACKEND_URL=http://your-domain.com:4000
+GEMINI_API_KEY=your-key-here              # Optional — free at https://aistudio.google.com/app/apikey
 ```
+
+> **AI:** If `GEMINI_API_KEY` is set, the AI assistant uses Google Gemini 1.5 Flash (free tier: 1,500 req/day). Without a key, the assistant falls back to the built-in rule-based engine automatically.
 
 ---
 
@@ -144,7 +149,8 @@ SparkHub/
 │   │   │   ├── bookmarks.js       # Course bookmarks
 │   │   │   ├── discussions.js     # Threaded course discussions
 │   │   │   ├── emails.js          # Weekly digest + subscribe
-│   │   │   ├── events.js          # Events CRUD
+│   │   │   ├── events.js          # Events CRUD + RSVP endpoints
+│   │   │   ├── search.js          # Global search (courses, events, resources, jobs)
 │   │   │   ├── feedback.js        # Contact form inbox
 │   │   │   ├── flashcards.js      # Cloud flashcards
 │   │   │   ├── inbox.js           # In-app messaging
@@ -181,12 +187,13 @@ SparkHub/
 │   │   │   ├── tutors/            # Tutor directory + dashboard
 │   │   │   └── page.tsx           # Landing page
 │   │   ├── components/
-│   │   │   ├── ai-assistant.tsx         # Floating AI chat (persistent history)
+│   │   │   ├── ai-assistant.tsx         # Floating AI chat (Gemini + persistent history)
 │   │   │   ├── floating-toolbox.tsx     # Timer + flashcards + notes toolbox
 │   │   │   ├── quick-notes.tsx          # Floating notes panel (cloud-synced)
+│   │   │   ├── search-overlay.tsx       # Cmd+K global search overlay
 │   │   │   ├── site-announcement-banner.tsx  # Site-wide banner (visible to all)
 │   │   │   ├── site-footer.tsx          # Rich global footer
-│   │   │   ├── site-nav.tsx             # Navigation bar
+│   │   │   ├── site-nav.tsx             # Navigation bar + search trigger
 │   │   │   ├── toast-container.tsx      # Animated toast notifications
 │   │   │   └── providers.tsx            # Global providers + layout
 │   │   ├── contexts/
@@ -217,6 +224,7 @@ All API calls go through the Next.js proxy at `/api/*` → backend. For direct b
 | POST | `/auth/login` | — | Login, returns JWT |
 | POST | `/auth/verify-browser` | — | Browser token verification |
 | GET | `/auth/me` | Bearer | Current user info |
+| POST | `/auth/change-password` | Bearer | Change account password |
 
 ### Courses & LMS
 | Method | Path | Auth | Description |
@@ -234,12 +242,19 @@ All API calls go through the Next.js proxy at `/api/*` → backend. For direct b
 ### Events, Resources, Jobs
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/events` | — | List events |
+| GET | `/events` | — | List events (includes RSVP counts + user status) |
 | POST | `/events` | ADMIN | Create event |
+| POST | `/events/:id/signup` | Bearer | RSVP to an event |
+| DELETE | `/events/:id/signup` | Bearer | Cancel RSVP |
 | GET | `/resources` | — | List resources |
 | POST | `/resources` | ADMIN | Publish resource |
 | GET | `/jobs` | — | List opportunities |
 | POST | `/jobs` | RECRUITER/ADMIN | Post opportunity |
+
+### Search
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/search?q=<query>` | — | Global search (courses, events, resources, jobs) |
 
 ### Student Tools
 | Method | Path | Auth | Description |
@@ -334,6 +349,14 @@ The Next.js config rewrites `/api/*` → `http://localhost:4000/*` automatically
 ---
 
 ## 📋 Changelog
+
+### v0.3.0 (build 20260225.A) — February 25, 2026
+- **Google Gemini AI** — replaced rule-based engine with Gemini 1.5 Flash (free tier, 1,500 req/day); graceful fallback if key not set
+- **Global search** — Cmd+K / Ctrl+K overlay, grouped results (courses, events, resources, opportunities), debounced, animated
+- **Events RSVP** — "Save me a seat" button now persists to DB; toggle cancel RSVP; live attendee count badge
+- **Password change** — new endpoint `POST /auth/change-password` + settings UI with current password verification
+- **Admin UX** — denied screen no longer shows "Create account"; PIN screen shows who is signed in
+- **Inbox hydration fix** — fixed `<button>` inside `<button>` React hydration error in inbox page
 
 ### v0.2.5 (build 20260224.B) — February 24, 2026
 - **Global toast notifications** — animated success/error/info toasts (bottom-right, auto-dismiss 4s, max 5)

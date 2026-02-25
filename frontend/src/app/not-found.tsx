@@ -46,7 +46,7 @@ export default function NotFound() {
 
                     {/* Subtle hint */}
                     <p className="mt-10 text-xs text-slate-400 dark:text-slate-600">
-                        SparkHub v0.2.5
+                        SparkHub v0.3.0
                     </p>
                 </div>
             </main>

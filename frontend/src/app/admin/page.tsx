@@ -615,12 +615,16 @@ export default function AdminPage() {
                 <SiteNav />
                 <main className="mx-auto w-full max-w-4xl px-4 pb-16 pt-10">
                     <div className="rounded-[32px] border border-white/60 dark:border-slate-700 bg-white/95 dark:bg-slate-800/95 p-8 text-center shadow-2xl">
-                        <p className="text-sm text-slate-600 dark:text-slate-400">You do not have admin permissions.</p>
+                        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-700">
+                            <Lock className="h-6 w-6 text-slate-500 dark:text-slate-400" />
+                        </div>
+                        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Access Restricted</h2>
+                        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">This area is restricted to administrators.<br />Contact your server administrator if you need access.</p>
                         <Link
-                            href="/register"
-                            className="mt-4 inline-flex items-center justify-center rounded-full bg-[#63C0B9] px-5 py-2 text-sm font-semibold text-white"
+                            href="/dashboard"
+                            className="mt-6 inline-flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-600 px-5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                         >
-                            Create an admin account
+                            ← Back to Dashboard
                         </Link>
                     </div>
                 </main>
@@ -640,17 +644,23 @@ export default function AdminPage() {
                         <Lock className="h-7 w-7 text-white" />
                     </div>
                     <h1 className="text-xl font-bold text-slate-800">Admin Verification</h1>
-                    <p className="mt-1 text-sm text-slate-500">Enter your admin PIN to continue</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                        Signed in as <span className="font-semibold text-slate-700">{user.name || user.email}</span>
+                    </p>
                     <form onSubmit={verifyPin} className="mt-6 space-y-3">
-                        <input
-                            type="password"
-                            value={pinInput}
-                            onChange={(e) => setPinInput(e.target.value)}
-                            placeholder="Admin PIN"
-                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-center text-lg tracking-widest focus:border-[#63C0B9] focus:outline-none focus:ring-2 focus:ring-[#63C0B9]/20"
-                            autoFocus
-                            required
-                        />
+                        <div>
+                            <label className="block text-left text-xs font-semibold text-slate-500 mb-1">Admin Access Code</label>
+                            <input
+                                type="password"
+                                value={pinInput}
+                                onChange={(e) => setPinInput(e.target.value)}
+                                placeholder="Enter your access code"
+                                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-center text-lg tracking-widest focus:border-[#63C0B9] focus:outline-none focus:ring-2 focus:ring-[#63C0B9]/20"
+                                autoFocus
+                                required
+                            />
+                            <p className="mt-1 text-left text-[11px] text-slate-400">Configured as <code className="font-mono">ADMIN_PIN</code> in your server environment</p>
+                        </div>
                         {pinError && <p className="text-sm text-red-500">{pinError}</p>}
                         <button
                             type="submit"

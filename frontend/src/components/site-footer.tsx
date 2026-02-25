@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Github, Mail, BookOpen, Calendar, Users, Briefcase, FileText, BookMarked, MessageSquare, Shield, FileCheck, AlertCircle, Zap, Heart, Star } from "lucide-react";
 
-const VERSION = "0.2.5 (build 20260224.B)";
+const VERSION = "0.3.0 (build 20260225.A)";
 
 export default function SiteFooter() {
     return (

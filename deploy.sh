@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SparkHub One-Command Deployment Script  v0.2.5
+# SparkHub One-Command Deployment Script  v0.3.0
 # Usage: bash deploy.sh [--dev]
 set -e
 
@@ -12,7 +12,7 @@ for arg in "$@"; do [[ "$arg" == "--dev" ]] && DEV_MODE=true; done
 echo -e "${TEAL}"
 echo "  ╔═══════════════════════════════════════╗"
 echo "  ║    SparkHub Deployment Script         ║"
-echo "  ║    v0.2.5 (build 20260224.B)          ║"
+echo "  ║    v0.3.0 (build 20260225.A)          ║"
 echo "  ║    macOS / Linux                      ║"
 echo "  ╚═══════════════════════════════════════╝"
 echo -e "${NC}"
@@ -54,6 +54,12 @@ if [[ -f "backend/.env" ]]; then
   fi
 fi
 
+# Remind about optional GEMINI_API_KEY
+if [[ -f "backend/.env" ]] && ! grep -q "^GEMINI_API_KEY=" backend/.env; then
+  echo -e "${YELLOW}Tip: Add GEMINI_API_KEY to backend/.env for real AI responses.${NC}"
+  echo -e "${YELLOW}     Free key at: https://aistudio.google.com/app/apikey${NC}"
+fi
+
 echo -e "\n${TEAL}Installing dependencies…${NC}"
 npm install --prefix backend --legacy-peer-deps &
 npm install --prefix frontend --legacy-peer-deps &
@@ -79,19 +85,19 @@ NODE_ENV=production pm2 start backend/src/server.js --name sparkhub-backend --no
 
 if [[ "$DEV_MODE" == "true" ]]; then
   pm2 start "npm run dev" --name sparkhub-frontend --cwd "$SCRIPT_DIR/frontend"
-  echo -e "\n${GREEN}✓ SparkHub v0.2.4 running in dev mode${NC}"
+  echo -e "\n${GREEN}✓ SparkHub v0.3.0 running in dev mode${NC}"
 else
   echo -e "\n${TEAL}Building frontend for production…${NC}"
   cd frontend && npm run build && cd "$SCRIPT_DIR"
   pm2 start "npm start" --name sparkhub-frontend --cwd "$SCRIPT_DIR/frontend"
-  echo -e "\n${GREEN}✓ SparkHub v0.2.4 running in production mode${NC}"
+  echo -e "\n${GREEN}✓ SparkHub v0.3.0 running in production mode${NC}"
 fi
 
 pm2 save
 pm2 startup 2>/dev/null | tail -1 | grep -E "sudo" | bash 2>/dev/null || true
 
 echo -e "\n${TEAL}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "  SparkHub v0.2.5 (build 20260224.B)"
+echo -e "  SparkHub v0.3.0 (build 20260225.A)"
 echo -e "  Backend:  http://localhost:4000"
 echo -e "  Frontend: http://localhost:3000"
 echo -e "  Admin:    http://localhost:3000/admin"

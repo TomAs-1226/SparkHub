@@ -79,6 +79,12 @@ export default function SettingsPage() {
     const [devMenuOpen, setDevMenuOpen] = useState(false);
     const [devStatus, setDevStatus] = useState<string | null>(null);
     const [apiHealth, setApiHealth] = useState<string | null>(null);
+    // Password change
+    const [pwCurrent, setPwCurrent] = useState("");
+    const [pwNew, setPwNew] = useState("");
+    const [pwConfirm, setPwConfirm] = useState("");
+    const [pwSaving, setPwSaving] = useState(false);
+    const [pwStatus, setPwStatus] = useState<{ ok: boolean; msg: string } | null>(null);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -127,6 +133,34 @@ export default function SettingsPage() {
             setStatus(err instanceof Error ? err.message : "Unable to update profile.");
         } finally {
             setSaving(false);
+        }
+    }
+
+    async function handleChangePassword(e: React.FormEvent) {
+        e.preventDefault();
+        setPwStatus(null);
+        if (pwNew !== pwConfirm) {
+            setPwStatus({ ok: false, msg: "New passwords do not match." });
+            return;
+        }
+        if (pwNew.length < 8) {
+            setPwStatus({ ok: false, msg: "New password must be at least 8 characters." });
+            return;
+        }
+        setPwSaving(true);
+        try {
+            const res = await api("/auth/change-password", {
+                method: "POST",
+                body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+            });
+            const json = await safeJson(res);
+            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to change password.");
+            setPwStatus({ ok: true, msg: "Password changed successfully." });
+            setPwCurrent(""); setPwNew(""); setPwConfirm("");
+        } catch (err) {
+            setPwStatus({ ok: false, msg: err instanceof Error ? err.message : "Unable to change password." });
+        } finally {
+            setPwSaving(false);
         }
     }
 
@@ -441,6 +475,60 @@ export default function SettingsPage() {
                         </div>
                     </motion.div>
 
+                    {/* Security — Change Password */}
+                    <motion.div
+                        className="mt-6 rounded-3xl border border-slate-100 dark:border-slate-700 bg-[#F9FBFF] dark:bg-slate-800/50 p-5"
+                        initial={SURFACES.lift.initial}
+                        whileInView={SURFACES.lift.animate(0.12)}
+                        viewport={{ once: true }}
+                    >
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="rounded-full bg-gradient-to-br from-[#E7F6F3] to-[#F0F9FF] dark:from-slate-700 dark:to-slate-600 p-3 text-[#2D8F80]">
+                                <Shield className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">Security</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Change your account password.</p>
+                            </div>
+                        </div>
+                        <form onSubmit={handleChangePassword} className="space-y-3">
+                            <input
+                                type="password"
+                                placeholder="Current password"
+                                value={pwCurrent}
+                                onChange={(e) => setPwCurrent(e.target.value)}
+                                className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:border-[#63C0B9] focus:outline-none focus:ring-2 focus:ring-[#63C0B9]/20"
+                                required
+                            />
+                            <input
+                                type="password"
+                                placeholder="New password (min 8 characters)"
+                                value={pwNew}
+                                onChange={(e) => setPwNew(e.target.value)}
+                                className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:border-[#63C0B9] focus:outline-none focus:ring-2 focus:ring-[#63C0B9]/20"
+                                required
+                            />
+                            <input
+                                type="password"
+                                placeholder="Confirm new password"
+                                value={pwConfirm}
+                                onChange={(e) => setPwConfirm(e.target.value)}
+                                className="w-full rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:border-[#63C0B9] focus:outline-none focus:ring-2 focus:ring-[#63C0B9]/20"
+                                required
+                            />
+                            {pwStatus && (
+                                <p className={`text-xs px-1 ${pwStatus.ok ? "text-[#2D8F80]" : "text-red-500"}`}>{pwStatus.msg}</p>
+                            )}
+                            <button
+                                type="submit"
+                                disabled={pwSaving}
+                                className="rounded-full bg-gradient-to-r from-[#63C0B9] to-[#2B2E83] px-5 py-2 text-sm font-semibold text-white shadow-sm disabled:opacity-60"
+                            >
+                                {pwSaving ? "Saving…" : "Change Password"}
+                            </button>
+                        </form>
+                    </motion.div>
+
                     {/* AI Features */}
                     <motion.div
                         className="mt-6 rounded-3xl border border-slate-100 dark:border-slate-700 bg-[#F9FBFF] dark:bg-slate-800/50 p-5"
@@ -523,7 +611,7 @@ export default function SettingsPage() {
                             </div>
                             <div>
                                 <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">About SparkHub</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Version 0.2.5 (build 20260224.B) • Production Release</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Version 0.3.0 (build 20260225.A) • Production Release</p>
                             </div>
                         </div>
                         <div className="mt-4 space-y-4">
@@ -532,7 +620,7 @@ export default function SettingsPage() {
                                     <span className="font-semibold">SparkHub</span> is a comprehensive learning platform designed to connect students, mentors, tutors, and creators. Our mission is to make quality education accessible and collaborative.
                                 </p>
                                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                                    {["Courses", "Tutoring", "Events", "Jobs", "AI Assistant", "Discussions", "Progress Tracking", "Slide Viewer", "Ratings", "Announcements", "Inbox", "Matching", "Weekly Digest"].map((tag) => (
+                                    {["Courses", "Tutoring", "Events", "Jobs", "AI Assistant", "Global Search", "RSVP Tracking", "Discussions", "Progress Tracking", "Slide Viewer", "Ratings", "Announcements", "Inbox", "Matching", "Weekly Digest", "Password Change"].map((tag) => (
                                         <span key={tag} className="rounded-full bg-[#E9F7F5] dark:bg-slate-600 px-2 py-0.5 text-[#2D8F80] dark:text-[#63C0B9]">{tag}</span>
                                     ))}
                                 </div>
@@ -544,7 +632,7 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2">
                                     <p className="text-xs text-slate-500 dark:text-slate-400">Build</p>
-                                    <p className="font-medium text-slate-700 dark:text-slate-200">20260224.B</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200">20260225.A</p>
                                 </div>
                                 {/* Version badge — click 5× to open setup menu */}
                                 <button
@@ -553,7 +641,7 @@ export default function SettingsPage() {
                                 >
                                     <p className="text-xs text-slate-500 dark:text-slate-400">Version</p>
                                     <p className="font-medium text-slate-700 dark:text-slate-200 group-hover:text-[#2D8F80] transition-colors">
-                                        0.2.5 (build 20260224.B)
+                                        0.3.0 (build 20260225.A)
                                         {versionClicks > 1 && (
                                             <span className="ml-1.5 text-[10px] text-[#63C0B9]">
                                                 {5 - versionClicks}…
@@ -586,7 +674,7 @@ export default function SettingsPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Setup &amp; Developer Menu</p>
-                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">SparkHub v0.2.5 · Hidden access</p>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">SparkHub v0.3.0 · Hidden access</p>
                                     </div>
                                 </div>
                                 <button
@@ -723,12 +811,66 @@ export default function SettingsPage() {
                             className="overflow-hidden"
                         >
                             <div className="mt-4 space-y-6 text-sm">
+                                {/* v0.3.0 */}
+                                <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v0.3.0</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">February 25, 2026 (build 20260225.A)</span>
+                                        <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400">Latest</span>
+                                    </div>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Q1 2026 Final Release — AI, Search, RSVP &amp; Security</p>
+                                    <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Sparkles className="h-3.5 w-3.5 text-[#2D8F80]" /> Google Gemini AI Integration
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Replaced rule-based responses with Google Gemini 1.5 Flash (free tier)</li>
+                                                <li>Socratic tutoring system prompt — guides students without giving direct answers</li>
+                                                <li>Preserves full conversation history for context-aware multi-turn dialogue</li>
+                                                <li>Graceful fallback to rule-based engine if API key is not configured</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Zap className="h-3.5 w-3.5 text-[#2D8F80]" /> Global Search
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Cmd+K / Ctrl+K opens a full-screen search overlay from anywhere in the app</li>
+                                                <li>Results grouped by Courses, Events, Resources, and Opportunities</li>
+                                                <li>300ms debounce with animated result cards and loading indicator</li>
+                                                <li>Escape key and outside-click close the overlay</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <UserCheck className="h-3.5 w-3.5 text-[#2D8F80]" /> Events RSVP Tracking
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>"Save me a seat" button is now fully wired — RSVPs are stored in the database</li>
+                                                <li>Toggle cancel RSVP; live attendee count shown on each event card</li>
+                                                <li>Toast notifications for RSVP success and cancellation</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Shield className="h-3.5 w-3.5 text-[#2D8F80]" /> Security &amp; Admin Improvements
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Password change form added to Settings — requires current password verification</li>
+                                                <li>Admin denied screen updated: removed self-service "Create account" link</li>
+                                                <li>Admin PIN screen now shows which account is signed in</li>
+                                                <li>Fixed inbox hydration error: row element changed to accessible div</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* v0.2.5 */}
                                 <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
                                     <div className="flex items-center gap-3 mb-3">
-                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v0.2.5</span>
+                                        <span className="rounded-full bg-slate-500 px-3 py-1 text-xs font-bold text-white">v0.2.5</span>
                                         <span className="text-xs text-slate-500 dark:text-slate-400">February 24, 2026 (build 20260224.B)</span>
-                                        <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400">Latest</span>
                                     </div>
                                     <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Cleanup, Toast Notifications &amp; 404 Page</p>
                                     <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">

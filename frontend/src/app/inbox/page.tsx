@@ -329,10 +329,13 @@ export default function InboxPage() {
                                         !msg.isRead ? "bg-[#E9F7F5]/40 dark:bg-teal-900/10" : ""
                                     }`}
                                 >
-                                    {/* Message row */}
-                                    <button
+                                    {/* Message row — div instead of button to allow nested delete button */}
+                                    <div
+                                        role="button"
+                                        tabIndex={0}
                                         onClick={() => toggleExpand(msg)}
-                                        className="w-full text-left px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+                                        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && toggleExpand(msg)}
+                                        className="w-full text-left px-5 py-4 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer"
                                     >
                                         <div className="flex items-start gap-3">
                                             {/* Unread dot */}
@@ -384,7 +387,7 @@ export default function InboxPage() {
                                                 )}
                                             </span>
                                         </div>
-                                    </button>
+                                    </div>
 
                                     {/* Expanded body */}
                                     <AnimatePresence>

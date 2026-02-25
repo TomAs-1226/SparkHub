@@ -105,6 +105,7 @@ if (process.env.NODE_ENV !== 'production') {
 app.use('/auth', require('./routes/auth'))
 app.use('/courses', require('./routes/courses'))
 app.use('/events', require('./routes/events'))
+app.use('/search', require('./routes/search'))
 app.use('/tutors', require('./routes/tutors'))
 app.use('/jobs', require('./routes/jobs'))
 app.use('/quizzes', require('./routes/quizzes'))

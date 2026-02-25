@@ -1,4 +1,4 @@
-# SparkHub One-Command Deployment Script (PowerShell)  v0.2.5
+# SparkHub One-Command Deployment Script (PowerShell)  v0.3.0
 # Usage: .\deploy.ps1 [-Dev]
 param(
     [switch]$Dev
@@ -14,7 +14,7 @@ function Write-Yellow{ param($msg) Write-Host $msg -ForegroundColor Yellow }
 Write-Teal ""
 Write-Teal "  +=========================================+"
 Write-Teal "  |   SparkHub Deployment Script           |"
-Write-Teal "  |   v0.2.5 (build 20260224.B) - Windows  |"
+Write-Teal "  |   v0.3.0 (build 20260225.A) - Windows  |"
 Write-Teal "  +=========================================+"
 Write-Teal ""
 
@@ -66,6 +66,12 @@ if (Test-Path "backend\.env") {
     }
 }
 
+# Remind about optional GEMINI_API_KEY
+if ((Test-Path "backend\.env") -and ((Get-Content "backend\.env" -Raw) -notmatch "^GEMINI_API_KEY=")) {
+    Write-Yellow "Tip: Add GEMINI_API_KEY to backend\.env for real AI responses."
+    Write-Yellow "     Free key at: https://aistudio.google.com/app/apikey"
+}
+
 Write-Teal "`nInstalling dependencies in parallel..."
 $backendJob  = Start-Job -ScriptBlock { param($dir) & npm install --prefix $dir/backend  --legacy-peer-deps } -ArgumentList $ScriptDir
 $frontendJob = Start-Job -ScriptBlock { param($dir) & npm install --prefix $dir/frontend --legacy-peer-deps } -ArgumentList $ScriptDir
@@ -98,20 +104,20 @@ pm2 start "$ScriptDir\backend\src\server.js" --name sparkhub-backend --node-args
 
 if ($Dev) {
     pm2 start "npm run dev" --name sparkhub-frontend --cwd "$ScriptDir\frontend"
-    Write-Green "`nOK  SparkHub v0.2.4 running in dev mode"
+    Write-Green "`nOK  SparkHub v0.3.0 running in dev mode"
 } else {
     Write-Teal "`nBuilding frontend for production..."
     Set-Location "$ScriptDir\frontend"
     npm run build
     Set-Location $ScriptDir
     pm2 start "npm start" --name sparkhub-frontend --cwd "$ScriptDir\frontend"
-    Write-Green "`nOK  SparkHub v0.2.4 running in production mode"
+    Write-Green "`nOK  SparkHub v0.3.0 running in production mode"
 }
 
 pm2 save
 
 Write-Teal "`n-----------------------------------------"
-Write-Teal "  SparkHub v0.2.5 (build 20260224.B)"
+Write-Teal "  SparkHub v0.3.0 (build 20260225.A)"
 Write-Teal "  Backend:  http://localhost:4000"
 Write-Teal "  Frontend: http://localhost:3000"
 Write-Teal "  Admin:    http://localhost:3000/admin"

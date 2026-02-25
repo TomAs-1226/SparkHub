@@ -2,6 +2,7 @@ const express = require('express')
 const router = express.Router()
 const { prisma } = require('../prisma')
 const { requireAuth } = require('../middleware/auth')
+const { GoogleGenerativeAI } = require('@google/generative-ai')
 
 // Educational AI System Prompt
 const SYSTEM_CONTEXT = `You are SparkHub AI, an educational learning assistant. Your primary role is to GUIDE students toward understanding, not to give direct answers.
@@ -44,6 +45,34 @@ First, do you remember the **factoring method**? We need two numbers that:
 What two numbers do you think fit these criteria? Think about the factors of 6..."
 
 Bad: "x = -2 and x = -3"`
+
+// Call Google Gemini API (returns null if no API key or on error → falls back to rule-based)
+async function callGemini(message, history = [], user = null) {
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) return null
+
+    try {
+        const genAI = new GoogleGenerativeAI(apiKey)
+        const model = genAI.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            systemInstruction: SYSTEM_CONTEXT +
+                (user ? `\n\nYou are talking to ${user.name || 'a student'} (role: ${user.role.toLowerCase()}) on SparkHub.` : ''),
+        })
+
+        // Convert stored history to Gemini format (last 10 messages)
+        const chatHistory = history.slice(-10).map(msg => ({
+            role: msg.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: msg.content }],
+        }))
+
+        const chat = model.startChat({ history: chatHistory })
+        const result = await chat.sendMessage(message)
+        return result.response.text()
+    } catch (err) {
+        console.error('Gemini API error:', err.message)
+        return null // Fall back to rule-based
+    }
+}
 
 // AI response generator with educational focus
 function generateAIResponse(message, history = [], userContext = null) {
@@ -200,7 +229,9 @@ router.post('/chat', requireAuth, async (req, res) => {
             select: { id: true, name: true, role: true }
         })
 
-        const response = generateAIResponse(message, history, user)
+        // Try Gemini first; fall back to rule-based if key not set or API fails
+        let response = await callGemini(message, history, user)
+        if (!response) response = generateAIResponse(message, history, user)
 
         // Persist conversation to database (fire-and-forget, don't block response)
         prisma.aIChatMessage.createMany({
