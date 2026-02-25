@@ -13,12 +13,6 @@ router.get('/whoami', requireAuth, async (req, res) => {
     res.json({ ok: true, user: { id: u.id, email: u.email, role: u.role } })
 })
 
-// Promote current user to ADMIN (for testing)
-router.post('/make-admin', requireAuth, async (req, res) => {
-    const u = await prisma.user.update({ where: { id: req.user.id }, data: { role: 'ADMIN' } })
-    res.json({ ok: true, user: { id: u.id, email: u.email, role: u.role } })
-})
-
 // Seed some [TEST] data (ADMIN)
 router.post('/seed', requireAuth, requireRole(['ADMIN']), async (req, res) => {
     const created = { courses: 0, lessons: 0, events: 0, jobs: 0, resources: 0, tutors: 0 }

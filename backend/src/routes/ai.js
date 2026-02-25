@@ -155,6 +155,32 @@ function detectHomeworkQuestion(message) {
     return homeworkPatterns.some(pattern => pattern.test(message))
 }
 
+// GET /ai/history — last 100 messages for current user
+router.get('/history', requireAuth, async (req, res) => {
+    try {
+        const messages = await prisma.aIChatMessage.findMany({
+            where: { userId: req.user.id },
+            orderBy: { createdAt: 'asc' },
+            take: 100,
+        })
+        return res.json({ ok: true, messages })
+    } catch (err) {
+        console.error('AI history error:', err)
+        return res.status(500).json({ ok: false, msg: 'Server error' })
+    }
+})
+
+// DELETE /ai/history — clear all messages for current user
+router.delete('/history', requireAuth, async (req, res) => {
+    try {
+        await prisma.aIChatMessage.deleteMany({ where: { userId: req.user.id } })
+        return res.json({ ok: true })
+    } catch (err) {
+        console.error('AI history delete error:', err)
+        return res.status(500).json({ ok: false, msg: 'Server error' })
+    }
+})
+
 // Chat endpoint
 router.post('/chat', requireAuth, async (req, res) => {
     try {
@@ -175,6 +201,14 @@ router.post('/chat', requireAuth, async (req, res) => {
         })
 
         const response = generateAIResponse(message, history, user)
+
+        // Persist conversation to database (fire-and-forget, don't block response)
+        prisma.aIChatMessage.createMany({
+            data: [
+                { userId: req.user.id, role: 'user', content: message.trim() },
+                { userId: req.user.id, role: 'assistant', content: response },
+            ],
+        }).catch((err) => console.error('AI history persist error:', err))
 
         res.json({
             ok: true,

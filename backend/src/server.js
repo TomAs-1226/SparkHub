@@ -98,7 +98,10 @@ const asyncHandler = (fn) => (req, res, next) => {
 app.locals.asyncHandler = asyncHandler
 
 // Routes
-app.use('/testing', require('./routes/testing'))
+// Testing routes are only available in non-production environments
+if (process.env.NODE_ENV !== 'production') {
+    app.use('/testing', require('./routes/testing'))
+}
 app.use('/auth', require('./routes/auth'))
 app.use('/courses', require('./routes/courses'))
 app.use('/events', require('./routes/events'))
@@ -122,6 +125,9 @@ app.use('/notes', require('./routes/notes'))
 app.use('/bookmarks', require('./routes/bookmarks'))
 // Inbox / messaging
 app.use('/inbox', require('./routes/inbox'))
+// v2.4.0 — persistent student tools
+app.use('/flashcards', require('./routes/flashcards'))
+app.use('/user-notes', require('./routes/user-notes'))
 
 // Weekly digest scheduler — runs every Monday at 9 AM
 try {

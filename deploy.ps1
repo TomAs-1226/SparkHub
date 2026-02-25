@@ -1,4 +1,4 @@
-# SparkHub One-Command Deployment Script (PowerShell)
+# SparkHub One-Command Deployment Script (PowerShell)  v0.2.4
 # Usage: .\deploy.ps1 [-Dev]
 param(
     [switch]$Dev
@@ -12,10 +12,10 @@ function Write-Red   { param($msg) Write-Host $msg -ForegroundColor Red }
 function Write-Yellow{ param($msg) Write-Host $msg -ForegroundColor Yellow }
 
 Write-Teal ""
-Write-Teal "  +==================================+"
-Write-Teal "  |   SparkHub Deployment Script    |"
-Write-Teal "  |       v2.2.0 - Windows          |"
-Write-Teal "  +==================================+"
+Write-Teal "  +=========================================+"
+Write-Teal "  |   SparkHub Deployment Script           |"
+Write-Teal "  |   v0.2.4 (build 20260224.A) - Windows  |"
+Write-Teal "  +=========================================+"
 Write-Teal ""
 
 # Check Node.js >= 18
@@ -40,6 +40,30 @@ if ((Test-Path "backend\.env.example") -and -not (Test-Path "backend\.env")) {
 if ((Test-Path "frontend\.env.local.example") -and -not (Test-Path "frontend\.env.local")) {
     Copy-Item "frontend\.env.local.example" "frontend\.env.local"
     Write-Yellow "Created frontend\.env.local from example."
+}
+
+# Ensure NODE_ENV=production in backend/.env
+if (Test-Path "backend\.env") {
+    $envContent = Get-Content "backend\.env" -Raw
+    if ($envContent -notmatch "^NODE_ENV=") {
+        Add-Content "backend\.env" "`nNODE_ENV=production"
+        Write-Green "OK  Added NODE_ENV=production to backend\.env"
+    }
+}
+
+# Auto-generate ADMIN_PIN if not set
+if (Test-Path "backend\.env") {
+    $envContent = Get-Content "backend\.env" -Raw
+    if ($envContent -notmatch "^ADMIN_PIN=") {
+        $generatedPin = Get-Random -Minimum 100000 -Maximum 999999
+        Add-Content "backend\.env" "`nADMIN_PIN=$generatedPin"
+        Write-Yellow ""
+        Write-Yellow "  +-----------------------------------------------+"
+        Write-Yellow "  |  ADMIN PIN generated: $generatedPin                |"
+        Write-Yellow "  |  Save this - you need it to access /admin     |"
+        Write-Yellow "  +-----------------------------------------------+"
+        Write-Yellow ""
+    }
 }
 
 Write-Teal "`nInstalling dependencies in parallel..."
@@ -69,24 +93,27 @@ Write-Teal "`nStarting servers with PM2..."
 pm2 delete sparkhub-backend  2>$null; $true
 pm2 delete sparkhub-frontend 2>$null; $true
 
+$env:NODE_ENV = "production"
 pm2 start "$ScriptDir\backend\src\server.js" --name sparkhub-backend --node-args="--max-old-space-size=512"
 
 if ($Dev) {
     pm2 start "npm run dev" --name sparkhub-frontend --cwd "$ScriptDir\frontend"
-    Write-Green "`nOK  SparkHub running in dev mode"
+    Write-Green "`nOK  SparkHub v0.2.4 running in dev mode"
 } else {
     Write-Teal "`nBuilding frontend for production..."
     Set-Location "$ScriptDir\frontend"
     npm run build
     Set-Location $ScriptDir
     pm2 start "npm start" --name sparkhub-frontend --cwd "$ScriptDir\frontend"
-    Write-Green "`nOK  SparkHub running in production mode"
+    Write-Green "`nOK  SparkHub v0.2.4 running in production mode"
 }
 
 pm2 save
 
-Write-Teal "`n----------------------------------------"
+Write-Teal "`n-----------------------------------------"
+Write-Teal "  SparkHub v0.2.4 (build 20260224.A)"
 Write-Teal "  Backend:  http://localhost:4000"
 Write-Teal "  Frontend: http://localhost:3000"
-Write-Teal "----------------------------------------"
+Write-Teal "  Admin:    http://localhost:3000/admin"
+Write-Teal "-----------------------------------------"
 pm2 list

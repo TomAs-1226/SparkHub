@@ -53,6 +53,9 @@ model User {
   bookmarks         CourseBookmark[]
   noteItems         StudentNote[]
   inboxMessages     InboxMessage[]
+  flashcards        Flashcard[]
+  aiChatMessages    AIChatMessage[]
+  userNotes         UserNote[]
 }
 
 model Course {
@@ -636,4 +639,58 @@ model InboxMessage {
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
+}
+
+// ── Per-user persistent flashcards ─────────────────────────────────────────
+model Flashcard {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  front     String
+  back      String
+  deckName  String   @default("Default")
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, deckName])
+}
+
+// ── Per-user AI chat history ────────────────────────────────────────────────
+model AIChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   // "user" | "assistant"
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ── Per-user global notes (toolbox notes, not course-specific) ──────────────
+model UserNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  color     String   @default("yellow")
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, pinned])
+}
+
+// ── Site-wide announcement banner ────────────────────────────────────────────
+model SiteAnnouncement {
+  id        String    @id @default(cuid())
+  message   String
+  kind      String    @default("info")   // info | warning | error | maintenance
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }

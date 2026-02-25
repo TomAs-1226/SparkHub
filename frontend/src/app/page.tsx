@@ -5,11 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
 import SiteNav from "@/components/site-nav";
-import SparkHubLogo from "@/components/SparkHubLogo";
-import { api } from "@/lib/api";
-
 // client-only to avoid hydration issues in ExploreContents
 const ExploreContents = dynamic(() => import("@/components/explore-contents"), {
     ssr: false,
@@ -63,9 +59,6 @@ async function fetchEvents(limit = 4, signal?: AbortSignal): Promise<EventItem[]
 
 export default function HomePage() {
     const [events, setEvents] = useState<EventItem[]>([]);
-    const [subscribeEmail, setSubscribeEmail] = useState("");
-    const [subscribeStatus, setSubscribeStatus] = useState<string | null>(null);
-    const [subscribeLoading, setSubscribeLoading] = useState(false);
     useEffect(() => {
         const controller = new AbortController();
         fetchEvents(4, controller.signal)
@@ -79,28 +72,6 @@ export default function HomePage() {
     }, []);
     const feature = useMemo(() => events[0], [events]);
     const side = useMemo(() => events.slice(1, 4), [events]);
-
-    async function handleSubscribe(e: FormEvent<HTMLFormElement>) {
-        e.preventDefault();
-        if (!subscribeEmail) return;
-        setSubscribeStatus(null);
-        setSubscribeLoading(true);
-        try {
-            const res = await api("/emails/subscribe", {
-                method: "POST",
-                body: JSON.stringify({ email: subscribeEmail }),
-            });
-            const json = await res.json().catch(() => null);
-            if (!res.ok || json?.ok === false) throw new Error(json?.msg || "Unable to subscribe right now.");
-            setSubscribeStatus("Thanks! You're on the list for weekly updates.");
-            setSubscribeEmail("");
-        } catch (err) {
-            const msg = err instanceof Error ? err.message : "Unable to subscribe right now.";
-            setSubscribeStatus(msg);
-        } finally {
-            setSubscribeLoading(false);
-        }
-    }
 
     return (
         <main className="min-h-dvh bg-white dark:bg-slate-900">
@@ -458,61 +429,6 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* FOOTER */}
-            <footer className="bg-[#1E2335] text-white pt-10 pb-12">
-                <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6 lg:px-8">
-                    <div className="grid gap-6 md:grid-cols-[auto_1fr] md:items-center">
-                        <div className="flex items-center gap-4">
-                            <SparkHubLogo className="h-8 w-auto text-white/95" />
-                            <div className="text-sm opacity-80">
-                                <div className="font-semibold">Online Learners’</div>
-                                <div>Community</div>
-                            </div>
-                        </div>
-                        <div className="md:justify-self-end">
-                            <div className="text-center md:text-right text-sm opacity-90 mb-2">
-                                Subscribe to get updates on events
-                            </div>
-                            <form
-                                onSubmit={handleSubscribe}
-                                className="flex items-center gap-2"
-                            >
-                                <input
-                                    type="email"
-                                    placeholder="Your Email"
-                                    className="w-60 rounded-full bg-transparent px-4 py-2 text-sm outline-none ring-1 ring-white/30 placeholder:text-white/50 focus:ring-white/60"
-                                    value={subscribeEmail}
-                                    onChange={(e) => setSubscribeEmail(e.target.value)}
-                                    required
-                                />
-                                <button
-                                    type="submit"
-                                    disabled={subscribeLoading}
-                                    className="rounded-full bg-[#63C0B9] px-4 py-2 text-sm font-semibold text-[#1E2335] hover:brightness-110 disabled:opacity-60"
-                                >
-                                    {subscribeLoading ? "Subscribing…" : "Subscribe"}
-                                </button>
-                            </form>
-                            {subscribeStatus && (
-                                <p className="mt-2 text-xs text-white/80">{subscribeStatus}</p>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs opacity-80">
-                        <div className="space-x-4">
-                            <Link href="/privacy" className="hover:opacity-100">
-                                Privacy Policy
-                            </Link>
-                            <span className="opacity-50">|</span>
-                            <Link href="/terms" className="hover:opacity-100">
-                                Terms &amp; Conditions
-                            </Link>
-                        </div>
-                        <div className="mt-2">© SparkHub Learning Center.</div>
-                    </div>
-                </div>
-            </footer>
         </main>
     );
 }

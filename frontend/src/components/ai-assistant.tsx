@@ -69,6 +69,7 @@ export default function AIAssistant() {
     const [isLoading, setIsLoading] = useState(false);
     const [showPrompts, setShowPrompts] = useState(true);
     const [scrollTopVisible, setScrollTopVisible] = useState(false);
+    const [historyLoaded, setHistoryLoaded] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -79,6 +80,27 @@ export default function AIAssistant() {
     useEffect(() => {
         scrollToBottom();
     }, [messages, scrollToBottom]);
+
+    // Load history from backend on first open
+    useEffect(() => {
+        if (!isOpen || historyLoaded) return;
+        setHistoryLoaded(true);
+        api("/ai/history")
+            .then((r) => r.json())
+            .then((json) => {
+                if (json?.ok && Array.isArray(json.messages) && json.messages.length > 0) {
+                    const loaded: Message[] = json.messages.map((m: { id: string; role: "user" | "assistant"; content: string; createdAt: string }) => ({
+                        id: m.id,
+                        role: m.role,
+                        content: m.content,
+                        timestamp: new Date(m.createdAt),
+                    }));
+                    setMessages(loaded);
+                    setShowPrompts(false);
+                }
+            })
+            .catch(() => {}); // silently ignore if not logged in
+    }, [isOpen, historyLoaded]);
 
     useEffect(() => {
         if (isOpen && inputRef.current) {
@@ -214,10 +236,13 @@ export default function AIAssistant() {
                                     onClick={() => {
                                         setMessages([]);
                                         setShowPrompts(true);
+                                        // Clear history from backend (fire-and-forget)
+                                        api("/ai/history", { method: "DELETE" }).catch(() => {});
                                     }}
                                     className="rounded-full p-2 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
-                                    whileHover={{ scale: 1.1 }}
+                                    whileHover={{ scale: 1.1, rotate: -180 }}
                                     whileTap={{ scale: 0.9 }}
+                                    transition={{ duration: 0.3 }}
                                     title="Clear chat"
                                 >
                                     <RotateCcw className="h-4 w-4" />

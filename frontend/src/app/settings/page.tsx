@@ -37,6 +37,9 @@ import {
     Activity,
     Inbox,
     UserCheck,
+    Timer,
+    Layers,
+    StickyNote,
 } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
@@ -520,7 +523,7 @@ export default function SettingsPage() {
                             </div>
                             <div>
                                 <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">About SparkHub</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Version 2.2.0 • Production Release</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Version 0.2.4 (build 20260224.A) • Production Release</p>
                             </div>
                         </div>
                         <div className="mt-4 space-y-4">
@@ -541,7 +544,7 @@ export default function SettingsPage() {
                                 </div>
                                 <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2">
                                     <p className="text-xs text-slate-500 dark:text-slate-400">Build</p>
-                                    <p className="font-medium text-slate-700 dark:text-slate-200">2026.02.23</p>
+                                    <p className="font-medium text-slate-700 dark:text-slate-200">20260224.A</p>
                                 </div>
                                 {/* Version badge — click 5× to open setup menu */}
                                 <button
@@ -550,7 +553,7 @@ export default function SettingsPage() {
                                 >
                                     <p className="text-xs text-slate-500 dark:text-slate-400">Version</p>
                                     <p className="font-medium text-slate-700 dark:text-slate-200 group-hover:text-[#2D8F80] transition-colors">
-                                        2.2.0 Production
+                                        0.2.4 (build 20260224.A)
                                         {versionClicks > 1 && (
                                             <span className="ml-1.5 text-[10px] text-[#63C0B9]">
                                                 {5 - versionClicks}…
@@ -583,7 +586,7 @@ export default function SettingsPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Setup &amp; Developer Menu</p>
-                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">SparkHub v2.3.0 · Hidden access</p>
+                                        <p className="text-[11px] text-slate-500 dark:text-slate-400">SparkHub v0.2.4 · Hidden access</p>
                                     </div>
                                 </div>
                                 <button
@@ -720,12 +723,78 @@ export default function SettingsPage() {
                             className="overflow-hidden"
                         >
                             <div className="mt-4 space-y-6 text-sm">
-                                {/* v2.3.0 */}
+                                {/* v0.2.4 */}
                                 <div className="rounded-2xl border border-[#63C0B9]/40 bg-white dark:bg-slate-700 px-5 py-4">
                                     <div className="flex items-center gap-3 mb-3">
-                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v2.3.0</span>
-                                        <span className="text-xs text-slate-500 dark:text-slate-400">February 24, 2026</span>
+                                        <span className="rounded-full bg-[#2D8F80] px-3 py-1 text-xs font-bold text-white">v0.2.4</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">February 24, 2026 (build 20260224.A)</span>
                                         <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-semibold text-green-700 dark:text-green-400">Latest</span>
+                                    </div>
+                                    <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Persistent Student Tools &amp; Background Timer</p>
+                                    <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Timer className="h-3.5 w-3.5 text-[#2D8F80]" /> Background Focus Timer
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Timer now runs in background — keeps counting when toolbox is closed or you navigate</li>
+                                                <li>Floating countdown pill appears on the toolbox button when timer is active</li>
+                                                <li>Live progress ring animates on the FAB during active session</li>
+                                                <li>Timer state persisted in localStorage — survives page refreshes</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Layers className="h-3.5 w-3.5 text-[#2D8F80]" /> Persistent Flashcards
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Flashcards stored in the cloud — synced to your account across devices</li>
+                                                <li>Deck support: cards grouped by deck name, Default deck for quick capture</li>
+                                                <li>Cloud sync indicator (☁) shows connection status in real-time</li>
+                                                <li>Graceful fallback to localStorage when not logged in</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <StickyNote className="h-3.5 w-3.5 text-[#2D8F80]" /> Persistent Notes
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Quick Notes and Toolbox Notes both sync to backend — never lose your ideas</li>
+                                                <li>Pin, color, and content all preserved per-user in the cloud</li>
+                                                <li>Lazy-loads notes on first open — zero overhead until needed</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <MessageCircle className="h-3.5 w-3.5 text-[#2D8F80]" /> AI Conversation Memory
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>SparkHub AI remembers your conversation history across sessions</li>
+                                                <li>Resumes previous context when you reopen the chat</li>
+                                                <li>Clear button wipes history from the server — fresh start anytime</li>
+                                                <li>Up to 100 messages retained per user</li>
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-1.5 mb-1 font-semibold text-slate-700 dark:text-slate-200">
+                                                <Sparkles className="h-3.5 w-3.5 text-[#2D8F80]" /> Enhanced Animations
+                                            </div>
+                                            <ul className="space-y-0.5 ml-5 list-disc">
+                                                <li>Staggered tool list entrance animations in toolbox</li>
+                                                <li>Spring-physics play/pause button transition (icon scales in/out)</li>
+                                                <li>Grade calculator card animates on value change</li>
+                                                <li>Notes count badge bounces on add, flashcard flip with scale spring</li>
+                                                <li>Swap button rotates 180° on hover in unit converter</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* v2.3.0 */}
+                                <div className="rounded-2xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-5 py-4">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="rounded-full bg-slate-500 px-3 py-1 text-xs font-bold text-white">v2.3.0</span>
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">February 24, 2026</span>
                                     </div>
                                     <p className="font-semibold text-slate-800 dark:text-slate-100 mb-3">Reliability &amp; Upload Overhaul</p>
                                     <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300">

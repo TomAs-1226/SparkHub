@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { BookMarked, Briefcase, CalendarDays, FileUp, MessageSquare, Send, Trash2, UsersRound } from "lucide-react";
+import { BookMarked, Briefcase, CalendarDays, FileUp, MessageSquare, Send, Trash2, UsersRound, Lock, BarChart2, Image as ImageIcon, Copy, CheckCircle2, RefreshCw, Megaphone, Server } from "lucide-react";
 
 import SiteNav from "@/components/site-nav";
 import { api } from "@/lib/api";
@@ -132,6 +132,34 @@ export default function AdminPage() {
     const [statusMsg, setStatusMsg] = useState<string | null>(null);
     const [loadAlert, setLoadAlert] = useState<string | null>(null);
 
+    // PIN verification
+    const [pinVerified, setPinVerified] = useState(false);
+    const [pinInput, setPinInput] = useState("");
+    const [pinError, setPinError] = useState<string | null>(null);
+    const [pinLoading, setPinLoading] = useState(false);
+
+    // Site announcement
+    interface AnnouncementRow { id: string; message: string; kind: string; expiresAt: string | null }
+    const [currentAnnouncement, setCurrentAnnouncement] = useState<AnnouncementRow | null>(null);
+    const [annMsg, setAnnMsg] = useState("");
+    const [annKind, setAnnKind] = useState("info");
+    const [annExpiry, setAnnExpiry] = useState("");
+    const [annSaving, setAnnSaving] = useState(false);
+    const [annStatus, setAnnStatus] = useState<string | null>(null);
+
+    // System stats
+    interface SysStats { users: number; courses: number; events: number; resources: number; enrollments: number; dbSizeBytes: number; uploadSizeBytes: number; uploadFileCount: number; nodeVersion: string; uptime: number; env: string }
+    const [sysStats, setSysStats] = useState<SysStats | null>(null);
+
+    // Asset library
+    interface AssetRow { name: string; url: string; size: number; type: string; createdAt: string }
+    const [assets, setAssets] = useState<AssetRow[]>([]);
+    const [assetsLoaded, setAssetsLoaded] = useState(false);
+    const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+
+    // User search
+    const [userSearch, setUserSearch] = useState("");
+
     const [events, setEvents] = useState<EventRow[]>([]);
     const [resources, setResources] = useState<ResourceRow[]>([]);
     const [jobs, setJobs] = useState<JobRow[]>([]);
@@ -215,6 +243,10 @@ export default function AdminPage() {
             setDenied(true);
             setBootstrap(false);
             return;
+        }
+        // Check if PIN already verified this session
+        if (sessionStorage.getItem("sparkhub:admin-pin-ok") === "1") {
+            setPinVerified(true);
         }
         let active = true;
         (async () => {
@@ -474,6 +506,101 @@ export default function AdminPage() {
         }
     }
 
+    async function verifyPin(e: React.FormEvent) {
+        e.preventDefault();
+        setPinLoading(true);
+        setPinError(null);
+        try {
+            const res = await api("/admin/verify-pin", { method: "POST", body: JSON.stringify({ pin: pinInput }) });
+            const json = await safeJson(res);
+            if (json?.ok) {
+                sessionStorage.setItem("sparkhub:admin-pin-ok", "1");
+                setPinVerified(true);
+            } else {
+                setPinError(json?.msg || "Incorrect PIN");
+            }
+        } catch {
+            setPinError("Connection error. Please try again.");
+        } finally {
+            setPinLoading(false);
+        }
+    }
+
+    async function loadSystemStats() {
+        try {
+            const res = await api("/admin/system-stats");
+            const json = await safeJson(res);
+            if (json?.ok) setSysStats(json.stats);
+        } catch {}
+    }
+
+    async function loadAssets() {
+        try {
+            const res = await api("/admin/assets");
+            const json = await safeJson(res);
+            if (json?.ok) { setAssets(json.assets); setAssetsLoaded(true); }
+        } catch {}
+    }
+
+    async function deleteAsset(name: string) {
+        try {
+            await api(`/admin/assets/${encodeURIComponent(name)}`, { method: "DELETE" });
+            setAssets((prev) => prev.filter((a) => a.name !== name));
+        } catch (err) {
+            setStatusMsg(getErrorMessage(err));
+        }
+    }
+
+    async function copyUrl(url: string) {
+        try {
+            await navigator.clipboard.writeText(url);
+            setCopiedUrl(url);
+            setTimeout(() => setCopiedUrl(null), 2000);
+        } catch {}
+    }
+
+    async function loadAnnouncement() {
+        try {
+            const res = await fetch("/api/admin/announcement");
+            const json = await res.json();
+            if (json?.ok) setCurrentAnnouncement(json.announcement);
+        } catch {}
+    }
+
+    async function publishAnnouncement(e: React.FormEvent) {
+        e.preventDefault();
+        setAnnSaving(true);
+        setAnnStatus(null);
+        try {
+            const res = await api("/admin/announcement", {
+                method: "POST",
+                body: JSON.stringify({ message: annMsg, kind: annKind, expiresAt: annExpiry || null }),
+            });
+            const json = await safeJson(res);
+            if (json?.ok) {
+                setCurrentAnnouncement(json.announcement);
+                setAnnStatus("Announcement published! It will appear for all visitors.");
+                setAnnMsg(""); setAnnExpiry("");
+            } else {
+                setAnnStatus(json?.msg || "Failed to publish.");
+            }
+        } catch {
+            setAnnStatus("Error publishing announcement.");
+        } finally {
+            setAnnSaving(false);
+        }
+    }
+
+    async function clearAnnouncement() {
+        try {
+            await api("/admin/announcement", { method: "DELETE" });
+            setCurrentAnnouncement(null);
+            setAnnStatus("Announcement cleared.");
+        } catch {
+            setAnnStatus("Error clearing announcement.");
+        }
+    }
+
     if (bootstrap) {
         return (
             <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100">
@@ -500,6 +627,46 @@ export default function AdminPage() {
                         </Link>
                     </div>
                 </main>
+            </div>
+        );
+    }
+
+    if (!pinVerified) {
+        return (
+            <div className="min-h-dvh bg-[#F4F7FB] dark:bg-slate-900 flex items-center justify-center px-4">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="w-full max-w-sm rounded-[28px] border border-white/60 bg-white/95 p-8 shadow-2xl text-center"
+                >
+                    <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#63C0B9] to-[#2B2E83]">
+                        <Lock className="h-7 w-7 text-white" />
+                    </div>
+                    <h1 className="text-xl font-bold text-slate-800">Admin Verification</h1>
+                    <p className="mt-1 text-sm text-slate-500">Enter your admin PIN to continue</p>
+                    <form onSubmit={verifyPin} className="mt-6 space-y-3">
+                        <input
+                            type="password"
+                            value={pinInput}
+                            onChange={(e) => setPinInput(e.target.value)}
+                            placeholder="Admin PIN"
+                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-center text-lg tracking-widest focus:border-[#63C0B9] focus:outline-none focus:ring-2 focus:ring-[#63C0B9]/20"
+                            autoFocus
+                            required
+                        />
+                        {pinError && <p className="text-sm text-red-500">{pinError}</p>}
+                        <button
+                            type="submit"
+                            disabled={pinLoading}
+                            className="w-full rounded-full bg-gradient-to-r from-[#63C0B9] to-[#2B2E83] py-3 text-sm font-semibold text-white disabled:opacity-60"
+                        >
+                            {pinLoading ? "Verifying…" : "Enter Admin Panel"}
+                        </button>
+                    </form>
+                    <Link href="/dashboard" className="mt-4 block text-xs text-slate-400 hover:text-slate-600">
+                        ← Back to dashboard
+                    </Link>
+                </motion.div>
             </div>
         );
     }
@@ -1157,6 +1324,153 @@ export default function AdminPage() {
                         />
                     </div>
 
+                    {/* ── Site Announcement ────────────────────────────────────── */}
+                    <div className="mt-10 rounded-3xl border border-slate-100 bg-[#F9FBFF] p-6 shadow-inner">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="flex items-center gap-3">
+                                <div className="rounded-full bg-amber-100 p-3 text-amber-600">
+                                    <Megaphone className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold uppercase tracking-wide text-amber-700">Site Announcement</p>
+                                    <p className="text-sm text-slate-500">Visible to all visitors, even when logged out.</p>
+                                </div>
+                            </div>
+                            <button type="button" onClick={loadAnnouncement} className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-white flex items-center gap-1">
+                                <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                            </button>
+                        </div>
+                        {currentAnnouncement && (
+                            <div className={`mt-4 rounded-2xl px-4 py-3 flex items-start justify-between gap-3 ${currentAnnouncement.kind === 'warning' ? 'bg-amber-50 border border-amber-200' : currentAnnouncement.kind === 'error' ? 'bg-red-50 border border-red-200' : currentAnnouncement.kind === 'maintenance' ? 'bg-purple-50 border border-purple-200' : 'bg-teal-50 border border-teal-200'}`}>
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">{currentAnnouncement.kind} — Active</p>
+                                    <p className="text-sm text-slate-800">{currentAnnouncement.message}</p>
+                                </div>
+                                <button type="button" onClick={clearAnnouncement} className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 whitespace-nowrap">
+                                    Clear
+                                </button>
+                            </div>
+                        )}
+                        <form onSubmit={publishAnnouncement} className="mt-4 space-y-3">
+                            <textarea
+                                placeholder="Announcement message (e.g. Scheduled maintenance on Saturday 10:00–12:00 UTC)"
+                                value={annMsg}
+                                onChange={(e) => setAnnMsg(e.target.value)}
+                                className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm resize-none focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-400/20"
+                                rows={2}
+                                required
+                            />
+                            <div className="flex gap-3 flex-wrap">
+                                <select value={annKind} onChange={(e) => setAnnKind(e.target.value)} className="rounded-full border border-slate-200 px-3 py-2 text-sm">
+                                    <option value="info">Info (teal)</option>
+                                    <option value="warning">Warning (amber)</option>
+                                    <option value="error">Alert (red)</option>
+                                    <option value="maintenance">Maintenance (purple)</option>
+                                </select>
+                                <input type="datetime-local" value={annExpiry} onChange={(e) => setAnnExpiry(e.target.value)} className="rounded-2xl border border-slate-200 px-3 py-2 text-sm" title="Expires at (optional)" />
+                                <button type="submit" disabled={annSaving} className="rounded-full bg-amber-500 px-5 py-2 text-sm font-semibold text-white disabled:opacity-60">
+                                    {annSaving ? "Publishing…" : "Publish banner"}
+                                </button>
+                            </div>
+                            {annStatus && <p className="text-xs text-slate-600">{annStatus}</p>}
+                        </form>
+                    </div>
+
+                    {/* ── System Stats ─────────────────────────────────────────── */}
+                    <div className="mt-10 rounded-3xl border border-slate-100 bg-[#F9FBFF] p-6 shadow-inner">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="flex items-center gap-3">
+                                <div className="rounded-full bg-indigo-100 p-3 text-indigo-600">
+                                    <Server className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold uppercase tracking-wide text-indigo-700">System Stats</p>
+                                    <p className="text-sm text-slate-500">Live server and database metrics.</p>
+                                </div>
+                            </div>
+                            <button type="button" onClick={loadSystemStats} className="rounded-full bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 flex items-center gap-1.5">
+                                <BarChart2 className="h-3.5 w-3.5" /> Load Stats
+                            </button>
+                        </div>
+                        {sysStats ? (
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                {[
+                                    { label: "Users", value: sysStats.users },
+                                    { label: "Courses", value: sysStats.courses },
+                                    { label: "Events", value: sysStats.events },
+                                    { label: "Enrollments", value: sysStats.enrollments },
+                                    { label: "DB Size", value: formatBytes(sysStats.dbSizeBytes) },
+                                    { label: "Uploads Size", value: formatBytes(sysStats.uploadSizeBytes) },
+                                    { label: "Upload Files", value: sysStats.uploadFileCount },
+                                    { label: "Server Uptime", value: formatUptime(sysStats.uptime) },
+                                    { label: "Node.js", value: sysStats.nodeVersion },
+                                    { label: "Environment", value: sysStats.env },
+                                ].map((stat) => (
+                                    <div key={stat.label} className="rounded-2xl border border-slate-100 bg-white p-4 text-center">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{stat.label}</p>
+                                        <p className="mt-1 text-lg font-bold text-[#2B2E83]">{stat.value}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="mt-4 text-sm text-slate-400">Click &quot;Load Stats&quot; to fetch live metrics.</p>
+                        )}
+                    </div>
+
+                    {/* ── Media Library ────────────────────────────────────────── */}
+                    <div className="mt-10 rounded-3xl border border-slate-100 bg-[#F9FBFF] p-6 shadow-inner">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="flex items-center gap-3">
+                                <div className="rounded-full bg-rose-100 p-3 text-rose-600">
+                                    <ImageIcon className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold uppercase tracking-wide text-rose-700">Media Library</p>
+                                    <p className="text-sm text-slate-500">All uploaded assets — copy URLs, delete files.</p>
+                                </div>
+                            </div>
+                            <button type="button" onClick={loadAssets} className="rounded-full bg-rose-500 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-600 flex items-center gap-1.5">
+                                <RefreshCw className="h-3.5 w-3.5" /> {assetsLoaded ? "Refresh" : "Load Assets"}
+                            </button>
+                        </div>
+                        {assetsLoaded && (
+                            <div className="mt-4">
+                                {assets.length === 0 ? (
+                                    <p className="text-sm text-slate-400">No uploaded files yet. Use the upload buttons on events, resources, and jobs to add assets.</p>
+                                ) : (
+                                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                        {assets.map((asset) => (
+                                            <div key={asset.name} className="rounded-2xl border border-slate-100 bg-white p-3 flex flex-col gap-2">
+                                                {asset.type === "image" ? (
+                                                    // eslint-disable-next-line @next/next/no-img-element
+                                                    <img src={asset.url} alt={asset.name} className="w-full h-28 object-cover rounded-xl" />
+                                                ) : (
+                                                    <div className="w-full h-28 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                                                        <ImageIcon className="h-8 w-8" />
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <p className="text-xs font-semibold text-slate-700 truncate">{asset.name}</p>
+                                                    <p className="text-[11px] text-slate-400">{formatBytes(asset.size)} · {asset.type}</p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button type="button" onClick={() => copyUrl(asset.url)} className="flex-1 rounded-full border border-slate-200 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-1">
+                                                        {copiedUrl === asset.url ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                                                        {copiedUrl === asset.url ? "Copied!" : "Copy URL"}
+                                                    </button>
+                                                    <button type="button" onClick={() => deleteAsset(asset.name)} className="rounded-full border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-50">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ── User Management ──────────────────────────────────────── */}
                     <div className="mt-10 rounded-3xl border border-slate-100 bg-[#F9FBFF] p-6 shadow-inner">
                         <div className="flex items-center gap-3">
                             <div className="rounded-full bg-[#E7F6F3] p-3 text-[#2D8F80]">
@@ -1166,6 +1480,15 @@ export default function AdminPage() {
                                 <p className="text-sm font-semibold uppercase tracking-wide text-[#2D8F80]">User management</p>
                                 <p className="text-sm text-slate-500">Promote admins, tutors, and remove inactive accounts.</p>
                             </div>
+                        </div>
+                        <div className="mt-4">
+                            <input
+                                type="text"
+                                placeholder="Search by name or email…"
+                                value={userSearch}
+                                onChange={(e) => setUserSearch(e.target.value)}
+                                className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm focus:border-[#63C0B9] focus:outline-none"
+                            />
                         </div>
                         <div className="mt-4 overflow-x-auto">
                             <table className="w-full min-w-[480px] text-left text-sm">
@@ -1178,14 +1501,22 @@ export default function AdminPage() {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {users.length === 0 ? (
+                                {users.filter((u) => {
+                                    if (!userSearch.trim()) return true;
+                                    const q = userSearch.toLowerCase();
+                                    return (u.name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+                                }).length === 0 ? (
                                     <tr>
                                         <td className="px-3 py-4 text-sm text-slate-500" colSpan={4}>
-                                            No users found.
+                                            {userSearch ? "No users match your search." : "No users found."}
                                         </td>
                                     </tr>
                                 ) : (
-                                    users.map((account) => (
+                                    users.filter((u) => {
+                                        if (!userSearch.trim()) return true;
+                                        const q = userSearch.toLowerCase();
+                                        return (u.name?.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+                                    }).map((account) => (
                                         <tr key={account.id} className="border-t border-slate-100">
                                             <td className="px-3 py-3 font-semibold text-slate-800">{account.name || "Unknown"}</td>
                                             <td className="px-3 py-3 text-slate-500">{account.email}</td>
@@ -1331,6 +1662,23 @@ async function safeJson(res: Response) {
     } catch {
         return null;
     }
+}
+
+function formatBytes(bytes: number): string {
+    if (!bytes) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+function formatUptime(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
 }
 
 function displayFileName(path?: string | null, fallback = "Attachment") {
